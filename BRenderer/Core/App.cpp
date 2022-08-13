@@ -16,18 +16,7 @@ namespace brr
 
 	void App::Init()
 	{
-		if (SDL_Init(SDL_INIT_VIDEO) < 0)
-		{
-			std::cout << "Could not initialize SDL: " << SDL_GetError() << std::endl;
-			exit(1);
-		}
-
-		m_pMainWindow = std::make_unique<Window>();
-		m_pMainWindow->InitWindow();
-		m_pMainWindowID = m_pMainWindow->GetWindowID();
-
-		m_pRenderer = new render::Renderer();
-		m_pRenderer->Init_Renderer(m_pMainWindow->GetSDLWindowHandle());
+		m_pWindowManager.reset(new WindowManager{ 800, 600 });
 	}
 
 	void App::MainLoop()
@@ -40,44 +29,13 @@ namespace brr
 				ProcessEvent(sdl_event);
 			}
 
-			m_pRenderer->Draw();
+			m_pWindowManager->Update();
 
 		}
-	}
-
-	void App::CloseWindow(uint32_t pWindowID)
-	{
-		// If closing main window, close the application
-		if (pWindowID == m_pMainWindowID)
-		{
-			//m_pMainWindow->CloseWindow();
-			m_pShouldFinish = true;
-			return;
-		}
-
-		auto it = m_pSecondaryWindows_Id_Index_Map.find(pWindowID);
-		if (it == m_pSecondaryWindows_Id_Index_Map.end())
-			return;
-
-		const uint32_t window_index = it->second;
-		m_pSecondaryWindows[window_index]->CloseWindow();
-
-		m_pSecondaryWindows_Id_Index_Map.erase(pWindowID);
-		m_pSecondaryWindows.erase(m_pSecondaryWindows.begin() + window_index);
 	}
 
 	void App::Clear()
 	{
-		m_pRenderer->Reset();
-
-		m_pSecondaryWindows_Id_Index_Map.clear();
-		m_pSecondaryWindows.clear();
-
-		m_pMainWindow.reset();
-
-		SDL_Log("Renderer Destroyed");
-
-		SDL_Quit();
 	}
 
 	void App::ProcessEvent(SDL_Event& pEvent)
@@ -100,7 +58,10 @@ namespace brr
 			case SDL_DISPLAYEVENT: break;
 			case SDL_WINDOWEVENT:
 			{
-				Window* window;
+				m_pWindowManager->ProcessWindowEvent(pEvent.window);
+				if (m_pWindowManager->IsMainWindowClosed())
+					m_pShouldFinish = true;
+				/*Window* window;
 				if (pEvent.window.windowID == m_pMainWindowID)
 				{
 					window = m_pMainWindow.get();
@@ -111,10 +72,10 @@ namespace brr
 					window = m_pSecondaryWindows[window_index].get();
 				}
 				window->ProcessWindowEvent(pEvent.window);
-				if (window->WindowClosed())
+				if (window->NeedToClose())
 				{
 					CloseWindow(pEvent.window.windowID);
-				}
+				}*/
 				break;
 			}
 			case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.

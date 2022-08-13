@@ -35,7 +35,7 @@ set(BRenderer_SOURCE_FILES
 "Renderer/VkInitializerHelper.cpp" 
 "Renderer/Shader.cpp"  
 "Renderer/RenderDevice.cpp"
-"Files/FilesUtils.cpp")
+"Files/FilesUtils.cpp" "Core/WindowManager.cpp")
 
 set(BRenderer_HEADER_FILES
 "BRenderer.h" 
@@ -45,7 +45,7 @@ set(BRenderer_HEADER_FILES
 "Renderer/VkInitializerHelper.h" 
 "Renderer/Shader.h"
 "Renderer/RenderDedvice.h"
-"Files/FilesUtils.h" )
+"Files/FilesUtils.h"  "Core/WindowManager.h")
 
 
 # Add source to this project's executable.

@@ -1,3 +1,4 @@
+#include "Core/Window.h"
 #include "Renderer/Renderer.h"
 
 #include "Shader.h"
@@ -19,22 +20,45 @@ namespace brr::render
 		Reset();
 	}
 
-	void Renderer::Init_Renderer(SDL_Window* main_window)
+	void Renderer::Init_VulkanRenderer(Window* main_window)
 	{
 		Init_VkInstance(main_window);
-		Init_Surface(main_window);
-		Init_PhysDevice();
-		Init_Device();
-		Init_Swapchain(main_window);
-		Init_RenderPass();
-		Init_GraphicsPipeline();
-		Init_Framebuffers();
-		Init_CommandPool();
-		Init_CommandBuffer();
-		Init_Sychronization();
+		Create_Window(main_window);
 	}
 
-	void Renderer::Init_VkInstance(SDL_Window* sdl_window)
+	void Renderer::Create_Window(Window* window)
+	{
+		m_pWindows.resize(m_pWindow_number + 1);
+		RendererWindow& rend_window = m_pWindows[m_pWindow_number];
+		m_pWindow_number++;
+
+		rend_window.m_associated_window = window;
+		Init_Surface(rend_window);
+		if (!m_pDevice)
+		{
+			Init_PhysDevice(rend_window.m_surface);
+			if (!m_pQueues_initialized)
+				Init_Queues(rend_window.m_surface);
+			Init_Device();
+		}
+		
+		Init_Swapchain(rend_window);
+		Init_RenderPass(rend_window);
+		Init_GraphicsPipeline(rend_window);
+		Init_Framebuffers(rend_window);
+		Init_CommandPool();
+		Init_CommandBuffers(rend_window);
+		Init_Sychronization(rend_window);
+	}
+
+	void Renderer::Destroy_Window(Window* window)
+	{
+		if (m_pDevice)
+			m_pDevice.waitIdle();
+		Reset();
+	}
+
+	void Renderer::Init_VkInstance(Window* window)
 	{
 		//TODO: Do validation layers
 		// Check for validation layers support
@@ -63,36 +87,9 @@ namespace brr::render
 		// Gather required extensions
 		std::vector<const char*> extensions{};
 		{
-			unsigned int extension_count;
-
-			// Get the number of extensions required by the SDL window.
-			if (!SDL_Vulkan_GetInstanceExtensions(sdl_window,
-				&extension_count, nullptr))
-			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not get the number of extensions required by SDL: %s", SDL_GetError());
-				exit(1);
-			}
-
-			const size_t additional_extension_count = extensions.size();
-			extensions.resize(additional_extension_count + extension_count);
-
-			if (!SDL_Vulkan_GetInstanceExtensions(sdl_window,
-				&extension_count, extensions.data() + additional_extension_count))
-			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not get extensions required by SDL: %s", SDL_GetError());
-				exit(1);
-			}
-
-			SDL_Log("Required Extensions");
-			for (const char* extension : extensions)
-			{
-				SDL_Log("\tExtension name: %s", extension);
-
-			}
-		}
+			window->GetRequiredVulkanExtensions(extensions);
 
 		// TODO: Check if the required extensions are supported by Vulkan
-		{
 			uint32_t extension_count = 0;
 			std::vector<vk::ExtensionProperties> extension_properties = vk::enumerateInstanceExtensionProperties();
 
@@ -120,18 +117,39 @@ namespace brr::render
 		SDL_Log("Instance Created");
 	}
 
-	void Renderer::Init_Surface(SDL_Window* sdl_window)
+	void Renderer::Init_Surface(RendererWindow& window)
 	{
-		if (!SDL_Vulkan_CreateSurface(sdl_window, m_pVkInstance, reinterpret_cast<VkSurfaceKHR*>(& m_pSurface)))
+		window.m_surface = window.m_associated_window->GetVulkanSurface(m_pVkInstance);
+
+		if (!window.m_surface)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create SDL surface: %s", SDL_GetError());
 			exit(1);
 		}
 
 		SDL_Log("Surface Created");
 	}
 
-	void Renderer::Init_PhysDevice()
+	void Renderer::Init_Queues(vk::SurfaceKHR surface)
+	{
+		// Check for queue families
+		m_pQueueFamilyIdx = VkHelpers::Find_QueueFamilies(m_pPhysDevice, surface);
+
+		if (!m_pQueueFamilyIdx.m_graphicsFamily.has_value())
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find graphics family queue. Exitting program.");
+			exit(1);
+		}
+
+		if (!m_pQueueFamilyIdx.m_presentFamily.has_value())
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find presentation family queue. Exitting program.");
+			exit(1);
+		}
+
+		m_pQueues_initialized = true;
+	}
+
+	void Renderer::Init_PhysDevice(vk::SurfaceKHR surface)
 	{
 		std::vector<vk::PhysicalDevice> devices = m_pVkInstance.enumeratePhysicalDevices();
 
@@ -147,28 +165,19 @@ namespace brr::render
 			SDL_Log("\tDevice: %s", device.getProperties().deviceName);
 		}
 
-		m_pPhysDevice = VkHelpers::Select_PhysDevice(devices, m_pSurface);
+		m_pPhysDevice = VkHelpers::Select_PhysDevice(devices, surface);
 
 		SDL_Log("Selected physical device: %s", m_pPhysDevice.getProperties().deviceName);
-
-		// Check for queue families
-		m_pQueueFamilyIdx = VkHelpers::Find_QueueFamilies(m_pPhysDevice, Renderer::GetRenderer()->Get_VkSurface());
-
-		if (!m_pQueueFamilyIdx.m_graphicsFamily.has_value())
-		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find graphics family queue. Exitting program.");
-			exit(1);
-		}
-
-		if (!m_pQueueFamilyIdx.m_presentFamily.has_value())
-		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find presentation family queue. Exitting program.");
-			exit(1);
-		}
 	}
 
 	void Renderer::Init_Device()
 	{
+		if (!m_pQueues_initialized)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Cannot create device without initializing queues.");
+			exit(1);
+		}
+
 		const uint32_t graphics_family_idx = m_pQueueFamilyIdx.m_graphicsFamily.value();
 		const uint32_t presentation_family_idx = m_pQueueFamilyIdx.m_presentFamily.value();
 		
@@ -209,13 +218,13 @@ namespace brr::render
 		SDL_Log("Device Created");
 	}
 
-	void Renderer::Init_Swapchain(SDL_Window* sdl_window)
+	void Renderer::Init_Swapchain(RendererWindow& window)
 	{
-		VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_pPhysDevice, m_pSurface);
+		VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_pPhysDevice, window.m_surface);
 
 		vk::SurfaceFormatKHR surface_format = VkHelpers::Select_SwapchainFormat(properties.m_surfFormats);
 		vk::PresentModeKHR present_mode = VkHelpers::Select_SwapchainPresentMode(properties.m_presentModes);
-		m_pSwapchainExtent = VkHelpers::Select_SwapchainExtent(sdl_window, properties.m_surfCapabilities);
+		m_pSwapchainExtent = VkHelpers::Select_SwapchainExtent(window.m_associated_window, properties.m_surfCapabilities);
 		m_pSwapchain_ImageFormat = surface_format.format;
 
 		uint32_t imageCount = properties.m_surfCapabilities.minImageCount + 1;
@@ -247,11 +256,11 @@ namespace brr::render
 			}
 		}
 
-		vk::SwapchainKHR old_swapchain = m_pSwapchain;
+		vk::SwapchainKHR old_swapchain = window.m_swapchain;
 
 		vk::SwapchainCreateInfoKHR swapchain_create_info {};
 		swapchain_create_info
-			.setSurface(m_pSurface)
+			.setSurface(window.m_surface)
 			.setMinImageCount(imageCount)
 			.setImageFormat(m_pSwapchain_ImageFormat)
 			.setImageColorSpace(surface_format.colorSpace)
@@ -281,7 +290,7 @@ namespace brr::render
 			}
 		}
 
-		m_pSwapchain = m_pDevice.createSwapchainKHR(swapchain_create_info);
+		window.m_swapchain = m_pDevice.createSwapchainKHR(swapchain_create_info);
 		SDL_Log("Swapchain created");
 
 		// If old swapchain is valid, destroy it. (It happens on swapchain recreation)
@@ -292,11 +301,11 @@ namespace brr::render
 
 		// Acquire swapchain images and create ImageViews
 		{
-			std::vector<vk::Image> swapchain_images = m_pDevice.getSwapchainImagesKHR(m_pSwapchain);
-			m_pSwapchain_imageResources.resize(swapchain_images.size());
-			for (uint32_t i = 0; i < m_pSwapchain_imageResources.size(); i++)
+			std::vector<vk::Image> swapchain_images = m_pDevice.getSwapchainImagesKHR(window.m_swapchain);
+			window.m_image_resources.resize(swapchain_images.size());
+			for (uint32_t i = 0; i < window.m_image_resources.size(); i++)
 			{
-				m_pSwapchain_imageResources[i].m_image = swapchain_images[i];
+				window.m_image_resources[i].m_image = swapchain_images[i];
 
 				vk::ImageViewCreateInfo image_view_create_info {};
 				image_view_create_info
@@ -311,14 +320,14 @@ namespace brr::render
 						.setBaseArrayLayer(0)
 					);
 
-				m_pSwapchain_imageResources[i].m_image_view = m_pDevice.createImageView(image_view_create_info);
+				window.m_image_resources[i].m_image_view = m_pDevice.createImageView(image_view_create_info);
 			}
 		}
 
 		SDL_Log("Images Resources initialized.");
 	}
 
-	void Renderer::Init_RenderPass()
+	void Renderer::Init_RenderPass(RendererWindow& window)
 	{
 		vk::AttachmentDescription color_attachment{};
 		color_attachment
@@ -357,12 +366,12 @@ namespace brr::render
 			.setSubpasses(subpass_description)
 			.setDependencies(subpass_dependency);
 
-		m_pRenderPass = m_pDevice.createRenderPass(render_pass_info);
+		window.m_render_pass = m_pDevice.createRenderPass(render_pass_info);
 
 		SDL_Log("Render Pass Created");
 	}
 
-	void Renderer::Init_GraphicsPipeline()
+	void Renderer::Init_GraphicsPipeline(RendererWindow& window)
 	{
 		Shader shader = Shader::Create_Shader("vert", "frag");
 
@@ -457,7 +466,7 @@ namespace brr::render
 			.setPColorBlendState(&color_blending_info);
 		graphics_pipeline_info
 			.setLayout(m_pPipelineLayout)
-			.setRenderPass(m_pRenderPass)
+			.setRenderPass(window.m_render_pass)
 			.setSubpass(0)
 			.setBasePipelineHandle(VK_NULL_HANDLE)
 			.setBasePipelineIndex(-1);
@@ -474,19 +483,19 @@ namespace brr::render
 		SDL_Log("Graphics Pipeline created.");
 	}
 
-	void Renderer::Init_Framebuffers()
+	void Renderer::Init_Framebuffers(RendererWindow& window)
 	{
-		for (size_t i = 0; i < m_pSwapchain_imageResources.size(); ++i)
+		for (size_t i = 0; i < window.m_image_resources.size(); ++i)
 		{
 			vk::FramebufferCreateInfo framebuffer_info;
 			framebuffer_info
-				.setAttachments(m_pSwapchain_imageResources[i].m_image_view)
-				.setRenderPass(m_pRenderPass)
+				.setAttachments(window.m_image_resources[i].m_image_view)
+				.setRenderPass(window.m_render_pass)
 				.setWidth(m_pSwapchainExtent.width)
 				.setHeight(m_pSwapchainExtent.height)
 				.setLayers(1);
 
-			m_pSwapchain_imageResources[i].m_framebuffer = m_pDevice.createFramebuffer(framebuffer_info);
+			window.m_image_resources[i].m_framebuffer = m_pDevice.createFramebuffer(framebuffer_info);
 			SDL_Log("Created Framebuffer for swapchain image number %d", i);
 		}
 	}
@@ -515,16 +524,15 @@ namespace brr::render
 		}
 	}
 
-	void Renderer::Init_CommandBuffer()
+	void Renderer::Init_CommandBuffers(RendererWindow& window)
 	{
 		vk::CommandBufferAllocateInfo command_buffer_alloc_info {};
 		command_buffer_alloc_info
 			.setCommandPool(m_pCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
-			.setCommandBufferCount(1);
+			.setCommandBufferCount(2);
 
-		auto command_buffers = m_pDevice.allocateCommandBuffers(command_buffer_alloc_info);
-		m_pCommandBuffer = command_buffers[0];
+		window.m_pCommandBuffers = m_pDevice.allocateCommandBuffers(command_buffer_alloc_info);
 
 		SDL_Log("CommandBuffer Created.");
 
@@ -536,86 +544,93 @@ namespace brr::render
 				.setLevel(vk::CommandBufferLevel::ePrimary)
 				.setCommandBufferCount(1);
 
-			auto present_cmd_buffers = m_pDevice.allocateCommandBuffers(present_buffer_alloc_info);
-			m_pCommandBuffer = present_cmd_buffers[0];
+			window.m_pPresentCommandBuffer = m_pDevice.allocateCommandBuffers(present_buffer_alloc_info)[0];
 
 			SDL_Log("Present CommandBuffer Created.");
 		}
 	}
 
-	void Renderer::Init_Sychronization()
+	void Renderer::Init_Sychronization(RendererWindow& window)
 	{
-		m_pImageAvailableSemaphore = m_pDevice.createSemaphore(vk::SemaphoreCreateInfo{});
-		m_pRenderFinishedSemaphore = m_pDevice.createSemaphore(vk::SemaphoreCreateInfo{});
+		for (int i = 0; i < FRAME_LAG; i++)
+		{
+			window.m_image_available_semaphores[i] = m_pDevice.createSemaphore(vk::SemaphoreCreateInfo{});
+		
+			window.m_render_finished_semaphores[i] = m_pDevice.createSemaphore(vk::SemaphoreCreateInfo{});
 
-		m_pInFlightFence = m_pDevice.createFence(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled});
+			window.m_in_flight_fences[i] = m_pDevice.createFence(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled});
+		}
 
 		SDL_Log("Created synchronization semaphores and fences");
 	}
 
-	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, uint32_t image_index)
+	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index)
 	{
+		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
 		vk::CommandBufferBeginInfo cmd_buffer_begin_info {};
 
 		cmd_buffer.begin(cmd_buffer_begin_info);
 
 		if (m_pDifferentPresentQueue)
 		{
-			m_pPresentCommandBuffer.begin(cmd_buffer_begin_info);
+			present_cmd_buffer.begin(cmd_buffer_begin_info);
 		}
 
 		vk::ClearValue clear_value (std::array<float, 4>({ {0.2f, 0.2f, 0.2f, 1.f} }));
 
 		vk::RenderPassBeginInfo render_pass_begin_info {};
 		render_pass_begin_info
-			.setRenderPass(m_pRenderPass)
-			.setFramebuffer(m_pSwapchain_imageResources[image_index].m_framebuffer)
+			.setRenderPass(window.m_render_pass)
+			.setFramebuffer(window.m_image_resources[image_index].m_framebuffer)
 			.setRenderArea(vk::Rect2D{{0, 0}, m_pSwapchainExtent})
 			.setClearValues(clear_value);
 
-		m_pCommandBuffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
+		cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
 
-		m_pCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pGraphicsPipeline);
+		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pGraphicsPipeline);
 
-		m_pCommandBuffer.draw(3, 1, 0, 0);
+		cmd_buffer.draw(3, 1, 0, 0);
 
-		m_pCommandBuffer.endRenderPass();
+		cmd_buffer.endRenderPass();
 
-		m_pCommandBuffer.end();
+		cmd_buffer.end();
 	}
 
 	void Renderer::Draw()
 	{
-		if (m_pDevice.waitForFences(m_pInFlightFence, true, UINT64_MAX) != vk::Result::eSuccess)
+		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
+		if (m_pDevice.waitForFences(window.m_in_flight_fences[window.current_buffer], true, UINT64_MAX) != vk::Result::eSuccess)
 		{
 			SDL_Log("Error waiting for In Flight Fence");
 			exit(1);
 		}
 
-		m_pDevice.resetFences(m_pInFlightFence);
+		m_pDevice.resetFences(window.m_in_flight_fences[window.current_buffer]);
 
 		uint32_t image_index;
-		m_pDevice.acquireNextImageKHR(m_pSwapchain, UINT64_MAX, m_pImageAvailableSemaphore, VK_NULL_HANDLE, &image_index);
+		m_pDevice.acquireNextImageKHR(window.m_swapchain, UINT64_MAX, window.m_image_available_semaphores[window.current_buffer], VK_NULL_HANDLE, &image_index);
 
-		m_pCommandBuffer.reset();
+		vk::CommandBuffer current_cmd_buffer = window.m_pCommandBuffers[window.current_buffer];
 
-		Record_CommandBuffer(m_pCommandBuffer, image_index);
+		current_cmd_buffer.reset();
+
+		Record_CommandBuffer(current_cmd_buffer, (m_pDifferentPresentQueue)? window.m_pPresentCommandBuffer : current_cmd_buffer, image_index);
 
 		vk::PipelineStageFlags wait_stage{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
 
 		vk::SubmitInfo submit_info {};
 		submit_info
-			.setCommandBuffers(m_pCommandBuffer)
-			.setWaitSemaphores(m_pImageAvailableSemaphore)
+			.setCommandBuffers(window.m_pCommandBuffers[window.current_buffer])
+			.setWaitSemaphores(window.m_image_available_semaphores[window.current_buffer])
 			.setWaitDstStageMask(wait_stage)
-			.setSignalSemaphores(m_pRenderFinishedSemaphore);
+			.setSignalSemaphores(window.m_render_finished_semaphores[window.current_buffer]);
 
-		m_pGraphicsQueue.submit(submit_info, m_pInFlightFence);
+		m_pGraphicsQueue.submit(submit_info, window.m_in_flight_fences[window.current_buffer]);
 
 		vk::PresentInfoKHR present_info{};
 		present_info
-			.setWaitSemaphores(m_pRenderFinishedSemaphore)
-			.setSwapchains(m_pSwapchain)
+			.setWaitSemaphores(window.m_render_finished_semaphores[window.current_buffer])
+			.setSwapchains(window.m_swapchain)
 			.setImageIndices(image_index);
 
 		if (m_pPresentationQueue.presentKHR(present_info) != vk::Result::eSuccess)
@@ -623,30 +638,37 @@ namespace brr::render
 			SDL_Log("Presentation Failed.");
 			exit(1);
 		}
+
+		window.current_buffer = (window.current_buffer + 1) % FRAME_LAG;
 	}
 
 	void Renderer::Reset()
 	{
-		m_pDevice.waitIdle();
 		// Destroy Synchronization primitives
 		{
-			if (m_pImageAvailableSemaphore)
+			for (RendererWindow& window : m_pWindows)
 			{
-				m_pDevice.destroySemaphore(m_pImageAvailableSemaphore);
-				m_pImageAvailableSemaphore = VK_NULL_HANDLE;
-				SDL_Log("ImageAvailable semaphore destroyed.");
-			}
-			if (m_pRenderFinishedSemaphore)
-			{
-				m_pDevice.destroySemaphore(m_pRenderFinishedSemaphore);
-				m_pRenderFinishedSemaphore = VK_NULL_HANDLE;
-				SDL_Log("RenderFinish semaphore destroyed.");
-			}
-			if (m_pInFlightFence)
-			{
-				m_pDevice.destroyFence(m_pInFlightFence);
-				m_pInFlightFence = VK_NULL_HANDLE;
-				SDL_Log("InFlight fence destroyed.");
+				for (int i = 0; i < FRAME_LAG; i++)
+				{
+					if (window.m_image_available_semaphores[i])
+					{
+						m_pDevice.destroySemaphore(window.m_image_available_semaphores[i]);
+						window.m_image_available_semaphores[i] = VK_NULL_HANDLE;
+						SDL_Log("ImageAvailable semaphore destroyed.");
+					}
+					if (window.m_render_finished_semaphores[i])
+					{
+						m_pDevice.destroySemaphore(window.m_render_finished_semaphores[i]);
+						window.m_render_finished_semaphores[i] = VK_NULL_HANDLE;
+						SDL_Log("RenderFinish semaphore destroyed.");
+					}
+					if (window.m_in_flight_fences[i])
+					{
+						m_pDevice.destroyFence(window.m_in_flight_fences[i]);
+						window.m_in_flight_fences[i] = VK_NULL_HANDLE;
+						SDL_Log("InFlight fence destroyed.");
+					}
+				}
 			}
 		}
 		if (m_pCommandPool)
@@ -670,35 +692,46 @@ namespace brr::render
 			SDL_Log("PipelineLayout Destroyed.");
 		}
 		// Destroy Render Pass
-		if (m_pRenderPass)
 		{
-			m_pDevice.destroyRenderPass(m_pRenderPass);
-			m_pRenderPass = VK_NULL_HANDLE;
-			SDL_Log("RenderPass Destroyed.");
+			for (RendererWindow& window : m_pWindows)
+			{
+				if (window.m_render_pass)
+				{
+					m_pDevice.destroyRenderPass(window.m_render_pass);
+					window.m_render_pass = VK_NULL_HANDLE;
+					SDL_Log("RenderPass Destroyed.");
+				}
+			}
 		}
 		// Destroy Image Views
-		for (int i = 0; i < m_pSwapchain_imageResources.size(); ++i)
+		for (RendererWindow& window : m_pWindows)
 		{
-			ImageResources& resource = m_pSwapchain_imageResources[i];
-			if (resource.m_framebuffer)
+			for (int i = 0; i < window.m_image_resources.size(); ++i)
 			{
-				m_pDevice.destroyFramebuffer(resource.m_framebuffer);
-				resource.m_framebuffer = VK_NULL_HANDLE;
-				SDL_Log("Framebuffer of Swapchain Image %d Destroyed.", i);
-			}
-			if (resource.m_image_view)
-			{
-				m_pDevice.destroyImageView(resource.m_image_view);
-				resource.m_image_view = VK_NULL_HANDLE;
-				SDL_Log("ImageView of Swapchain Image %d Destroyed.", i);
+				ImageResources& resource = window.m_image_resources[i];
+				if (resource.m_framebuffer)
+				{
+					m_pDevice.destroyFramebuffer(resource.m_framebuffer);
+					resource.m_framebuffer = VK_NULL_HANDLE;
+					SDL_Log("Framebuffer of Swapchain Image %d Destroyed.", i);
+				}
+				if (resource.m_image_view)
+				{
+					m_pDevice.destroyImageView(resource.m_image_view);
+					resource.m_image_view = VK_NULL_HANDLE;
+					SDL_Log("ImageView of Swapchain Image %d Destroyed.", i);
+				}
 			}
 		}
 		// Destroy Swapchain
-		if (m_pSwapchain)
+		for (RendererWindow& window : m_pWindows)
 		{
-			m_pDevice.destroySwapchainKHR(m_pSwapchain);
-			m_pSwapchain = VK_NULL_HANDLE;
-			SDL_Log("Swapchain Destroyed.");
+			if (window.m_swapchain)
+			{
+				m_pDevice.destroySwapchainKHR(window.m_swapchain);
+				window.m_swapchain = VK_NULL_HANDLE;
+				SDL_Log("Swapchain Destroyed.");
+			}
 		}
 		// Destroy Logical Device
 		if (m_pDevice)
@@ -708,11 +741,14 @@ namespace brr::render
 			SDL_Log("Logical Device Destroyed");
 		}
 		// Destroy Surface
-		if (m_pSurface)
+		for (RendererWindow& window : m_pWindows)
 		{
-			m_pVkInstance.destroySurfaceKHR(m_pSurface);
-			m_pSurface = VK_NULL_HANDLE;
-			SDL_Log("Surface Destroyed");
+			if (window.m_surface)
+			{
+				m_pVkInstance.destroySurfaceKHR(window.m_surface);
+				window.m_surface = VK_NULL_HANDLE;
+				SDL_Log("Surface Destroyed");
+			}
 		}
 		// Destroy Vulkan Instance
 		if (m_pVkInstance)

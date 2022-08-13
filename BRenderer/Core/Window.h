@@ -17,12 +17,17 @@ namespace brr
 		// Process a window event
 		void ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent);
 
+		void GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const;
+		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
+		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance) const;
+
 		[[nodiscard]] uint32_t GetWindowID() const { return m_pWindowID; }
 		[[nodiscard]] SDL_Window* GetSDLWindowHandle() const { return m_pWindow; }
-		[[nodiscard]] bool WindowClosed() const { return m_pWindow == nullptr; }
-	private:
-		uint32_t m_pWindowID = 0;
+		[[nodiscard]] bool NeedToClose() const { return m_pNeedToClose; }
 
+	private:
+		bool m_pNeedToClose = false;
+		uint32_t m_pWindowID = 0;
 		SDL_Window* m_pWindow = nullptr;
 	};
 }

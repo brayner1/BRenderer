@@ -1,5 +1,7 @@
 #include "Renderer/VkInitializerHelper.h"
 
+#include "Core/Window.h"
+
 namespace brr::render::VkHelpers
 {
 	vk::PhysicalDevice Select_PhysDevice(std::vector<vk::PhysicalDevice>& physical_devices, vk::SurfaceKHR surface)
@@ -173,7 +175,7 @@ namespace brr::render::VkHelpers
 		return vk::PresentModeKHR::eFifo;
 	}
 
-	vk::Extent2D Select_SwapchainExtent(SDL_Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities)
+	vk::Extent2D Select_SwapchainExtent(Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities)
 	{
 		if (surface_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 		{
@@ -181,12 +183,11 @@ namespace brr::render::VkHelpers
 		}
 		else
 		{
-			int width, height;
-			SDL_Vulkan_GetDrawableSize(window, &width, &height);
+			const glm::uvec2 desired_extent = window->GetWindowExtent();
 
 			VkExtent2D actualExtent = {
-				static_cast<uint32_t>(width),
-				static_cast<uint32_t>(height)
+				static_cast<uint32_t>(desired_extent.x),
+				static_cast<uint32_t>(desired_extent.y)
 			};
 
 			actualExtent.width = std::clamp(actualExtent.width, surface_capabilities.minImageExtent.width, surface_capabilities.maxImageExtent.width);

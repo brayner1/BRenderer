@@ -38,6 +38,7 @@ namespace brr
 		if (m_pWindow)
 		{
 			SDL_DestroyWindow(m_pWindow);
+			m_pWindow = nullptr;
 			m_pWindowID = 0;
 		}
 
@@ -68,9 +69,10 @@ namespace brr
 			case SDL_WINDOWEVENT_FOCUS_LOST: break;
 			case SDL_WINDOWEVENT_CLOSE:
 			{
-				SDL_DestroyWindow(m_pWindow);
+				m_pNeedToClose = true;
+				/*SDL_DestroyWindow(m_pWindow);
 				m_pWindow = nullptr;
-				m_pWindowID = 0;
+				m_pWindowID = 0;*/
 				break;
 			}
 			case SDL_WINDOWEVENT_TAKE_FOCUS: break;
@@ -81,5 +83,49 @@ namespace brr
 		}
 	}
 
+	void Window::GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const
+	{
+		unsigned int extension_count;
 
+		// Get the number of extensions required by the SDL window.
+		if (!SDL_Vulkan_GetInstanceExtensions(m_pWindow,
+			&extension_count, nullptr))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not get the number of extensions required by SDL: %s", SDL_GetError());
+			exit(1);
+		}
+
+		const size_t additional_extension_count = extensions.size();
+		extensions.resize(additional_extension_count + extension_count);
+
+		if (!SDL_Vulkan_GetInstanceExtensions(m_pWindow,
+			&extension_count, extensions.data() + additional_extension_count))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not get extensions required by SDL: %s", SDL_GetError());
+			exit(1);
+		}
+
+		SDL_Log("Required Extensions");
+		for (const char* extension : extensions)
+		{
+			SDL_Log("\tExtension name: %s", extension);
+		}
+	}
+
+	glm::ivec2 Window::GetWindowExtent() const
+	{
+		int width, height;
+		SDL_Vulkan_GetDrawableSize(m_pWindow, &width, &height);
+		return {width, height};
+	}
+
+	vk::SurfaceKHR Window::GetVulkanSurface(vk::Instance instance) const
+	{
+		vk::SurfaceKHR surface = VK_NULL_HANDLE;
+		if (!SDL_Vulkan_CreateSurface(m_pWindow, instance, reinterpret_cast<VkSurfaceKHR*>(&surface)))
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create Vulkan surface of SDL window %u: %s", m_pWindowID, SDL_GetError());
+		}
+		return surface;
+	}
 }

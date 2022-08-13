@@ -16,5 +16,6 @@
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_vulkan.h"
 #include "SDL2/SDL_log.h"
+#include "glm/glm.hpp"
 
 #endif
