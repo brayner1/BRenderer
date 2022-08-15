@@ -27,7 +27,8 @@ namespace brr{
 			}
 
 			void Init_VulkanRenderer(Window* main_window);
-			
+
+			void Window_Resized(Window* window);
 
 			void Destroy_Window(Window* window);
 
@@ -55,6 +56,10 @@ namespace brr{
 			void Init_CommandBuffers(RendererWindow& window);
 			void Init_Sychronization(RendererWindow& window);
 			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
+
+			void Recreate_Swapchain(RendererWindow& window);
+
+			void Cleanup_Swapchain(RendererWindow& window);
 
 
 			static std::unique_ptr<Renderer> singleton;
@@ -95,6 +100,7 @@ namespace brr{
 			static constexpr size_t MAIN_WINDOW_ID = 0;
 			std::vector<RendererWindow> m_pWindows {};
 			uint32_t m_pWindow_number = 0;
+			std::unordered_map<uint32_t, uint32_t> m_pWindowId_index_map {};
 
 			// Queues
 

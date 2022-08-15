@@ -1,4 +1,5 @@
 #include "Core/Window.h"
+#include "Renderer/Renderer.h"
 
 namespace brr
 {
@@ -7,7 +8,7 @@ namespace brr
 		constexpr uint32_t SCREEN_WIDTH = 600;
 		constexpr uint32_t SCREEN_HEIGHT = 600;
 
-		const uint32_t window_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN;
+		const uint32_t window_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
 		m_pWindow = SDL_CreateWindow("Vulkan Test", 
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
 			SCREEN_WIDTH, SCREEN_HEIGHT, 
@@ -58,7 +59,9 @@ namespace brr
 			case SDL_WINDOWEVENT_HIDDEN: break;
 			case SDL_WINDOWEVENT_EXPOSED: break;
 			case SDL_WINDOWEVENT_MOVED: break;
-			case SDL_WINDOWEVENT_RESIZED: break;
+			case SDL_WINDOWEVENT_RESIZED: 
+				render::Renderer::GetRenderer()->Window_Resized(this);
+				break;
 			case SDL_WINDOWEVENT_SIZE_CHANGED: break;
 			case SDL_WINDOWEVENT_MINIMIZED: break;
 			case SDL_WINDOWEVENT_MAXIMIZED: break;
@@ -70,9 +73,6 @@ namespace brr
 			case SDL_WINDOWEVENT_CLOSE:
 			{
 				m_pNeedToClose = true;
-				/*SDL_DestroyWindow(m_pWindow);
-				m_pWindow = nullptr;
-				m_pWindowID = 0;*/
 				break;
 			}
 			case SDL_WINDOWEVENT_TAKE_FOCUS: break;

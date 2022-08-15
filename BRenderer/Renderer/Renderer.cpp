@@ -26,10 +26,19 @@ namespace brr::render
 		Create_Window(main_window);
 	}
 
+	void Renderer::Window_Resized(Window* window)
+	{
+		uint32_t window_index = m_pWindowId_index_map[window->GetWindowID()];
+		RendererWindow& rend_window = m_pWindows[window_index];
+
+		Recreate_Swapchain(rend_window);
+	}
+
 	void Renderer::Create_Window(Window* window)
 	{
 		m_pWindows.resize(m_pWindow_number + 1);
 		RendererWindow& rend_window = m_pWindows[m_pWindow_number];
+		m_pWindowId_index_map[window->GetWindowID()] = m_pWindow_number;
 		m_pWindow_number++;
 
 		rend_window.m_associated_window = window;
@@ -256,8 +265,6 @@ namespace brr::render
 			}
 		}
 
-		vk::SwapchainKHR old_swapchain = window.m_swapchain;
-
 		vk::SwapchainCreateInfoKHR swapchain_create_info {};
 		swapchain_create_info
 			.setSurface(window.m_surface)
@@ -271,7 +278,7 @@ namespace brr::render
 			.setClipped(true)
 			.setPreTransform(preTransform)
 			.setCompositeAlpha(compositeAlpha)
-			.setOldSwapchain(old_swapchain);
+			.setOldSwapchain(window.m_swapchain);
 
 		{
 			uint32_t graphics_family_queue = m_pQueueFamilyIdx.m_graphicsFamily.value();
@@ -290,14 +297,17 @@ namespace brr::render
 			}
 		}
 
-		window.m_swapchain = m_pDevice.createSwapchainKHR(swapchain_create_info);
+		vk::SwapchainKHR new_swapchain = m_pDevice.createSwapchainKHR(swapchain_create_info);
 		SDL_Log("Swapchain created");
 
 		// If old swapchain is valid, destroy it. (It happens on swapchain recreation)
-		if (old_swapchain)
+		if (window.m_swapchain)
 		{
-			m_pDevice.destroySwapchainKHR(old_swapchain);
+			Cleanup_Swapchain(window);
 		}
+
+		// Assign the new swapchain to the window
+		window.m_swapchain = new_swapchain;
 
 		// Acquire swapchain images and create ImageViews
 		{
@@ -546,7 +556,7 @@ namespace brr::render
 
 			window.m_pPresentCommandBuffer = m_pDevice.allocateCommandBuffers(present_buffer_alloc_info)[0];
 
-			SDL_Log("Present CommandBuffer Created.");
+			SDL_Log("Separate Present CommandBuffer Created.");
 		}
 	}
 
@@ -605,10 +615,21 @@ namespace brr::render
 			exit(1);
 		}
 
-		m_pDevice.resetFences(window.m_in_flight_fences[window.current_buffer]);
-
 		uint32_t image_index;
-		m_pDevice.acquireNextImageKHR(window.m_swapchain, UINT64_MAX, window.m_image_available_semaphores[window.current_buffer], VK_NULL_HANDLE, &image_index);
+		{
+			vk::Result result = m_pDevice.acquireNextImageKHR(window.m_swapchain, UINT64_MAX, window.m_image_available_semaphores[window.current_buffer], VK_NULL_HANDLE, &image_index);
+			if (result == vk::Result::eErrorOutOfDateKHR)
+			{
+				Recreate_Swapchain(window);
+				return;
+			}
+			else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
+			{
+				throw std::runtime_error("Failed to acquire Swapchain image!");
+			}
+		}
+
+		m_pDevice.resetFences(window.m_in_flight_fences[window.current_buffer]);
 
 		vk::CommandBuffer current_cmd_buffer = window.m_pCommandBuffers[window.current_buffer];
 
@@ -633,13 +654,54 @@ namespace brr::render
 			.setSwapchains(window.m_swapchain)
 			.setImageIndices(image_index);
 
-		if (m_pPresentationQueue.presentKHR(present_info) != vk::Result::eSuccess)
 		{
-			SDL_Log("Presentation Failed.");
-			exit(1);
+			vk::Result result = m_pPresentationQueue.presentKHR(present_info);
+			if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+			{
+				Recreate_Swapchain(window);
+			}
+			else if (result != vk::Result::eSuccess)
+			{
+				SDL_Log("Presentation Failed.");
+				exit(1);
+			}
 		}
 
 		window.current_buffer = (window.current_buffer + 1) % FRAME_LAG;
+	}
+
+	void Renderer::Recreate_Swapchain(RendererWindow& window)
+	{
+		m_pDevice.waitIdle();
+
+		Init_Swapchain(window);
+		Init_Framebuffers(window);
+	}
+
+	void Renderer::Cleanup_Swapchain(RendererWindow& window)
+	{
+		for (int i = 0; i < window.m_image_resources.size(); ++i)
+		{
+			ImageResources& resource = window.m_image_resources[i];
+			if (resource.m_framebuffer)
+			{
+				m_pDevice.destroyFramebuffer(resource.m_framebuffer);
+				resource.m_framebuffer = VK_NULL_HANDLE;
+				SDL_Log("Framebuffer of Swapchain Image %d Destroyed.", i);
+			}
+			if (resource.m_image_view)
+			{
+				m_pDevice.destroyImageView(resource.m_image_view);
+				resource.m_image_view = VK_NULL_HANDLE;
+				SDL_Log("ImageView of Swapchain Image %d Destroyed.", i);
+			}
+		}
+		if (window.m_swapchain)
+		{
+			m_pDevice.destroySwapchainKHR(window.m_swapchain);
+			window.m_swapchain = VK_NULL_HANDLE;
+			SDL_Log("Swapchain Destroyed.");
+		}
 	}
 
 	void Renderer::Reset()
@@ -703,35 +765,10 @@ namespace brr::render
 				}
 			}
 		}
-		// Destroy Image Views
+		// Destroy Swapchain and its resources (FrameBuffers, Image Views)
 		for (RendererWindow& window : m_pWindows)
 		{
-			for (int i = 0; i < window.m_image_resources.size(); ++i)
-			{
-				ImageResources& resource = window.m_image_resources[i];
-				if (resource.m_framebuffer)
-				{
-					m_pDevice.destroyFramebuffer(resource.m_framebuffer);
-					resource.m_framebuffer = VK_NULL_HANDLE;
-					SDL_Log("Framebuffer of Swapchain Image %d Destroyed.", i);
-				}
-				if (resource.m_image_view)
-				{
-					m_pDevice.destroyImageView(resource.m_image_view);
-					resource.m_image_view = VK_NULL_HANDLE;
-					SDL_Log("ImageView of Swapchain Image %d Destroyed.", i);
-				}
-			}
-		}
-		// Destroy Swapchain
-		for (RendererWindow& window : m_pWindows)
-		{
-			if (window.m_swapchain)
-			{
-				m_pDevice.destroySwapchainKHR(window.m_swapchain);
-				window.m_swapchain = VK_NULL_HANDLE;
-				SDL_Log("Swapchain Destroyed.");
-			}
+			Cleanup_Swapchain(window);
 		}
 		// Destroy Logical Device
 		if (m_pDevice)
