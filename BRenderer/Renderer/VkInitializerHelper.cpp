@@ -94,6 +94,7 @@ namespace brr::render::VkHelpers
 			// Check graphics family support
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eGraphics)
 			{
+				SDL_Log("Found Graphics Queue in Family %d", i);
 				if (!indices.m_graphicsFamily.has_value())
 				{
 					indices.m_graphicsFamily = i;
@@ -102,6 +103,7 @@ namespace brr::render::VkHelpers
 			// Check surface support
 			if (physical_device.getSurfaceSupportKHR(i, surface))
 			{
+				SDL_Log("Found Present Queue in Family %d", i);
 				if (!indices.m_presentFamily.has_value()
 					|| (indices.m_graphicsFamily.has_value() && indices.m_graphicsFamily.value() == i))
 				{
@@ -111,6 +113,7 @@ namespace brr::render::VkHelpers
 			// Check for compute support (Not required)
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eCompute)
 			{
+				SDL_Log("Found Compute Queue in Family %d", i);
 				if (!indices.m_computeFamily.has_value())
 				{
 					indices.m_computeFamily = i;
@@ -118,23 +121,28 @@ namespace brr::render::VkHelpers
 			}
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eTransfer)
 			{
-
+				SDL_Log("Found Transfer Queue in Family %d", i);
+				if (!indices.m_transferFamily.has_value() || 
+					(indices.m_graphicsFamily.has_value() && i != indices.m_graphicsFamily.value()))
+				{
+					indices.m_transferFamily = i;
+				}
 			}
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eSparseBinding)
 			{
-
+				SDL_Log("Found Sparse Binding Queue in Family %d", i);
 			}
 
-			full_queue_support = indices.m_graphicsFamily.has_value() && indices.m_presentFamily.has_value();
-			if (full_queue_support)
-			{
-				separate_presentation_family = indices.m_graphicsFamily.value() != indices.m_presentFamily.value();
-				// If the device already supports the necessary queue families (Graphics and Presentation), and both are of the same family, stop search.
-				if (!separate_presentation_family)
-				{
-					break;
-				}
-			}
+			//full_queue_support = indices.m_graphicsFamily.has_value() && indices.m_presentFamily.has_value();
+			//if (full_queue_support)
+			//{
+			//	separate_presentation_family = indices.m_graphicsFamily.value() != indices.m_presentFamily.value();
+			//	// If the device already supports the necessary queue families (Graphics and Presentation), and both are of the same family, stop search.
+			//	if (!separate_presentation_family)
+			//	{
+			//		break;
+			//	}
+			//}
 		}
 
 		return indices;

@@ -1,10 +1,22 @@
 #include "Core/Window.h"
 #include "Renderer/Renderer.h"
-
-#include "Shader.h"
+#include "Renderer/Geometry/Geometry.h"
+#include "Renderer/Shader.h"
 
 namespace brr::render
 {
+	static const std::vector<Vertex2_PosColor> vertices{
+		{glm::vec2{-0.5f, -0.5f}, glm::vec3{1.f, 0.f, 0.f}},
+		{glm::vec2{0.5f, -0.5f}, glm::vec3{0.f, 1.f, 0.f}},
+		{glm::vec2{.5f, .5f}, glm::vec3{0.f, 0.f, 1.f}},
+		{glm::vec2{-.5f, .5f}, glm::vec3{1.f, 1.f, 1.f}}
+	};
+
+	static const std::vector<uint32_t> indices
+	{
+		0, 1, 2, 2, 3, 0
+	};
+
 	std::unique_ptr<Renderer> Renderer::singleton = nullptr;
 
 	Renderer::Renderer()
@@ -47,17 +59,28 @@ namespace brr::render
 		{
 			Init_PhysDevice(rend_window.m_surface);
 			if (!m_pQueues_initialized)
-				Init_Queues(rend_window.m_surface);
+				Init_Queues_Indices(rend_window.m_surface);
 			Init_Device();
 		}
-		
+		// Swapchain, renderpass and resources (Images, ImageViews and FrameBuffers
 		Init_Swapchain(rend_window);
 		Init_RenderPass(rend_window);
-		Init_GraphicsPipeline(rend_window);
 		Init_Framebuffers(rend_window);
+
+		// Define DescriptorSetLayout and create the GraphicsPipeline
+		Init_DescriptorSetLayout();
+		Init_GraphicsPipeline(rend_window);
+		Init_UniformBuffers();
+		Init_DescriptorPool();
+		Init_DescriptorSets();
+		
 		Init_CommandPool();
 		Init_CommandBuffers(rend_window);
 		Init_Sychronization(rend_window);
+
+		std::vector<Vertex2_PosColor> verts = vertices;
+		std::vector<uint32_t> inds = indices;
+		mesh = new Mesh2D(m_pDevice, std::move(verts), std::move(inds));
 	}
 
 	void Renderer::Destroy_Window(Window* window)
@@ -138,26 +161,6 @@ namespace brr::render
 		SDL_Log("Surface Created");
 	}
 
-	void Renderer::Init_Queues(vk::SurfaceKHR surface)
-	{
-		// Check for queue families
-		m_pQueueFamilyIdx = VkHelpers::Find_QueueFamilies(m_pPhysDevice, surface);
-
-		if (!m_pQueueFamilyIdx.m_graphicsFamily.has_value())
-		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find graphics family queue. Exitting program.");
-			exit(1);
-		}
-
-		if (!m_pQueueFamilyIdx.m_presentFamily.has_value())
-		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find presentation family queue. Exitting program.");
-			exit(1);
-		}
-
-		m_pQueues_initialized = true;
-	}
-
 	void Renderer::Init_PhysDevice(vk::SurfaceKHR surface)
 	{
 		std::vector<vk::PhysicalDevice> devices = m_pVkInstance.enumeratePhysicalDevices();
@@ -179,6 +182,26 @@ namespace brr::render
 		SDL_Log("Selected physical device: %s", m_pPhysDevice.getProperties().deviceName);
 	}
 
+	void Renderer::Init_Queues_Indices(vk::SurfaceKHR surface)
+	{
+		// Check for queue families
+		m_pQueueFamilyIdx = VkHelpers::Find_QueueFamilies(m_pPhysDevice, surface);
+
+		if (!m_pQueueFamilyIdx.m_graphicsFamily.has_value())
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find graphics family queue. Exitting program.");
+			exit(1);
+		}
+
+		if (!m_pQueueFamilyIdx.m_presentFamily.has_value())
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find presentation family queue. Exitting program.");
+			exit(1);
+		}
+
+		m_pQueues_initialized = true;
+	}
+
 	void Renderer::Init_Device()
 	{
 		if (!m_pQueues_initialized)
@@ -189,7 +212,12 @@ namespace brr::render
 
 		const uint32_t graphics_family_idx = m_pQueueFamilyIdx.m_graphicsFamily.value();
 		const uint32_t presentation_family_idx = m_pQueueFamilyIdx.m_presentFamily.value();
-		
+		const uint32_t transfer_family_idx = m_pQueueFamilyIdx.m_transferFamily.has_value() ? m_pQueueFamilyIdx.m_transferFamily.value() : graphics_family_idx;
+
+		SDL_Log("Graphics Queue Family: %d", graphics_family_idx);
+		SDL_Log("Present Queue Family: %d", presentation_family_idx);
+		SDL_Log("Transfer Queue Family: %d", transfer_family_idx);
+
 		float priorities = 1.0;
 		std::vector<vk::DeviceQueueCreateInfo> queues;
 
@@ -202,6 +230,14 @@ namespace brr::render
 		{
 			queues.push_back(vk::DeviceQueueCreateInfo{}
 				.setQueueFamilyIndex(presentation_family_idx)
+				.setQueuePriorities(priorities));
+		}
+
+		m_pDifferentTransferQueue = graphics_family_idx != transfer_family_idx;
+		if (m_pDifferentTransferQueue)
+		{
+			queues.push_back(vk::DeviceQueueCreateInfo{}
+				.setQueueFamilyIndex(transfer_family_idx)
 				.setQueuePriorities(priorities));
 		}
 
@@ -223,6 +259,8 @@ namespace brr::render
 		m_pGraphicsQueue = m_pDevice.getQueue(graphics_family_idx, 0);
 
 		m_pPresentationQueue = (m_pDifferentPresentQueue)? m_pDevice.getQueue(presentation_family_idx, 0) : m_pGraphicsQueue;
+
+		m_pTransferQueue = (m_pDifferentTransferQueue) ? m_pDevice.getQueue(transfer_family_idx, 0) : m_pGraphicsQueue;
 		
 		SDL_Log("Device Created");
 	}
@@ -381,15 +419,36 @@ namespace brr::render
 		SDL_Log("Render Pass Created");
 	}
 
+	void Renderer::Init_DescriptorSetLayout()
+	{
+		vk::DescriptorSetLayoutBinding ubo_LayoutBinding{};
+		ubo_LayoutBinding
+			.setBinding(0)
+			.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(1)
+			.setStageFlags(vk::ShaderStageFlagBits::eVertex)
+			.setPImmutableSamplers(nullptr);
+
+		vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{};
+		descriptor_set_layout_create_info
+			.setBindings(ubo_LayoutBinding);
+
+		m_pDescriptorSetLayout = m_pDevice.createDescriptorSetLayout(descriptor_set_layout_create_info);
+	}
+
 	void Renderer::Init_GraphicsPipeline(RendererWindow& window)
 	{
 		Shader shader = Shader::Create_Shader("vert", "frag");
 
 		vk::PipelineVertexInputStateCreateInfo vertex_input_info{};
-		vertex_input_info
-			.setVertexBindingDescriptionCount(0)
-			.setVertexAttributeDescriptionCount(0);
+		{
+			vk::VertexInputBindingDescription binding_description = Vertex2_PosColor::GetBindingDescription();
+			std::array<vk::VertexInputAttributeDescription, 2> attribute_descriptions = Vertex2_PosColor::GetAttributeDescriptions();
 			
+			vertex_input_info
+				.setVertexBindingDescriptions(binding_description)
+				.setVertexAttributeDescriptions(attribute_descriptions);
+		}
 
 		vk::PipelineInputAssemblyStateCreateInfo input_assembly_info{};
 		input_assembly_info
@@ -462,6 +521,8 @@ namespace brr::render
 #endif
 
 		vk::PipelineLayoutCreateInfo pipeline_layout_info{};
+		pipeline_layout_info
+			.setSetLayouts(m_pDescriptorSetLayout);
 
 		m_pPipelineLayout = m_pDevice.createPipelineLayout(pipeline_layout_info);
 
@@ -491,6 +552,70 @@ namespace brr::render
 		m_pGraphicsPipeline = result.value;
 
 		SDL_Log("Graphics Pipeline created.");
+	}
+
+	void Renderer::Init_UniformBuffers()
+	{
+		vk::DeviceSize buffer_size = sizeof(UniformBufferObject);
+
+		uniform_buffers_.reserve(FRAME_LAG);
+
+		SDL_Log("Creating Uniform Buffers");
+		for (uint32_t i = 0; i < FRAME_LAG; i++)
+		{
+			uniform_buffers_.emplace_back(m_pDevice, buffer_size,
+			                              vk::BufferUsageFlagBits::eUniformBuffer,
+			                              vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		}
+
+		SDL_Log("Uniform Buffers created.");
+	}
+
+	void Renderer::Init_DescriptorPool()
+	{
+		vk::DescriptorPoolSize pool_size{};
+		pool_size
+			.setType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(static_cast<uint32_t>(FRAME_LAG));
+
+		vk::DescriptorPoolCreateInfo pool_create_info{};
+		pool_create_info
+			.setPoolSizes(pool_size)
+			.setMaxSets(FRAME_LAG);
+
+		m_pDescriptorPool = m_pDevice.createDescriptorPool(pool_create_info);
+
+		SDL_Log("Descriptor Pool created.");
+	}
+
+	void Renderer::Init_DescriptorSets()
+	{
+		std::vector<vk::DescriptorSetLayout> layouts(FRAME_LAG, m_pDescriptorSetLayout);
+
+		vk::DescriptorSetAllocateInfo desc_set_allocate_info{};
+		desc_set_allocate_info
+			.setDescriptorPool(m_pDescriptorPool)
+			.setSetLayouts(layouts);
+
+		m_pDescriptorSets = m_pDevice.allocateDescriptorSets(desc_set_allocate_info);
+
+		for (uint32_t i = 0; i < FRAME_LAG; i++)
+		{
+			vk::DescriptorBufferInfo desc_buffer_info = uniform_buffers_[i].GetDescriptorInfo();
+
+			vk::WriteDescriptorSet descriptor_write{};
+			descriptor_write
+				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+				.setDescriptorCount(1)
+				.setDstSet(m_pDescriptorSets[i])
+				.setDstBinding(0)
+				.setDstArrayElement(0)
+				.setBufferInfo(desc_buffer_info);
+
+			m_pDevice.updateDescriptorSets(descriptor_write, {});
+		}
+
+		SDL_Log("Descriptor Sets created.");
 	}
 
 	void Renderer::Init_Framebuffers(RendererWindow& window)
@@ -531,6 +656,18 @@ namespace brr::render
 			m_pPresentCommandPool = m_pDevice.createCommandPool(present_pool_info);
 
 			SDL_Log("Separate Present CommandPool created.");
+		}
+
+		if (m_pDifferentTransferQueue)
+		{
+			vk::CommandPoolCreateInfo transfer_pool_info{};
+			transfer_pool_info
+				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+				.setQueueFamilyIndex(m_pQueueFamilyIdx.m_transferFamily.value());
+
+			m_pTransferCommandPool = m_pDevice.createCommandPool(transfer_pool_info);
+
+			SDL_Log("Separate Transfer CommandPool created.");
 		}
 	}
 
@@ -599,7 +736,11 @@ namespace brr::render
 
 		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pGraphicsPipeline);
 
-		cmd_buffer.draw(3, 1, 0, 0);
+		//cmd_buffer.draw(3, 1, 0, 0);
+		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pPipelineLayout, 0, m_pDescriptorSets[window.current_buffer], {});
+
+		mesh->Bind(cmd_buffer);
+		mesh->Draw(cmd_buffer);
 
 		cmd_buffer.endRenderPass();
 
@@ -617,7 +758,9 @@ namespace brr::render
 
 		uint32_t image_index;
 		{
-			vk::Result result = m_pDevice.acquireNextImageKHR(window.m_swapchain, UINT64_MAX, window.m_image_available_semaphores[window.current_buffer], VK_NULL_HANDLE, &image_index);
+			vk::Result result = m_pDevice.acquireNextImageKHR(window.m_swapchain, UINT64_MAX, 
+				window.m_image_available_semaphores[window.current_buffer], VK_NULL_HANDLE, &image_index);
+
 			if (result == vk::Result::eErrorOutOfDateKHR)
 			{
 				Recreate_Swapchain(window);
@@ -637,8 +780,9 @@ namespace brr::render
 
 		Record_CommandBuffer(current_cmd_buffer, (m_pDifferentPresentQueue)? window.m_pPresentCommandBuffer : current_cmd_buffer, image_index);
 
-		vk::PipelineStageFlags wait_stage{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+		Update_UniformBuffers(window);
 
+		vk::PipelineStageFlags wait_stage{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
 		vk::SubmitInfo submit_info {};
 		submit_info
 			.setCommandBuffers(window.m_pCommandBuffers[window.current_buffer])
@@ -668,6 +812,89 @@ namespace brr::render
 		}
 
 		window.current_buffer = (window.current_buffer + 1) % FRAME_LAG;
+	}
+
+	void Renderer::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
+		vk::Buffer& buffer, vk::DeviceMemory& buffer_memory)
+	{
+		// Create Buffer
+		{
+			vk::SharingMode sharing_mode = m_pDifferentTransferQueue ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+			std::vector<uint32_t> indices{ m_pQueueFamilyIdx.m_graphicsFamily.value(), m_pQueueFamilyIdx.m_transferFamily.value() };
+
+			vk::BufferCreateInfo buffer_create_info;
+			buffer_create_info
+				.setUsage(usage)
+				.setSharingMode(sharing_mode)
+				.setSize(buffer_size);
+			if (sharing_mode == vk::SharingMode::eConcurrent)
+			{
+			
+				buffer_create_info.setQueueFamilyIndices(indices);
+			}
+
+			buffer = m_pDevice.createBuffer(buffer_create_info);
+
+			SDL_Log("Buffer created.");
+		}
+
+		// Allocate Memory
+		{
+			vk::MemoryRequirements memory_requirements = m_pDevice.getBufferMemoryRequirements(buffer);
+
+			vk::MemoryAllocateInfo allocate_info{};
+			allocate_info
+				.setAllocationSize(memory_requirements.size)
+				.setMemoryTypeIndex(FindMemoryType(memory_requirements.memoryTypeBits,
+					properties));
+
+			buffer_memory = m_pDevice.allocateMemory(allocate_info);
+
+			SDL_Log("Buffer Memory Allocated.");
+		}
+
+		m_pDevice.bindBufferMemory(buffer, buffer_memory, 0);
+
+		return;
+	}
+
+	void Renderer::Copy_Buffer(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size)
+	{
+		const vk::CommandPool transfer_cmd_pool = (m_pDifferentTransferQueue) ? m_pTransferCommandPool : m_pCommandPool;
+
+		vk::CommandBufferAllocateInfo cmd_buffer_alloc_info{};
+		cmd_buffer_alloc_info
+			.setLevel(vk::CommandBufferLevel::ePrimary)
+			.setCommandPool(transfer_cmd_pool)
+			.setCommandBufferCount(1);
+
+		vk::CommandBuffer cmd_buffer = m_pDevice.allocateCommandBuffers(cmd_buffer_alloc_info)[0];
+
+		vk::CommandBufferBeginInfo cmd_begin_info{};
+		cmd_begin_info
+			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+		cmd_buffer.begin(cmd_begin_info);
+
+		vk::BufferCopy copy_region{};
+		copy_region
+			.setSrcOffset(0)
+			.setDstOffset(0)
+			.setSize(size);
+
+		cmd_buffer.copyBuffer(src_buffer, dst_buffer, copy_region);
+
+		cmd_buffer.end();
+
+		vk::SubmitInfo submit_info;
+		submit_info
+			.setCommandBufferCount(1)
+			.setCommandBuffers(cmd_buffer);
+
+		m_pTransferQueue.submit(submit_info);
+		m_pTransferQueue.waitIdle();
+
+		m_pDevice.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
 	}
 
 	void Renderer::Recreate_Swapchain(RendererWindow& window)
@@ -704,8 +931,34 @@ namespace brr::render
 		}
 	}
 
+	void Renderer::Update_UniformBuffers(RendererWindow& window)
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		UniformBufferObject ubo {};
+		ubo.projection_view =  glm::perspective(glm::radians(45.f), m_pSwapchainExtent.width / (float)m_pSwapchainExtent.height, 0.1f, 10.f) * glm::lookAt(glm::vec3{ 2.f }, glm::vec3{ 0.f }, glm::vec3{ 0.f, 0.f, 1.f });
+		/*TODO: "GLM was originally designed for OpenGL,
+		where the Y coordinate of the clip coordinates is inverted.
+		The easiest way to compensate for that is to flip the sign on the scaling factor of the Y axis in the projection matrix.
+		If you don't do this, then the image will be rendered upside down.
+		*/
+
+		uniform_buffers_[window.current_buffer].Map();
+		uniform_buffers_[window.current_buffer].WriteToBuffer(&ubo, sizeof(ubo));
+		uniform_buffers_[window.current_buffer].Unmap();
+		/*void* data;
+		m_pDevice.mapMemory(m_pUniformBuffersMemory[window.current_buffer], 0, sizeof(ubo), vk::MemoryMapFlags{}, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		m_pDevice.unmapMemory(m_pUniformBuffersMemory[window.current_buffer]);*/
+	}
+
 	void Renderer::Reset()
 	{
+		delete mesh;
+		mesh = nullptr;
 		// Destroy Synchronization primitives
 		{
 			for (RendererWindow& window : m_pWindows)
@@ -739,6 +992,18 @@ namespace brr::render
 			m_pCommandPool = VK_NULL_HANDLE;
 			SDL_Log("CommandPool Destroyed.");
 		}
+		if (m_pDifferentPresentQueue && m_pPresentCommandPool)
+		{
+			m_pDevice.destroyCommandPool(m_pPresentCommandPool);
+			m_pPresentCommandPool = VK_NULL_HANDLE;
+			SDL_Log("Separate Present CommandPool Destroyed.");
+		}
+		if (m_pDifferentTransferQueue && m_pTransferCommandPool)
+		{
+			m_pDevice.destroyCommandPool(m_pTransferCommandPool);
+			m_pTransferCommandPool = VK_NULL_HANDLE;
+			SDL_Log("Separate Transfer CommandPool Destroyed.");
+		}
 		// Destroy Graphics Pipeline
 		if (m_pGraphicsPipeline)
 		{
@@ -752,6 +1017,25 @@ namespace brr::render
 			m_pDevice.destroyPipelineLayout(m_pPipelineLayout);
 			m_pPipelineLayout = VK_NULL_HANDLE;
 			SDL_Log("PipelineLayout Destroyed.");
+		}
+		// Destroy Uniform Buffers
+		if (!uniform_buffers_.empty())
+		{
+			uniform_buffers_.clear();
+		}
+		// Destroy Descriptor Pool
+		if (m_pDescriptorPool)
+		{
+			m_pDevice.destroyDescriptorPool(m_pDescriptorPool);
+			m_pDescriptorPool = VK_NULL_HANDLE;
+			SDL_Log("Descriptor Pool Destroyed.");
+		}
+		// Destroy Descriptor Set Layout
+		if (m_pDescriptorSetLayout)
+		{
+			m_pDevice.destroyDescriptorSetLayout(m_pDescriptorSetLayout);
+			m_pDescriptorSetLayout = VK_NULL_HANDLE;
+			SDL_Log("Descriptor Set Layout Destroyed.");
 		}
 		// Destroy Render Pass
 		{
@@ -794,5 +1078,20 @@ namespace brr::render
 			m_pVkInstance = VK_NULL_HANDLE;
 			SDL_Log("Instance Destroyed");
 		}
+	}
+
+	uint32_t Renderer::FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const
+	{
+		vk::PhysicalDeviceMemoryProperties pDev_memory_properties = m_pPhysDevice.getMemoryProperties();
+		for (uint32_t i = 0; i < pDev_memory_properties.memoryTypeCount; i++)
+		{
+			if ((type_filter & (1 << i)) &&
+				(pDev_memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find valid memory type.");
 	}
 }

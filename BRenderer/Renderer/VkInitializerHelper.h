@@ -14,6 +14,7 @@ namespace brr::render::VkHelpers
 		std::optional<uint32_t> m_graphicsFamily;
 		std::optional<uint32_t> m_presentFamily;
 		std::optional<uint32_t> m_computeFamily;
+		std::optional<uint32_t> m_transferFamily;
 	};
 
 	struct SwapChainProperties

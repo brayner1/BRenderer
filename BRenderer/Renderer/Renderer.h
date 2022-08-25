@@ -1,5 +1,6 @@
 #ifndef BRR_RENDERER_H
 #define BRR_RENDERER_H
+#include "Geometry/Mesh2D.h"
 #include "Renderer/VkInitializerHelper.h"
 
 namespace brr{
@@ -34,7 +35,11 @@ namespace brr{
 
 			void Draw();
 
+			void Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory);
+			void Copy_Buffer(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size);
+
 			[[nodiscard]] vk::Device Get_VkDevice() const { return m_pDevice; }
+			[[nodiscard]] uint32_t FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const;
 
 			void Reset();
 
@@ -45,21 +50,36 @@ namespace brr{
 
 			void Init_VkInstance(Window* window);
 			void Init_Surface(RendererWindow& window);
-			void Init_Queues(vk::SurfaceKHR surface);
 			void Init_PhysDevice(vk::SurfaceKHR surface);
+			void Init_Queues_Indices(vk::SurfaceKHR surface);
 			void Init_Device();
+
+			// Swapchain, renderpass and resources (Images, ImageViews and FrameBuffers
 			void Init_Swapchain(RendererWindow& window);
 			void Init_RenderPass(RendererWindow& window);
-			void Init_GraphicsPipeline(RendererWindow& window);
 			void Init_Framebuffers(RendererWindow& window);
+
+			// Define DescriptorSetLayout and create the GraphicsPipeline
+			void Init_DescriptorSetLayout();
+			void Init_GraphicsPipeline(RendererWindow& window);
+
+			// Create UniformBuffers and the DescriptorSets
+			void Init_UniformBuffers();
+			void Init_DescriptorPool();
+			void Init_DescriptorSets();
+
+			// Initialize CommandPool and allocate CommandBuffers, as well as define the basic synchronization primitives.
 			void Init_CommandPool();
 			void Init_CommandBuffers(RendererWindow& window);
 			void Init_Sychronization(RendererWindow& window);
+
+
 			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
 
 			void Recreate_Swapchain(RendererWindow& window);
-
 			void Cleanup_Swapchain(RendererWindow& window);
+
+			void Update_UniformBuffers(RendererWindow& window);
 
 
 			static std::unique_ptr<Renderer> singleton;
@@ -74,11 +94,16 @@ namespace brr{
 			struct RendererWindow
 			{
 				Window* m_associated_window {};
-				vk::SurfaceKHR m_surface {};
+
+				// Swapchain
 				vk::SwapchainKHR m_swapchain {};
+				vk::SurfaceKHR m_surface {};
 				std::vector<ImageResources> m_image_resources {};
+
+				// Render Pass
 				vk::RenderPass m_render_pass {};
 
+				// Command Buffers
 				std::vector<vk::CommandBuffer> m_pCommandBuffers{};
 				vk::CommandBuffer m_pPresentCommandBuffer{};
 
@@ -87,6 +112,11 @@ namespace brr{
 				vk::Semaphore m_render_finished_semaphores[FRAME_LAG];
 				vk::Fence m_in_flight_fences[FRAME_LAG];
 				int current_buffer = 0;
+			};
+
+			struct UniformBufferObject
+			{
+				glm::mat4 projection_view{ 1.f };
 			};
 
 			vk::Instance m_pVkInstance {};
@@ -107,26 +137,38 @@ namespace brr{
 			VkHelpers::QueueFamilyIndices m_pQueueFamilyIdx{};
 			vk::Queue m_pGraphicsQueue {};
 			vk::Queue m_pPresentationQueue {};
+			vk::Queue m_pTransferQueue {};
 			bool m_pQueues_initialized = false;
 			bool m_pDifferentPresentQueue = false;
+			bool m_pDifferentTransferQueue = false;
 
 			// Swapchain
 
 			vk::Format m_pSwapchain_ImageFormat {};
 			vk::Extent2D m_pSwapchainExtent {};
 
+			// Descriptor Sets
+			// TODO: Each window must have its own Descriptor Sets and Uniform Buffers
+			vk::DescriptorSetLayout m_pDescriptorSetLayout {};
+			vk::DescriptorPool m_pDescriptorPool {};
+			std::vector<vk::DescriptorSet> m_pDescriptorSets {};
+
 			// Pipeline
 
 			vk::PipelineLayout m_pPipelineLayout {};
 			vk::Pipeline m_pGraphicsPipeline {};
 
+			// Uniforms
+
+			std::vector<DeviceBuffer> uniform_buffers_ {};
+
 			// Commands
 
 			vk::CommandPool m_pCommandPool {};
-			vk::CommandPool m_pPresentCommandPool{};
+			vk::CommandPool m_pPresentCommandPool {};
+			vk::CommandPool m_pTransferCommandPool {};
 
-			/*vk::CommandBuffer m_pCommandBuffer {};
-			vk::CommandBuffer m_pPresentCommandBuffer {};*/
+			Mesh2D* mesh {nullptr};
 		};
 	}
 }

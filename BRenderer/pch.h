@@ -2,6 +2,7 @@
 #define VKR_PCH_H
 
 #define NOMINMAX
+#include <chrono>
 #include <limits>
 #include <algorithm>
 #include <vector>
@@ -17,5 +18,6 @@
 #include "SDL2/SDL_vulkan.h"
 #include "SDL2/SDL_log.h"
 #include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 #endif
