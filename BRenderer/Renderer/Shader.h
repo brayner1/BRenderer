@@ -15,7 +15,7 @@ namespace brr::render
 
 		[[nodiscard]] bool IsValid() const { return m_isValid; }
 
-		[[nodiscard]] const std::vector<vk::PipelineShaderStageCreateInfo>& GetPipelineStagesInfo() const { return m_pPipelineStageInfos; }
+		[[nodiscard]] const std::vector<vk::PipelineShaderStageCreateInfo>& GetPipelineStagesInfo() const { return pipeline_stage_infos_; }
 
 	private:
 		Shader();
@@ -23,9 +23,11 @@ namespace brr::render
 		Shader(Shader&& other) noexcept;
 
 		bool m_isValid = false;
-		vk::ShaderModule m_pVert_shader_module {};
-		vk::ShaderModule m_pFrag_shader_module {};
-		std::vector<vk::PipelineShaderStageCreateInfo> m_pPipelineStageInfos;
+		vk::ShaderModule vert_shader_module_ {};
+		vk::ShaderModule frag_shader_module_ {};
+		std::vector<vk::PipelineShaderStageCreateInfo> pipeline_stage_infos_;
+
+		std::vector<vk::DescriptorSetLayout>  descriptor_set_layouts_;
 	};
 }
 

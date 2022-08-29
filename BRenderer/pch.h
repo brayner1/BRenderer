@@ -2,6 +2,9 @@
 #define VKR_PCH_H
 
 #define NOMINMAX
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
+
 #include <chrono>
 #include <limits>
 #include <algorithm>
@@ -13,10 +16,13 @@
 #include <memory>
 #include <utility>
 #include <optional>
+
 #include "vulkan/vulkan.hpp"
+
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_vulkan.h"
 #include "SDL2/SDL_log.h"
+
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 

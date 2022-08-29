@@ -39,7 +39,7 @@ set(BRenderer_SOURCE_FILES
 "Renderer/Geometry/Mesh2D.cpp"
 "Files/FilesUtils.cpp" 
 "Core/WindowManager.cpp" 
- "Renderer/DeviceBuffer.cpp")
+ "Renderer/DeviceBuffer.cpp" "Renderer/Swapchain.cpp")
 
 set(BRenderer_HEADER_FILES
 "BRenderer.h" 
@@ -48,11 +48,11 @@ set(BRenderer_HEADER_FILES
 "Renderer/Renderer.h"
 "Renderer/VkInitializerHelper.h" 
 "Renderer/Shader.h"
-"Renderer/RenderDedvice.h"
+"Renderer/RenderDevice.h"
 "Renderer/Geometry/Geometry.h"
 "Renderer/Geometry/Mesh2D.h"
 "Files/FilesUtils.h"  
-"Core/WindowManager.h"  "Renderer/DeviceBuffer.h")
+"Core/WindowManager.h"  "Renderer/DeviceBuffer.h" "Renderer/Swapchain.h")
 
 
 # Add source to this project's executable.

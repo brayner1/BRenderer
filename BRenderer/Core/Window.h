@@ -19,7 +19,7 @@ namespace brr
 
 		void GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const;
 		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
-		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance) const;
+		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance);
 
 		[[nodiscard]] uint32_t GetWindowID() const { return m_pWindowID; }
 		[[nodiscard]] SDL_Window* GetSDLWindowHandle() const { return m_pWindow; }
@@ -29,6 +29,8 @@ namespace brr
 		bool m_pNeedToClose = false;
 		uint32_t m_pWindowID = 0;
 		SDL_Window* m_pWindow = nullptr;
+
+		vk::SurfaceKHR window_surface_ {};
 	};
 }
 

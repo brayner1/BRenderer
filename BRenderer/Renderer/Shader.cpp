@@ -39,7 +39,7 @@ namespace brr::render
 
 			vertex_shader_module = Create_ShaderModule(vertex_shader_code);
 
-			shader.m_pPipelineStageInfos.push_back(vk::PipelineShaderStageCreateInfo()
+			shader.pipeline_stage_infos_.push_back(vk::PipelineShaderStageCreateInfo()
 				.setStage(vk::ShaderStageFlagBits::eVertex)
 				.setModule(vertex_shader_module)
 				.setPName("main"));
@@ -58,31 +58,31 @@ namespace brr::render
 
 			fragment_shader_module = Create_ShaderModule(fragment_shader_code);
 
-			shader.m_pPipelineStageInfos.push_back(vk::PipelineShaderStageCreateInfo()
+			shader.pipeline_stage_infos_.push_back(vk::PipelineShaderStageCreateInfo()
 				.setStage(vk::ShaderStageFlagBits::eFragment)
 				.setModule(fragment_shader_module)
 				.setPName("main"));
 		}
 
 		shader.m_isValid = true;
-		shader.m_pVert_shader_module = vertex_shader_module;
-		shader.m_pFrag_shader_module = fragment_shader_module;
+		shader.vert_shader_module_ = vertex_shader_module;
+		shader.frag_shader_module_ = fragment_shader_module;
 
 		return std::move(shader);
 	}
 
 	void Shader::DestroyShaderModules()
 	{
-		if (m_pVert_shader_module)
+		if (vert_shader_module_)
 		{
-			Renderer::GetRenderer()->Get_VkDevice().destroyShaderModule(m_pVert_shader_module);
+			Renderer::GetRenderer()->Get_VkDevice().destroyShaderModule(vert_shader_module_);
 		}
-		m_pVert_shader_module = VK_NULL_HANDLE;
-		if (m_pFrag_shader_module)
+		vert_shader_module_ = VK_NULL_HANDLE;
+		if (frag_shader_module_)
 		{
-			Renderer::GetRenderer()->Get_VkDevice().destroyShaderModule(m_pFrag_shader_module);
+			Renderer::GetRenderer()->Get_VkDevice().destroyShaderModule(frag_shader_module_);
 		}
-		m_pFrag_shader_module = VK_NULL_HANDLE;
+		frag_shader_module_ = VK_NULL_HANDLE;
 		SDL_Log("Shader modules destroyed.");
 	}
 
@@ -93,11 +93,11 @@ namespace brr::render
 	Shader::Shader(Shader&& other) noexcept
 	{
 		m_isValid = other.m_isValid;
-		m_pVert_shader_module = other.m_pVert_shader_module;
-		other.m_pVert_shader_module = VK_NULL_HANDLE;
-		m_pFrag_shader_module = other.m_pFrag_shader_module;
-		other.m_pFrag_shader_module = VK_NULL_HANDLE;
+		vert_shader_module_ = other.vert_shader_module_;
+		other.vert_shader_module_ = VK_NULL_HANDLE;
+		frag_shader_module_ = other.frag_shader_module_;
+		other.frag_shader_module_ = VK_NULL_HANDLE;
 
-		m_pPipelineStageInfos = std::move(other.m_pPipelineStageInfos);
+		pipeline_stage_infos_ = std::move(other.pipeline_stage_infos_);
 	}
 }

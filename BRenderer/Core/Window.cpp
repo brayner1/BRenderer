@@ -119,13 +119,14 @@ namespace brr
 		return {width, height};
 	}
 
-	vk::SurfaceKHR Window::GetVulkanSurface(vk::Instance instance) const
+	vk::SurfaceKHR Window::GetVulkanSurface(vk::Instance instance)
 	{
-		vk::SurfaceKHR surface = VK_NULL_HANDLE;
-		if (!SDL_Vulkan_CreateSurface(m_pWindow, instance, reinterpret_cast<VkSurfaceKHR*>(&surface)))
+		if (!window_surface_ && 
+			!SDL_Vulkan_CreateSurface(m_pWindow, instance, reinterpret_cast<VkSurfaceKHR*>(&window_surface_)))
 		{
 			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create Vulkan surface of SDL window %u: %s", m_pWindowID, SDL_GetError());
 		}
-		return surface;
+
+		return window_surface_;
 	}
 }
