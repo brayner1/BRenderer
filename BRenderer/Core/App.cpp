@@ -7,8 +7,16 @@ namespace brr
 	{
 	}
 
+	template<typename T>
+	void DummyFunction()
+	{
+		std::cout << __FUNCSIG__ << std::endl;
+		std::cout << entt::type_name<App>::value() << std::endl;
+	}
+
 	void App::Run()
 	{
+		DummyFunction<App>();
 		Init();
 		MainLoop();
 		Clear();
@@ -17,6 +25,8 @@ namespace brr
 	void App::Init()
 	{
 		m_pWindowManager.reset(new WindowManager{ 800, 600 });
+
+		scene_.reset(new Scene{});
 	}
 
 	void App::MainLoop()

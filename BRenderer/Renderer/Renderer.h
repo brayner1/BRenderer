@@ -9,6 +9,7 @@ namespace brr{
 	static constexpr int FRAME_LAG = 2;
 
 	class Window;
+	class PerspectiveCamera;
 	namespace render
 	{
 		class Renderer
@@ -124,6 +125,8 @@ namespace brr{
 			vk::CommandPool m_pTransferCommandPool {};
 
 			std::unique_ptr<RenderDevice> render_device_ {};
+
+			PerspectiveCamera* camera { nullptr };
 
 			Mesh2D* mesh {nullptr};
 		};

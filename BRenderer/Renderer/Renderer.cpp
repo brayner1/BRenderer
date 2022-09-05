@@ -1,4 +1,5 @@
 #include "Core/Window.h"
+#include "Core/PerspectiveCamera.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RenderDevice.h"
 #include "Renderer/Swapchain.h"
@@ -64,6 +65,18 @@ namespace brr::render
 		if (!render_device_)
 		{
 			render_device_ = std::make_unique<RenderDevice>(window);
+
+			std::vector<Vertex2_PosColor> verts = vertices;
+			std::vector<uint32_t> inds = indices;
+			mesh = new Mesh2D(render_device_->Get_VkDevice(), std::move(verts), std::move(inds));
+
+			glm::ivec2 extent = window->GetWindowExtent();
+			camera = new PerspectiveCamera(
+				glm::vec3{ 2.f }, 
+				glm::vec3{ 0.f }, 
+				glm::radians(45.f), 
+				extent.x / (float)extent.y, 
+				0.1f, 100.f);
 		}
 
 		rend_window.swapchain_ = std::make_unique<Swapchain>(render_device_.get(), window);
@@ -79,10 +92,6 @@ namespace brr::render
 		Init_UniformBuffers();
 		Init_DescriptorPool();
 		Init_DescriptorSets();
-
-		std::vector<Vertex2_PosColor> verts = vertices;
-		std::vector<uint32_t> inds = indices;
-		mesh = new Mesh2D(render_device_->Get_VkDevice(), std::move(verts), std::move(inds));
 	}
 
 	void Renderer::Destroy_Window(Window* window)
@@ -155,7 +164,7 @@ namespace brr::render
 			.setPolygonMode(vk::PolygonMode::eFill)
 			.setLineWidth(1.f)
 			.setCullMode(vk::CullModeFlagBits::eBack)
-			.setFrontFace(vk::FrontFace::eClockwise)
+			.setFrontFace(vk::FrontFace::eCounterClockwise)
 			.setDepthBiasEnable(false)
 			.setDepthBiasConstantFactor(0.f)
 			.setDepthBiasClamp(0.f)
@@ -525,10 +534,8 @@ namespace brr::render
 
 		float aspect = window.swapchain_->GetSwapchain_Extent().width / (float)window.swapchain_->GetSwapchain_Extent().height;
 
-		UniformBufferObject ubo {};
-		glm::mat4 perspective = glm::perspective(glm::radians(45.f), aspect, 0.1f, 10.f);
-		perspective[1][1] *= -1;
-		ubo.projection_view = perspective * glm::lookAt(glm::vec3{ 2.f }, glm::vec3{ 0.f }, glm::vec3{ 0.f, 0.f, 1.f });
+		UniformBufferObject ubo{};
+		ubo.projection_view = camera->GetProjectionMatrix() * camera->GetViewMatrix();
 
 		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Map();
 		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].WriteToBuffer(&ubo, sizeof(ubo));
@@ -539,66 +546,17 @@ namespace brr::render
 	{
 		delete mesh;
 		mesh = nullptr;
-		// Destroy Synchronization primitives
+
+		delete camera;
+		camera = nullptr;
+		// Destroy Windows Swapchain and its Resources
 		{
 			for (RendererWindow& window : m_pWindows)
 			{
 				window.swapchain_ = nullptr;
-				/*for (int i = 0; i < FRAME_LAG; i++)
-				{
-					if (window.m_image_available_semaphores[i])
-					{
-						m_pDevice.destroySemaphore(window.m_image_available_semaphores[i]);
-						window.m_image_available_semaphores[i] = VK_NULL_HANDLE;
-						SDL_Log("ImageAvailable semaphore destroyed.");
-					}
-					if (window.m_render_finished_semaphores[i])
-					{
-						m_pDevice.destroySemaphore(window.m_render_finished_semaphores[i]);
-						window.m_render_finished_semaphores[i] = VK_NULL_HANDLE;
-						SDL_Log("RenderFinish semaphore destroyed.");
-					}
-					if (window.m_in_flight_fences[i])
-					{
-						m_pDevice.destroyFence(window.m_in_flight_fences[i]);
-						window.m_in_flight_fences[i] = VK_NULL_HANDLE;
-						SDL_Log("InFlight fence destroyed.");
-					}
-				}*/
 			}
 		}
-		//if (m_pCommandPool)
-		//{
-		//	m_pDevice.destroyCommandPool(m_pCommandPool);
-		//	m_pCommandPool = VK_NULL_HANDLE;
-		//	SDL_Log("CommandPool Destroyed.");
-		//}
-		//if (m_pDifferentPresentQueue && m_pPresentCommandPool)
-		//{
-		//	m_pDevice.destroyCommandPool(m_pPresentCommandPool);
-		//	m_pPresentCommandPool = VK_NULL_HANDLE;
-		//	SDL_Log("Separate Present CommandPool Destroyed.");
-		//}
-		//if (m_pDifferentTransferQueue && m_pTransferCommandPool)
-		//{
-		//	m_pDevice.destroyCommandPool(m_pTransferCommandPool);
-		//	m_pTransferCommandPool = VK_NULL_HANDLE;
-		//	SDL_Log("Separate Transfer CommandPool Destroyed.");
-		//}
-		//// Destroy Graphics Pipeline
-		//if (m_pGraphicsPipeline)
-		//{
-		//	m_pDevice.destroyPipeline(m_pGraphicsPipeline);
-		//	m_pGraphicsPipeline = VK_NULL_HANDLE;
-		//	SDL_Log("GraphicsPipeline Destroyed.");
-		//}
-		//// Destroy Pipeline Layouts
-		//if (m_pPipelineLayout)
-		//{
-		//	m_pDevice.destroyPipelineLayout(m_pPipelineLayout);
-		//	m_pPipelineLayout = VK_NULL_HANDLE;
-		//	SDL_Log("PipelineLayout Destroyed.");
-		//}
+
 		// Destroy Uniform Buffers
 		if (!uniform_buffers_.empty())
 		{
@@ -606,61 +564,8 @@ namespace brr::render
 		}
 
 		render_device_ = nullptr;
-		// Destroy Descriptor Pool
-		//if (m_pDescriptorPool)
-		//{
-		//	m_pDevice.destroyDescriptorPool(m_pDescriptorPool);
-		//	m_pDescriptorPool = VK_NULL_HANDLE;
-		//	SDL_Log("Descriptor Pool Destroyed.");
-		//}
-		//// Destroy Descriptor Set Layout
-		//if (m_pDescriptorSetLayout)
-		//{
-		//	m_pDevice.destroyDescriptorSetLayout(m_pDescriptorSetLayout);
-		//	m_pDescriptorSetLayout = VK_NULL_HANDLE;
-		//	SDL_Log("Descriptor Set Layout Destroyed.");
-		//}
-		//// Destroy Render Pass
-		//{
-		//	for (RendererWindow& window : m_pWindows)
-		//	{
-		//		if (window.m_render_pass)
-		//		{
-		//			m_pDevice.destroyRenderPass(window.m_render_pass);
-		//			window.m_render_pass = VK_NULL_HANDLE;
-		//			SDL_Log("RenderPass Destroyed.");
-		//		}
-		//	}
-		//}
-		//// Destroy Swapchain and its resources (FrameBuffers, Image Views)
-		//for (RendererWindow& window : m_pWindows)
-		//{
-		//	Cleanup_Swapchain(window);
-		//}
-		//// Destroy Logical Device
-		//if (m_pDevice)
-		//{
-		//	m_pDevice.destroy();
-		//	m_pDevice = VK_NULL_HANDLE;
-		//	SDL_Log("Logical Device Destroyed");
-		//}
-		//// Destroy Surface
-		//for (RendererWindow& window : m_pWindows)
-		//{
-		//	if (window.m_surface)
-		//	{
-		//		m_pVkInstance.destroySurfaceKHR(window.m_surface);
-		//		window.m_surface = VK_NULL_HANDLE;
-		//		SDL_Log("Surface Destroyed");
-		//	}
-		//}
-		//// Destroy Vulkan Instance
-		//if (m_pVkInstance)
-		//{
-		//	m_pVkInstance.destroy();
-		//	m_pVkInstance = VK_NULL_HANDLE;
-		//	SDL_Log("Instance Destroyed");
-		//}
+
+		
 	}
 
 	uint32_t Renderer::FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const

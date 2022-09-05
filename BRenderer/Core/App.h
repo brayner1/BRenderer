@@ -2,10 +2,10 @@
 #define BRR_APP_H
 #include "Core/WindowManager.h"
 #include "Renderer/Renderer.h"
+#include "Scene/Scene.h"
 
 namespace brr
 {
-
 	class App
 	{
 	public:
@@ -22,9 +22,10 @@ namespace brr
 
 		bool m_pShouldFinish = false;
 
-		std::unique_ptr<WindowManager> m_pWindowManager {};
-	};
+		std::unique_ptr<WindowManager> m_pWindowManager{};
 
+		std::unique_ptr<Scene> scene_{};
+	};
 }
 
 #endif

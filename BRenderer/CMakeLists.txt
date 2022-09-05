@@ -29,34 +29,57 @@ endif()
 # Define the project files
 set(BRenderer_SOURCE_FILES
 "BRenderer.cpp" 
+
 "Core/App.cpp" 
 "Core/Window.cpp" 
-"Renderer/Renderer.cpp" 
+"Core/WindowManager.cpp"
+"Core/PerspectiveCamera.cpp"
+
+"Scene/Entity.cpp"
+"Scene/Scene.cpp"
+"Scene/Components.cpp"
+#"Importer/Importer.cpp"
+
 "Renderer/VkInitializerHelper.cpp" 
-"Renderer/Shader.cpp"  
+"Renderer/Shader.cpp" 
+"Renderer/Renderer.cpp" 
+"Renderer/Swapchain.cpp"
 "Renderer/RenderDevice.cpp"
+"Renderer/DeviceBuffer.cpp"
 "Renderer/Geometry/Geometry.cpp"
 "Renderer/Geometry/Mesh2D.cpp"
+
 "Files/FilesUtils.cpp" 
-"Core/WindowManager.cpp" 
- "Renderer/DeviceBuffer.cpp" "Renderer/Swapchain.cpp")
+ )
 
 set(BRenderer_HEADER_FILES
 "BRenderer.h" 
+
 "Core/App.h"
 "Core/Window.h" 
-"Renderer/Renderer.h"
+"Core/WindowManager.h"
+"Core/PerspectiveCamera.h"
+
+"Scene/Entity.h"
+"Scene/Scene.h"
+"Scene/Components.h"
+#"Importer/Importer.h"
+
 "Renderer/VkInitializerHelper.h" 
 "Renderer/Shader.h"
+"Renderer/Renderer.h"
+"Renderer/Swapchain.h"
 "Renderer/RenderDevice.h"
+"Renderer/DeviceBuffer.h"
 "Renderer/Geometry/Geometry.h"
 "Renderer/Geometry/Mesh2D.h"
+
 "Files/FilesUtils.h"  
-"Core/WindowManager.h"  "Renderer/DeviceBuffer.h" "Renderer/Swapchain.h")
+ ) 
 
 
 # Add source to this project's executable.
-add_executable (BRenderer ${BRenderer_SOURCE_FILES} ${BRenderer_HEADER_FILES}  "Renderer/Renderer.cpp")
+add_executable (BRenderer ${BRenderer_SOURCE_FILES} ${BRenderer_HEADER_FILES})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET BRenderer PROPERTY CXX_STANDARD 20)
@@ -71,8 +94,8 @@ target_precompile_headers(BRenderer PRIVATE
 	[["pch.h"]]
 )
 
-target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" "dependencies/assimp/include")
 
-target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib")
+target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib;dependencies/assimp/lib/x64")
 
-target_link_libraries(BRenderer "vulkan-1" "SDL2" "SDL2main")
+target_link_libraries(BRenderer "vulkan-1" "SDL2" "SDL2main" "assimp-vc140-mt")
