@@ -2,7 +2,7 @@
 #define BRR_APP_H
 #include "Core/WindowManager.h"
 #include "Renderer/Renderer.h"
-#include "Scene/Scene.h"
+
 
 namespace brr
 {

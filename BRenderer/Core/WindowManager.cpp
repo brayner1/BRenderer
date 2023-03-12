@@ -37,12 +37,11 @@ namespace brr
 	void WindowManager::Update()
 	{
 		if (!m_pMainWindowClosed)
-			m_pRenderer->Draw();
+			m_pRenderer->Draw(m_pMainWindow.get());
 	}
 
-	void WindowManager::CloseWindow(uint32_t pWindowID)
+	void WindowManager::CloseWindow(WindowId pWindowID)
 	{
-		
 		// If closing main window, close the application
 		if (pWindowID == m_pMainWindowID)
 		{
@@ -56,7 +55,7 @@ namespace brr
 		if (it == m_pSecondaryWindows_Id_Index_Map.end())
 			return;
 
-		const uint32_t window_index = it->second;
+		const WindowId window_index = it->second;
 		m_pRenderer->Destroy_Window(m_pSecondaryWindows[window_index].get());
 		m_pSecondaryWindows[window_index]->CloseWindow();
 

@@ -82,14 +82,15 @@ namespace brr::render
 		if (use_validation_layers)
 		{
 			std::vector<vk::LayerProperties> layers = vk::enumerateInstanceLayerProperties();
-			if (VkHelpers::Check_ValidationLayers(instance_validation_layers, layers))
+			std::vector<char const*> acceptedLayers;
+			if (VkHelpers::Check_ValidationLayers(instance_validation_layers, layers, acceptedLayers))
 			{
-				enabled_validation_layers = instance_validation_layers;
+				enabled_validation_layers = acceptedLayers;
 			}
 			else
 			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not find required validation layers. Exiting application.");
-				exit(1);
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not find any of the required validation layers.");
+				/*exit(1);*/
 			}
 		}
 

@@ -1,8 +1,8 @@
-#include "Renderer/Geometry/Mesh2D.h"
-#include "Renderer/Geometry/Geometry.h"
+#include "Geometry/Mesh2D.h"
+#include "Geometry/Geometry.h"
 #include "Renderer/Renderer.h"
 
-namespace brr::render
+namespace brr
 {
 	Mesh2D::Mesh2D(vk::Device device, std::vector<Vertex2_PosColor>&& vertices, std::vector<uint32_t>&& indices):
 		device_(device), vertices_vec_(std::move(vertices)), indices_vec_(std::move(indices))
@@ -95,13 +95,13 @@ namespace brr::render
 	void Mesh2D::CreateVertexBuffer()
 	{
 		assert(!vertices_vec_.empty() && "Vertices data can't be empty.");
-		Renderer* render = Renderer::GetRenderer();
+		render::Renderer* render = render::Renderer::GetRenderer();
 
 		vk::DeviceSize buffer_size = sizeof(Vertex2_PosColor) * vertices_vec_.size();
 
 		SDL_Log("Creating Staging Buffer.");
 
-		DeviceBuffer staging_buffer {device_,
+		render::DeviceBuffer staging_buffer {device_,
 			buffer_size,
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent };
@@ -114,9 +114,9 @@ namespace brr::render
 
 		SDL_Log("Creating Vertex Buffer.");
 
-		vertex_buffer_ = std::make_unique<DeviceBuffer>(device_, buffer_size,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+		vertex_buffer_ = std::make_unique<render::DeviceBuffer>(device_, buffer_size,
+		                                                        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
+		                                                        vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 		SDL_Log("Copying Staging Buffer into Vertex Buffer.");
 
@@ -131,13 +131,13 @@ namespace brr::render
 			return;
 
 		usesIndexBuffer = true;
-		Renderer* render = Renderer::GetRenderer();
+		render::Renderer* render = render::Renderer::GetRenderer();
 
 		vk::DeviceSize buffer_size = sizeof(Vertex2_PosColor) * indices_vec_.size();
 
 		SDL_Log("Creating Staging Buffer.");
 
-		DeviceBuffer staging_buffer{ device_,
+		render::DeviceBuffer staging_buffer{ device_,
 			buffer_size,
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent };
@@ -149,9 +149,9 @@ namespace brr::render
 
 		SDL_Log("Creating Index Buffer.");
 
-		index_buffer = std::make_unique<DeviceBuffer>(device_, buffer_size,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+		index_buffer = std::make_unique<render::DeviceBuffer>(device_, buffer_size,
+		                                                      vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
+		                                                      vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 		SDL_Log("Copying Staging Buffer into Index Buffer.");
 

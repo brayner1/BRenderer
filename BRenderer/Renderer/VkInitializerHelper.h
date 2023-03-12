@@ -34,7 +34,10 @@ namespace brr::render::VkHelpers
 	vk::PresentModeKHR Select_SwapchainPresentMode(const std::vector<vk::PresentModeKHR>& available_present_modes);
 	vk::Extent2D Select_SwapchainExtent(Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities);
 
-	vk::Bool32 Check_ValidationLayers(const std::vector<const char*>& check_names, const std::vector<vk::LayerProperties>& layers);
+	//! Check if layers names are in check_layers and return the accepted layers. Returns true if at least one layer was accepted.
+	vk::Bool32 Check_ValidationLayers(const std::vector<const char*>& check_layers,
+									  const std::vector<vk::LayerProperties>& layers, 
+									  std::vector<const char*>& accepted_layers);
 
 }
 

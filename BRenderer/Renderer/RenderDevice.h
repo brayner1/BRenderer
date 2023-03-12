@@ -19,7 +19,7 @@ namespace brr::render
 
 		void WaitIdle();
 
-		/* Attributes */
+		/* Vulkan Objects (Instance, Device, Pools and Queues) */
 
 		FORCEINLINE [[nodiscard]] vk::Instance Get_Instance() const { return vulkan_instance_; }
 

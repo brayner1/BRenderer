@@ -12,7 +12,7 @@ namespace brr::render
 			.setCodeSize(code.size())
 			.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
 
-		return Renderer::GetRenderer()->Get_VkDevice().createShaderModule(shader_module_info);
+		return Renderer::GetRenderer()->GetDevice()->Get_VkDevice().createShaderModule(shader_module_info);
 	}
 
 
@@ -24,8 +24,8 @@ namespace brr::render
 	Shader Shader::Create_Shader(std::string vertex_file_name, std::string frag_file_name)
 	{
 		Shader shader{};
-		vk::ShaderModule vertex_shader_module {};
-		vk::ShaderModule fragment_shader_module {};
+		vk::ShaderModule vertex_shader_module;
+		vk::ShaderModule fragment_shader_module;
 		// Load Vertex Shader
 		{
 			std::filesystem::path file_path{ vertex_file_name + ".spv" };
@@ -75,12 +75,12 @@ namespace brr::render
 	{
 		if (vert_shader_module_)
 		{
-			Renderer::GetRenderer()->Get_VkDevice().destroyShaderModule(vert_shader_module_);
+			Renderer::GetRenderer()->GetDevice()->Get_VkDevice().destroyShaderModule(vert_shader_module_);
 		}
 		vert_shader_module_ = VK_NULL_HANDLE;
 		if (frag_shader_module_)
 		{
-			Renderer::GetRenderer()->Get_VkDevice().destroyShaderModule(frag_shader_module_);
+			Renderer::GetRenderer()->GetDevice()->Get_VkDevice().destroyShaderModule(frag_shader_module_);
 		}
 		frag_shader_module_ = VK_NULL_HANDLE;
 		SDL_Log("Shader modules destroyed.");

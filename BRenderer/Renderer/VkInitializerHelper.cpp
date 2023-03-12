@@ -205,21 +205,20 @@ namespace brr::render::VkHelpers
 		}
 	}
 
-	vk::Bool32 Check_ValidationLayers(const std::vector<const char*>& check_names, const std::vector<vk::LayerProperties>& layers)
+	vk::Bool32 Check_ValidationLayers(const std::vector<const char*>& check_layers, 
+									  const std::vector<vk::LayerProperties>& layers, 
+									  std::vector<const char*>& accepted_layers)
 	{
-		for (const auto& name : check_names) {
-			vk::Bool32 found = VK_FALSE;
+		vk::Bool32 found = VK_FALSE;
+		for (const auto& name : check_layers) {
 			for (const auto& layer : layers) {
 				if (!strcmp(name, layer.layerName)) {
 					found = VK_TRUE;
+					accepted_layers.push_back(name);
 					break;
 				}
 			}
-			if (!found) {
-				SDL_Log("Cannot find layer: %s\n", name);
-				exit(1);
-			}
 		}
-		return VK_TRUE;
+		return found;
 	}
 }

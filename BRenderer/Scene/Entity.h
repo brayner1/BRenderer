@@ -2,7 +2,6 @@
 #define BRR_ENTITY_H
 #include "Scene/Scene.h"
 
-
 namespace brr
 {
 
@@ -49,6 +48,8 @@ namespace brr
 		}
 
 	private:
+		friend class Scene;
+
 		entt::entity entity_{ entt::null };
 		Scene* scene_ = nullptr;
 	};

@@ -49,10 +49,17 @@ set(BRenderer_SOURCE_FILES
 "Core/WindowManager.cpp"
 "Core/PerspectiveCamera.cpp"
 
+"Geometry/Geometry.cpp"
+"Geometry/Mesh2D.cpp"
+
 "Scene/Entity.cpp"
 "Scene/Scene.cpp"
 "Scene/Components.cpp"
-#"Importer/Importer.cpp"
+
+"Scene/Components/Transform3DComponent.cpp"
+"Scene/Components/Mesh3DComponent.cpp"
+
+"Importer/Importer.cpp"
 
 "Renderer/VkInitializerHelper.cpp" 
 "Renderer/Shader.cpp" 
@@ -60,11 +67,10 @@ set(BRenderer_SOURCE_FILES
 "Renderer/Swapchain.cpp"
 "Renderer/RenderDevice.cpp"
 "Renderer/DeviceBuffer.cpp"
-"Renderer/Geometry/Geometry.cpp"
-"Renderer/Geometry/Mesh2D.cpp"
+"Renderer/RenderSurface.cpp"
 
 "Files/FilesUtils.cpp" 
- )
+  "Scene/Components/MaterialComponent.cpp" "Renderer/Descriptors.cpp")
 
 set(BRenderer_HEADER_FILES
 "BRenderer.h" 
@@ -74,23 +80,38 @@ set(BRenderer_HEADER_FILES
 "Core/WindowManager.h"
 "Core/PerspectiveCamera.h"
 
+"Geometry/Geometry.h"
+"Geometry/Mesh2D.h"
+
 "Scene/Entity.h"
 "Scene/Scene.h"
 "Scene/Components.h"
-#"Importer/Importer.h"
+
+"Scene/Components/Transform3DComponent.h"
+"Scene/Components/Mesh3DComponent.h"
+"Scene/Components/MaterialComponent.h"
+
+"Importer/Importer.h"
 
 "Renderer/VkInitializerHelper.h" 
 "Renderer/Shader.h"
 "Renderer/Renderer.h"
 "Renderer/Swapchain.h"
+"Renderer/Descriptors.h"
 "Renderer/RenderDevice.h"
 "Renderer/DeviceBuffer.h"
-"Renderer/Geometry/Geometry.h"
-"Renderer/Geometry/Mesh2D.h"
+"Renderer/RenderSurface.h"
 
-"Files/FilesUtils.h"  
- ) 
+"Files/FilesUtils.h") 
 
+source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
+source_group(Core REGULAR_EXPRESSION "Core/.*")
+source_group(Geometry REGULAR_EXPRESSION "Geometry/.*")
+source_group(Scene REGULAR_EXPRESSION "Scene/.*")
+source_group(Scene\\Components REGULAR_EXPRESSION "Scene/Components/.*")
+source_group(dependencies REGULAR_EXPRESSION "dependencies/.*")
+source_group(Importer REGULAR_EXPRESSION "Importer/.*")
+source_group("Files" REGULAR_EXPRESSION "Files/.*")
 
 # Add source to this project's executable.
 add_executable (BRenderer ${BRenderer_SOURCE_FILES} ${BRenderer_HEADER_FILES})
@@ -131,10 +152,6 @@ if (WIN32)
 		COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/compile_shaders.bat"
 	)
 endif()
-
-add_custom_command(TARGET BRenderer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/vert.spv" $<TARGET_FILE_DIR:BRenderer>
-)
 
 add_custom_command(TARGET BRenderer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>

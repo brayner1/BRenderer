@@ -6,6 +6,7 @@
 #include "Renderer/VkInitializerHelper.h"
 
 namespace brr{
+	class Scene;
 	static constexpr int FRAME_LAG = 2;
 
 	class Window;
@@ -36,7 +37,7 @@ namespace brr{
 
 			void Destroy_Window(Window* window);
 
-			void Draw();
+			void Draw(Window* scene);
 
 			/*
 			 * Buffers
@@ -48,7 +49,7 @@ namespace brr{
 			void Copy_Buffer(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size, 
 				vk::DeviceSize src_buffer_offset = 0, vk::DeviceSize dst_buffer_offset = 0);
 
-			[[nodiscard]] vk::Device Get_VkDevice() const { return render_device_->Get_VkDevice(); }
+			[[nodiscard]] RenderDevice* GetDevice() const { return render_device_.get(); }
 			[[nodiscard]] uint32_t FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const;
 
 			void Reset();
@@ -71,7 +72,10 @@ namespace brr{
 			void Init_CommandPool();
 			void Init_CommandBuffers(RendererWindow& window);
 
+			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
+			void BindPipeline_CommandBuffer(vk::Pipeline pipeline, vk::CommandBuffer cmd_buffer);
 			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
+			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer);
 
 			void Recreate_Swapchain(RendererWindow& window);
 

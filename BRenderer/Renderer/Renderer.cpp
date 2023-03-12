@@ -3,7 +3,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/RenderDevice.h"
 #include "Renderer/Swapchain.h"
-#include "Renderer/Geometry/Geometry.h"
+#include "Geometry/Geometry.h"
 #include "Renderer/Shader.h"
 
 namespace brr::render
@@ -239,6 +239,32 @@ namespace brr::render
 		SDL_Log("Graphics Pipeline created.");
 	}
 
+	void Renderer::Init_CommandBuffers(RendererWindow& window)
+	{
+		vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
+		command_buffer_alloc_info
+			.setCommandPool(render_device_->GetGraphicsCommandPool())
+			.setLevel(vk::CommandBufferLevel::ePrimary)
+			.setCommandBufferCount(2);
+
+		window.m_pCommandBuffers = render_device_->Get_VkDevice().allocateCommandBuffers(command_buffer_alloc_info);
+
+		SDL_Log("CommandBuffer Created.");
+
+		if (render_device_->IsDifferentPresentQueue())
+		{
+			vk::CommandBufferAllocateInfo present_buffer_alloc_info{};
+			present_buffer_alloc_info
+				.setCommandPool(render_device_->GetPresentCommandPool())
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandBufferCount(1);
+
+			window.m_pPresentCommandBuffer = render_device_->Get_VkDevice().allocateCommandBuffers(present_buffer_alloc_info)[0];
+
+			SDL_Log("Separate Present CommandBuffer Created.");
+		}
+	}
+
 	void Renderer::Init_UniformBuffers()
 	{
 		vk::DeviceSize buffer_size = sizeof(UniformBufferObject);
@@ -339,30 +365,48 @@ namespace brr::render
 		}
 	}
 
-	void Renderer::Init_CommandBuffers(RendererWindow& window)
+	void Renderer::BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer,
+		uint32_t image_index)
 	{
-		vk::CommandBufferAllocateInfo command_buffer_alloc_info {};
-		command_buffer_alloc_info
-			.setCommandPool(render_device_->GetGraphicsCommandPool())
-			.setLevel(vk::CommandBufferLevel::ePrimary)
-			.setCommandBufferCount(2);
+		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
+		vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
 
-		window.m_pCommandBuffers = render_device_->Get_VkDevice().allocateCommandBuffers(command_buffer_alloc_info);
-
-		SDL_Log("CommandBuffer Created.");
+		cmd_buffer.begin(cmd_buffer_begin_info);
 
 		if (render_device_->IsDifferentPresentQueue())
 		{
-			vk::CommandBufferAllocateInfo present_buffer_alloc_info{};
-			present_buffer_alloc_info
-				.setCommandPool(render_device_->GetPresentCommandPool())
-				.setLevel(vk::CommandBufferLevel::ePrimary)
-				.setCommandBufferCount(1);
-
-			window.m_pPresentCommandBuffer = render_device_->Get_VkDevice().allocateCommandBuffers(present_buffer_alloc_info)[0];
-
-			SDL_Log("Separate Present CommandBuffer Created.");
+			present_cmd_buffer.begin(cmd_buffer_begin_info);
 		}
+
+		vk::ClearValue clear_value(std::array<float, 4>({ {0.2f, 0.2f, 0.2f, 1.f} }));
+
+		vk::RenderPassBeginInfo render_pass_begin_info{};
+		render_pass_begin_info
+			.setRenderPass(window.swapchain_->GetRender_Pass())
+			.setFramebuffer(window.swapchain_->GetFramebuffer(image_index))
+			.setRenderArea(vk::Rect2D{ {0, 0}, window.swapchain_->GetSwapchain_Extent() })
+			.setClearValues(clear_value);
+
+		cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
+	}
+
+	void Renderer::BindPipeline_CommandBuffer(vk::Pipeline pipeline, vk::CommandBuffer cmd_buffer)
+	{
+		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
+
+		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+
+		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			m_pPipelineLayout, 0,
+			m_pDescriptorSets[window.swapchain_->GetCurrentBuffer()],
+			{});
+	}
+
+	void Renderer::EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer)
+	{
+		cmd_buffer.endRenderPass();
+
+		cmd_buffer.end();
 	}
 
 	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index)
@@ -403,7 +447,7 @@ namespace brr::render
 		cmd_buffer.end();
 	}
 
-	void Renderer::Draw()
+	void Renderer::Draw(Window* scene)
 	{
 		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
 
@@ -429,6 +473,23 @@ namespace brr::render
 		Update_UniformBuffers(window);
 
 		window.swapchain_->SubmitCommandBuffer(current_cmd_buffer, image_index);
+	}
+
+	void Renderer::Update_UniformBuffers(RendererWindow& window)
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+		float aspect = window.swapchain_->GetSwapchain_Extent().width / (float)window.swapchain_->GetSwapchain_Extent().height;
+
+		UniformBufferObject ubo{};
+		ubo.projection_view = camera->GetProjectionMatrix() * camera->GetViewMatrix();
+
+		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Map();
+		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].WriteToBuffer(&ubo, sizeof(ubo));
+		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Unmap();
 	}
 
 	void Renderer::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
@@ -523,23 +584,6 @@ namespace brr::render
 		render_device_->WaitIdle();
 
 		window.swapchain_->Recreate_Swapchain();
-	}
-
-	void Renderer::Update_UniformBuffers(RendererWindow& window)
-	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-		float aspect = window.swapchain_->GetSwapchain_Extent().width / (float)window.swapchain_->GetSwapchain_Extent().height;
-
-		UniformBufferObject ubo{};
-		ubo.projection_view = camera->GetProjectionMatrix() * camera->GetViewMatrix();
-
-		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Map();
-		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].WriteToBuffer(&ubo, sizeof(ubo));
-		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Unmap();
 	}
 
 	void Renderer::Reset()

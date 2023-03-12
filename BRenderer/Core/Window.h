@@ -1,8 +1,10 @@
 #ifndef BRR_WINDOW_H
 #define BRR_WINDOW_H
+#include "Scene/Scene.h"
 
 namespace brr
 {
+	typedef Uint32 WindowId;
 	class Window
 	{
 	public:
@@ -21,16 +23,20 @@ namespace brr
 		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
 		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance);
 
-		[[nodiscard]] uint32_t GetWindowID() const { return m_pWindowID; }
+		[[nodiscard]] WindowId GetWindowID() const { return m_pWindowID; }
 		[[nodiscard]] SDL_Window* GetSDLWindowHandle() const { return m_pWindow; }
 		[[nodiscard]] bool NeedToClose() const { return m_pNeedToClose; }
 
+		Scene* GetScene() const { return scene.get(); }
+
 	private:
 		bool m_pNeedToClose = false;
-		uint32_t m_pWindowID = 0;
+		WindowId m_pWindowID = 0;
 		SDL_Window* m_pWindow = nullptr;
 
 		vk::SurfaceKHR window_surface_ {};
+
+		std::shared_ptr<Scene> scene;
 	};
 }
 

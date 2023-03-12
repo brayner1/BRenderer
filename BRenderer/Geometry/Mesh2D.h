@@ -1,9 +1,9 @@
 #ifndef BRR_MESH2D_H
 #define BRR_MESH2D_H
-#include "Renderer/Geometry/Geometry.h"
+#include "Geometry/Geometry.h"
 #include "Renderer/DeviceBuffer.h"
 
-namespace brr::render
+namespace brr
 {
 	class Mesh2D
 	{
@@ -35,9 +35,9 @@ namespace brr::render
 
 		vk::Device device_ {};
 
-		std::unique_ptr<DeviceBuffer> vertex_buffer_ {};
+		std::unique_ptr<render::DeviceBuffer> vertex_buffer_ {};
 
-		std::unique_ptr<DeviceBuffer> index_buffer {};
+		std::unique_ptr<render::DeviceBuffer> index_buffer {};
 		bool usesIndexBuffer = false;
 
 		std::vector<Vertex2_PosColor> vertices_vec_ {};
