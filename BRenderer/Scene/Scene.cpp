@@ -8,8 +8,7 @@
 namespace brr
 {
 	Scene::Scene()
-	{
-	}
+	{}
 
 	Scene::Scene(PerspectiveCamera* camera) : m_camera_(camera)
 	{

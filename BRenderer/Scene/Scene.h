@@ -17,6 +17,8 @@ namespace brr{
 
 		Entity AddEntity(Entity parent);
 
+		PerspectiveCamera* GetMainCamera() const { return m_camera_.get(); }
+
 	private:
 		
 		friend class Entity;
@@ -24,7 +26,7 @@ namespace brr{
 
 		entt::registry m_registry_ {};
 
-		PerspectiveCamera* m_camera_ {};
+		std::unique_ptr<PerspectiveCamera> m_camera_ {};
 	};
 }
 

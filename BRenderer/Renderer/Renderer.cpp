@@ -72,14 +72,6 @@ namespace brr::render
 			/*std::vector<Vertex2_PosColor> verts = vertices;
 			std::vector<uint32_t> inds = indices;*/
 			//mesh = new Mesh2D(render_device_->Get_VkDevice(), std::move(verts), std::move(inds));
-
-			glm::ivec2 extent = window->GetWindowExtent();
-			camera = new PerspectiveCamera(
-				glm::vec3{ 2.f }, 
-				glm::vec3{ 0.f }, 
-				glm::radians(45.f), 
-				extent.x / (float)extent.y, 
-				0.1f, 100.f);
 		}
 
 		rend_window.swapchain_ = std::make_unique<Swapchain>(render_device_.get(), window);
@@ -486,12 +478,12 @@ namespace brr::render
 
 		Record_CommandBuffer(current_cmd_buffer, (render_device_->IsDifferentPresentQueue())? rend_window.m_pPresentCommandBuffer : current_cmd_buffer, image_index, window->GetScene());
 
-		Update_UniformBuffers(rend_window);
+		Update_UniformBuffers(rend_window, *window->GetScene());
 
 		rend_window.swapchain_->SubmitCommandBuffer(current_cmd_buffer, image_index);
 	}
 
-	void Renderer::Update_UniformBuffers(RendererWindow& window)
+	void Renderer::Update_UniformBuffers(RendererWindow& window, Scene& scene)
 	{
 		static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -501,7 +493,7 @@ namespace brr::render
 		float aspect = window.swapchain_->GetSwapchain_Extent().width / (float)window.swapchain_->GetSwapchain_Extent().height;
 
 		UniformBufferObject ubo{};
-		ubo.projection_view = camera->GetProjectionMatrix() * camera->GetViewMatrix();
+		ubo.projection_view = scene.GetMainCamera()->GetProjectionMatrix() * scene.GetMainCamera()->GetViewMatrix();
 
 		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Map();
 		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].WriteToBuffer(&ubo, sizeof(ubo));
@@ -604,11 +596,6 @@ namespace brr::render
 
 	void Renderer::Reset()
 	{
-		/*delete mesh;
-		mesh = nullptr;*/
-
-		delete camera;
-		camera = nullptr;
 		// Destroy Windows Swapchain and its Resources
 		{
 			for (RendererWindow& window : m_pWindows)

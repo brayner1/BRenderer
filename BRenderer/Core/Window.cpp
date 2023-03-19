@@ -30,8 +30,16 @@ namespace brr
 		m_pWindowID = winId;
 
 		SDL_Log("Window %d Created", winId);
+		int width, height;
+		SDL_Vulkan_GetDrawableSize(m_pWindow, &width, &height);
+		const glm::ivec2 extent{ width, height };
 
-		scene.reset(new Scene());
+		scene.reset(new Scene(new PerspectiveCamera(
+			glm::vec3{ 2.f },
+			glm::vec3{ 0.f },
+			glm::radians(45.f),
+			extent.x / (float)extent.y,
+			0.1f, 100.f)));
 
 		return m_pWindowID;
 	}

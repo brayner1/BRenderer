@@ -43,10 +43,10 @@ namespace brr{
 			 * Buffers
 			 */
 
-			void Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, 
+			void Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
 				vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory);
 
-			void Copy_Buffer(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size, 
+			void Copy_Buffer(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
 				vk::DeviceSize src_buffer_offset = 0, vk::DeviceSize dst_buffer_offset = 0);
 
 			[[nodiscard]] RenderDevice* GetDevice() const { return render_device_.get(); }
@@ -79,7 +79,7 @@ namespace brr{
 
 			void Recreate_Swapchain(RendererWindow& window);
 
-			void Update_UniformBuffers(RendererWindow& window);
+			void Update_UniformBuffers(RendererWindow& window, Scene& scene);
 
 
 			static std::unique_ptr<Renderer> singleton;
@@ -129,10 +129,6 @@ namespace brr{
 			vk::CommandPool m_pTransferCommandPool {};
 
 			std::unique_ptr<RenderDevice> render_device_ {};
-
-			PerspectiveCamera* camera { nullptr };
-
-			Mesh2D* mesh {nullptr};
 		};
 	}
 }
