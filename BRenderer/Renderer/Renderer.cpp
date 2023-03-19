@@ -5,6 +5,9 @@
 #include "Renderer/Swapchain.h"
 #include "Geometry/Geometry.h"
 #include "Renderer/Shader.h"
+#include "Scene/Entity.h"
+#include "Scene/Components/Mesh3DComponent.h"
+#include "Scene/Components/Transform3DComponent.h"
 
 namespace brr::render
 {
@@ -66,9 +69,9 @@ namespace brr::render
 		{
 			render_device_ = std::make_unique<RenderDevice>(window);
 
-			std::vector<Vertex2_PosColor> verts = vertices;
-			std::vector<uint32_t> inds = indices;
-			mesh = new Mesh2D(render_device_->Get_VkDevice(), std::move(verts), std::move(inds));
+			/*std::vector<Vertex2_PosColor> verts = vertices;
+			std::vector<uint32_t> inds = indices;*/
+			//mesh = new Mesh2D(render_device_->Get_VkDevice(), std::move(verts), std::move(inds));
 
 			glm::ivec2 extent = window->GetWindowExtent();
 			camera = new PerspectiveCamera(
@@ -124,8 +127,8 @@ namespace brr::render
 
 		vk::PipelineVertexInputStateCreateInfo vertex_input_info{};
 		{
-			vk::VertexInputBindingDescription binding_description = Vertex2_PosColor::GetBindingDescription();
-			std::array<vk::VertexInputAttributeDescription, 2> attribute_descriptions = Vertex2_PosColor::GetAttributeDescriptions();
+			vk::VertexInputBindingDescription binding_description = Vertex3_PosColor::GetBindingDescription();
+			std::array<vk::VertexInputAttributeDescription, 2> attribute_descriptions = Vertex3_PosColor::GetAttributeDescriptions();
 			
 			vertex_input_info
 				.setVertexBindingDescriptions(binding_description)
@@ -409,7 +412,7 @@ namespace brr::render
 		cmd_buffer.end();
 	}
 
-	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index)
+	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index, Scene* scene)
 	{
 		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
 		vk::CommandBufferBeginInfo cmd_buffer_begin_info {};
@@ -434,29 +437,42 @@ namespace brr::render
 
 		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pGraphicsPipeline);
 
-		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, 
-			m_pPipelineLayout, 0, 
-			m_pDescriptorSets[window.swapchain_->GetCurrentBuffer()], 
+		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			m_pPipelineLayout, 0,
+			m_pDescriptorSets[window.swapchain_->GetCurrentBuffer()],
 			{});
 
-		mesh->Bind(cmd_buffer);
-		mesh->Draw(cmd_buffer);
+		auto group_3dRender = scene->m_registry_.group<Transform3DComponent, Mesh3DComponent>();
+
+		uint32_t idx = 0;
+		group_3dRender.each([&](auto entity, Transform3DComponent& transform, Mesh3DComponent& mesh)
+		{
+			for (Mesh3DComponent::SurfaceData& surface : mesh.surfaces)
+			{
+				//SDL_Log("Rendering surface idx %d", idx);
+				surface.Bind(cmd_buffer);
+				surface.Draw(cmd_buffer);
+			}
+		});
+
+		/*mesh->Bind(cmd_buffer);
+		mesh->Draw(cmd_buffer);*/
 
 		cmd_buffer.endRenderPass();
 
 		cmd_buffer.end();
 	}
 
-	void Renderer::Draw(Window* scene)
+	void Renderer::Draw(Window* window)
 	{
-		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
+		RendererWindow& rend_window = m_pWindows[MAIN_WINDOW_ID];
 
 		uint32_t image_index;
-		vk::Result result = window.swapchain_->AcquireNextImage(image_index);
+		vk::Result result = rend_window.swapchain_->AcquireNextImage(image_index);
 
 		if (result == vk::Result::eErrorOutOfDateKHR)
 		{
-			window.swapchain_->Recreate_Swapchain();
+			rend_window.swapchain_->Recreate_Swapchain();
 			return;
 		}
 		else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
@@ -464,15 +480,15 @@ namespace brr::render
 			throw std::runtime_error("Failed to acquire Swapchain image!");
 		}
 
-		vk::CommandBuffer current_cmd_buffer = window.m_pCommandBuffers[window.swapchain_->GetCurrentBuffer()];
+		vk::CommandBuffer current_cmd_buffer = rend_window.m_pCommandBuffers[rend_window.swapchain_->GetCurrentBuffer()];
 
 		current_cmd_buffer.reset();
 
-		Record_CommandBuffer(current_cmd_buffer, (render_device_->IsDifferentPresentQueue())? window.m_pPresentCommandBuffer : current_cmd_buffer, image_index);
+		Record_CommandBuffer(current_cmd_buffer, (render_device_->IsDifferentPresentQueue())? rend_window.m_pPresentCommandBuffer : current_cmd_buffer, image_index, window->GetScene());
 
-		Update_UniformBuffers(window);
+		Update_UniformBuffers(rend_window);
 
-		window.swapchain_->SubmitCommandBuffer(current_cmd_buffer, image_index);
+		rend_window.swapchain_->SubmitCommandBuffer(current_cmd_buffer, image_index);
 	}
 
 	void Renderer::Update_UniformBuffers(RendererWindow& window)
@@ -588,8 +604,8 @@ namespace brr::render
 
 	void Renderer::Reset()
 	{
-		delete mesh;
-		mesh = nullptr;
+		/*delete mesh;
+		mesh = nullptr;*/
 
 		delete camera;
 		camera = nullptr;

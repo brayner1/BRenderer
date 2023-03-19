@@ -1,8 +1,22 @@
 #include "Core/App.h"
 #include "Core/Window.h"
+#include "Scene/Entity.h"
+#include "Scene/Components/Mesh3DComponent.h"
 
 namespace brr
 {
+	static const std::vector<Vertex3_PosColor> vertices{
+		{glm::vec3{-0.5f, -0.5f, 0.0f}, glm::vec3{1.f, 0.f, 0.f}},
+		{glm::vec3{0.5f, -0.5f, 0.0f}, glm::vec3{0.f, 1.f, 0.f}},
+		{glm::vec3{.5f, .5f, 0.0f}, glm::vec3{0.f, 0.f, 1.f}},
+		{glm::vec3{-.5f, .5f, 0.0f}, glm::vec3{1.f, 1.f, 1.f}}
+	};
+
+	static const std::vector<uint32_t> indices
+	{
+		0, 1, 2, 2, 3, 0
+	};
+
 	App::App()
 	{
 	}
@@ -19,7 +33,10 @@ namespace brr
 		m_pWindowManager.reset(new WindowManager{ 800, 600 });
 
 
-		scene_.reset(new Scene{});
+		scene_ = m_pWindowManager->GetMainWindow()->GetScene();
+		Entity entity = scene_->AddEntity({});
+		Mesh3DComponent& mesh = entity.AddComponent<Mesh3DComponent>();
+		mesh.surfaces.emplace_back(vertices, indices);
 	}
 
 	void App::MainLoop()

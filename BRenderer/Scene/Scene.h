@@ -3,6 +3,10 @@
 #include "Core/PerspectiveCamera.h"
 
 namespace brr{
+	namespace render
+	{
+		class Renderer;
+	}
 	class Entity;
 	class Scene
 	{
@@ -13,18 +17,14 @@ namespace brr{
 
 		Entity AddEntity(Entity parent);
 
-		//TODO: Render function API and implementation
-
-		void RenderScene();
-
 	private:
 		
 		friend class Entity;
-		friend class Renderer;
+		friend class render::Renderer;
 
-		entt::registry registry_ {};
+		entt::registry m_registry_ {};
 
-		PerspectiveCamera* camera_ {};
+		PerspectiveCamera* m_camera_ {};
 	};
 }
 

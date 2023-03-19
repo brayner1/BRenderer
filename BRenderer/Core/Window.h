@@ -36,7 +36,7 @@ namespace brr
 
 		vk::SurfaceKHR window_surface_ {};
 
-		std::shared_ptr<Scene> scene;
+		std::unique_ptr<Scene> scene;
 	};
 }
 

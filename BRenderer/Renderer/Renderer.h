@@ -37,7 +37,7 @@ namespace brr{
 
 			void Destroy_Window(Window* window);
 
-			void Draw(Window* scene);
+			void Draw(Window* window);
 
 			/*
 			 * Buffers
@@ -74,7 +74,7 @@ namespace brr{
 
 			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
 			void BindPipeline_CommandBuffer(vk::Pipeline pipeline, vk::CommandBuffer cmd_buffer);
-			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
+			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index, Scene* scene);
 			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer);
 
 			void Recreate_Swapchain(RendererWindow& window);

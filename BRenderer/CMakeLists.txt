@@ -52,25 +52,28 @@ set(BRenderer_SOURCE_FILES
 "Geometry/Geometry.cpp"
 "Geometry/Mesh2D.cpp"
 
+"Scene/Components.cpp"
 "Scene/Entity.cpp"
 "Scene/Scene.cpp"
-"Scene/Components.cpp"
 
-"Scene/Components/Transform3DComponent.cpp"
+"Scene/Components/MaterialComponent.cpp"
 "Scene/Components/Mesh3DComponent.cpp"
+"Scene/Components/NodeComponent.cpp"
+"Scene/Components/Transform3DComponent.cpp"
 
 "Importer/Importer.cpp"
 
-"Renderer/VkInitializerHelper.cpp" 
-"Renderer/Shader.cpp" 
-"Renderer/Renderer.cpp" 
-"Renderer/Swapchain.cpp"
-"Renderer/RenderDevice.cpp"
+"Renderer/Descriptors.cpp"
 "Renderer/DeviceBuffer.cpp"
+"Renderer/RenderDevice.cpp"
+"Renderer/Renderer.cpp" 
 "Renderer/RenderSurface.cpp"
+"Renderer/Shader.cpp" 
+"Renderer/Swapchain.cpp"
+"Renderer/VkInitializerHelper.cpp" 
 
 "Files/FilesUtils.cpp" 
-  "Scene/Components/MaterialComponent.cpp" "Renderer/Descriptors.cpp")
+   )
 
 set(BRenderer_HEADER_FILES
 "BRenderer.h" 
@@ -83,24 +86,25 @@ set(BRenderer_HEADER_FILES
 "Geometry/Geometry.h"
 "Geometry/Mesh2D.h"
 
+"Scene/Components.h"
 "Scene/Entity.h"
 "Scene/Scene.h"
-"Scene/Components.h"
 
-"Scene/Components/Transform3DComponent.h"
-"Scene/Components/Mesh3DComponent.h"
 "Scene/Components/MaterialComponent.h"
+"Scene/Components/Mesh3DComponent.h"
+"Scene/Components/NodeComponent.h"
+"Scene/Components/Transform3DComponent.h"
 
 "Importer/Importer.h"
 
-"Renderer/VkInitializerHelper.h" 
-"Renderer/Shader.h"
-"Renderer/Renderer.h"
-"Renderer/Swapchain.h"
 "Renderer/Descriptors.h"
-"Renderer/RenderDevice.h"
 "Renderer/DeviceBuffer.h"
+"Renderer/RenderDevice.h"
+"Renderer/Renderer.h"
 "Renderer/RenderSurface.h"
+"Renderer/Shader.h"
+"Renderer/Swapchain.h"
+"Renderer/VkInitializerHelper.h" 
 
 "Files/FilesUtils.h") 
 
@@ -152,6 +156,10 @@ if (WIN32)
 		COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/compile_shaders.bat"
 	)
 endif()
+
+add_custom_command(TARGET BRenderer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/vert.spv" $<TARGET_FILE_DIR:BRenderer>
+)
 
 add_custom_command(TARGET BRenderer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>

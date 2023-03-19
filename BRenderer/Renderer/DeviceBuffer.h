@@ -13,6 +13,8 @@ namespace brr
 			DeviceBuffer(vk::Device device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
 			DeviceBuffer(DeviceBuffer&& device_buffer) noexcept;
 
+			DeviceBuffer& operator=(DeviceBuffer&& device_buffer) noexcept;
+
 			~DeviceBuffer();
 
 			void Reset(vk::Device device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
@@ -26,7 +28,7 @@ namespace brr
 
 			[[nodiscard]] vk::Buffer GetBuffer() const { return buffer_; }
 
-			inline bool IsValid() const { return device_ && buffer_; }
+			bool IsValid() const { return device_ && buffer_; }
 			operator bool() const { return IsValid(); }
 
 		private:

@@ -38,10 +38,10 @@ namespace brr
 		std::unique_ptr<render::DeviceBuffer> vertex_buffer_ {};
 
 		std::unique_ptr<render::DeviceBuffer> index_buffer {};
-		bool usesIndexBuffer = false;
 
 		std::vector<Vertex2_PosColor> vertices_vec_ {};
 		std::vector<uint32_t> indices_vec_ {};
+		bool usesIndexBuffer = false;
 	};
 }
 

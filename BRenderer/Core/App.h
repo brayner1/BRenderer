@@ -24,7 +24,7 @@ namespace brr
 
 		std::unique_ptr<WindowManager> m_pWindowManager{};
 
-		std::unique_ptr<Scene> scene_{};
+		Scene* scene_;
 	};
 }
 

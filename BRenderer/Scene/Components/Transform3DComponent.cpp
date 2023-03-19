@@ -1,114 +1,165 @@
 #include "Scene/Components/Transform3DComponent.h"
 
+#include "Scene/Components/NodeComponent.h"
+
 namespace brr
 {
 	////////////////////////////
 	/// Transform3DComponent ///
-	///////////////////////////
+	////////////////////////////
 
 	void Transform3DComponent::SetTransform(const glm::mat4& transform)
 	{
-		local_transform_ = transform;
+		//mLocal_transform_ = transform;
+		glm::vec3 skew; glm::vec4 perspective;
+		glm::decompose(transform, m_scale_, m_rotation_, m_position_, skew, perspective);
 
-		PropagateChildrenTransformChange();
+		PropagateTransformChange();
+	}
+
+	void Transform3DComponent::SetTransform(const glm::vec3& position, 
+											const glm::fquat& rotation,
+											const glm::vec3& scale)
+	{
+		m_position_ = position;
+		m_rotation_ = rotation;
+		m_scale_ = scale;
+		PropagateTransformChange();
 	}
 
 	void Transform3DComponent::SetPosition(const glm::vec3& position)
 	{
-		local_transform_[3] = glm::vec4{ position, 1.f };
+		//mLocal_transform_[3] = glm::vec4{ position, 1.f };
+		m_position_ = position;
+		PropagateTransformChange();
 	}
 
 	void Transform3DComponent::SetRotation(const glm::fquat& rotation)
 	{
-		glm::mat4 result = glm::mat4_cast(rotation);
-		result[3] = local_transform_[3];
-		local_transform_ = result;
+		/*glm::mat4 result = glm::mat4_cast(rotation);
+		result[3] = mLocal_transform_[3];
+		mLocal_transform_ = result;*/
+		m_rotation_ = rotation;
+		PropagateTransformChange();
 	}
 
 	void Transform3DComponent::Translate(const glm::vec3& translation)
 	{
-		local_transform_ = glm::translate(local_transform_, translation);
+		//mLocal_transform_ = glm::translate(mLocal_transform_, translation);
+		m_position_ += translation;
+		PropagateTransformChange();
 	}
 
 	void Transform3DComponent::Rotate(const glm::fquat& rotation)
 	{
-		local_transform_ = static_cast<glm::mat4>(rotation) * local_transform_;
+		//mLocal_transform_ = static_cast<glm::mat4>(rotation) * mLocal_transform_;
+		m_rotation_ = rotation * m_rotation_;
+		PropagateTransformChange();
 	}
 
 	void Transform3DComponent::Rotate(float angle, const glm::vec3& axis)
 	{
-		local_transform_ = glm::rotate(local_transform_, angle, axis);
+		//mLocal_transform_ = glm::rotate(mLocal_transform_, angle, axis);
+		glm::fquat rotation(angle, axis);
+		m_rotation_ = rotation * m_rotation_;
+		PropagateTransformChange();
 	}
 
-	void Transform3DComponent::Scale(glm::vec3 scale)
+	void Transform3DComponent::SetScale(glm::vec3 scale)
 	{
-		local_transform_ = glm::scale(local_transform_, scale);
+		//mLocal_transform_ = glm::scale(mLocal_transform_, scale);
+		m_scale_ = scale;
+		PropagateTransformChange();
 	}
 
-	glm::vec3 Transform3DComponent::GetPosition() const
+	glm::vec3 Transform3DComponent::GetGlobalPosition()
 	{
-		return local_transform_[3];
+		const glm::mat4& global_transf = GetGlobalTransform();
+		glm::vec3 position, scale, skew;
+		glm::fquat rotation;
+		glm::vec4 perspective;
+		glm::decompose(global_transf, scale, rotation, position, skew, perspective);
+
+		return position;
 	}
 
-	glm::fquat Transform3DComponent::GetRotation() const
+	glm::fquat Transform3DComponent::GetGlobalRotation()
 	{
-		return glm::fquat{ local_transform_ };
+		const glm::mat4& global_transf = GetGlobalTransform();
+		glm::vec3 position, scale, skew;
+		glm::fquat rotation;
+		glm::vec4 perspective;
+		glm::decompose(global_transf, scale, rotation, position, skew, perspective);
+
+		return rotation;
 	}
 
-	glm::vec3 Transform3DComponent::GetEulerRotation() const
+	glm::vec3 Transform3DComponent::GetGlobalScale()
 	{
-		const glm::fquat rot{ local_transform_ };
-		return glm::eulerAngles(rot);
+		const glm::mat4& global_transf = GetGlobalTransform();
+		glm::vec3 position, scale, skew;
+		glm::fquat rotation;
+		glm::vec4 perspective;
+		glm::decompose(global_transf, scale, rotation, position, skew, perspective);
+
+		return scale;
 	}
 
-	const glm::mat4& Transform3DComponent::GetTransform() const
+	glm::vec3 Transform3DComponent::GetGlobalRotationEuler()
 	{
-		return  local_transform_;
+		const glm::mat4& global_transf = GetGlobalTransform();
+		glm::vec3 position, scale, skew;
+		glm::fquat rotation;
+		glm::vec4 perspective;
+		glm::decompose(global_transf, scale, rotation, position, skew, perspective);
+
+		return glm::eulerAngles(rotation);
+	}
+
+	glm::mat4 Transform3DComponent::GetTransform() const
+	{
+		glm::mat4 local_transform = glm::mat4_cast(m_rotation_);
+		glm::scale(local_transform, m_scale_);
+		glm::translate(local_transform, m_position_);
+		return  local_transform;
 	}
 
 	const glm::mat4& Transform3DComponent::GetGlobalTransform()
 	{
-		if (dirty_ & GLOBAL_DIRTY)
+		if (m_dirty_ & GLOBAL_DIRTY)
 		{
-			global_transform_ = parent_ ? parent_->GetGlobalTransform() * local_transform_ : local_transform_;
-
-			dirty_ &= ~GLOBAL_DIRTY;
+			m_global_transform_ = GetTransform();
+			if (NodeComponent* parent = m_node_->GetParentNode())
+			{
+				Transform3DComponent& parent_transform = parent->mEntity.GetComponent<Transform3DComponent>();
+				m_global_transform_ = parent_transform.GetGlobalTransform() * m_global_transform_;
+			}
+			m_dirty_ &= ~GLOBAL_DIRTY;
 		}
-		return global_transform_;
+		return m_global_transform_;
 	}
 
 	void Transform3DComponent::SetParent(Transform3DComponent* parent)
 	{
-		if (parent_)
-		{
-			parent_->RemoveChild(this);
-		}
-
-		parent_ = parent;
-		if (parent_)
-		{
-			parent_->children_.push_back(this);
-		}
-
-		PropagateChildrenTransformChange();
+		m_node_->SetParent(parent->m_node_);
+		PropagateTransformChange();
 	}
 
 	void Transform3DComponent::RemoveChild(Transform3DComponent* child)
 	{
-		auto It = std::find(children_.begin(), children_.end(), child);
-		assert(It != children_.end() && "Children must be present to be removed!");
-
-		children_.erase(It);
-		child->parent_ = nullptr;
+		assert((child != nullptr) && "You can't remove null child.");
+		m_node_->RemoveChild(child->m_node_);
+		child->PropagateTransformChange();
 	}
 
-	void Transform3DComponent::PropagateChildrenTransformChange()
+	void Transform3DComponent::PropagateTransformChange()
 	{
-		dirty_ |= DirtyFlags::GLOBAL_DIRTY;
+		m_dirty_ |= DirtyFlags::GLOBAL_DIRTY;
 
-		for (Transform3DComponent* child : children_)
+		for (NodeComponent* child : m_node_->mChildren_)
 		{
-			child->PropagateChildrenTransformChange();
+			Transform3DComponent& child_transform = child->mEntity.GetComponent<Transform3DComponent>();
+			child_transform.PropagateTransformChange();
 		}
 	}
 }

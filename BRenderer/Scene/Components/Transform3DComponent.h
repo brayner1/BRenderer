@@ -3,10 +3,11 @@
 
 namespace brr
 {
+	struct NodeComponent;
 
 	struct alignas(64) Transform3DComponent
 	{
-		static constexpr auto in_place_delete = true;
+		//static constexpr auto in_place_delete = true;
 
 		enum DirtyFlags
 		{
@@ -15,36 +16,43 @@ namespace brr
 		};
 
 		void SetTransform(const glm::mat4& transform);
+		void SetTransform(const glm::vec3& position, const glm::fquat& rotation, const glm::vec3& scale);
+
 		void SetPosition(const glm::vec3& position);
 		void SetRotation(const glm::fquat& rotation);
 
 		void Translate(const glm::vec3& translation);
 		void Rotate(const glm::fquat& rotation);
 		void Rotate(float angle, const glm::vec3& axis);
-		void Scale(glm::vec3 scale);
+		void SetScale(glm::vec3 scale);
 
-		[[nodiscard]] glm::vec3 GetPosition() const;
-		[[nodiscard]] glm::fquat GetRotation() const;
-		[[nodiscard]] glm::vec3 GetEulerRotation() const;
+		[[nodiscard]] const glm::vec3& GetLocalPosition() const { return m_position_; }
+		[[nodiscard]] const glm::fquat& GetLocalRotation() const { return m_rotation_; }
+		[[nodiscard]] const glm::vec3& GetLocalScale() const { return m_scale_; }
+		[[nodiscard]] glm::vec3 GetLocalRotationEuler() const { return glm::eulerAngles(m_rotation_); }
 
-		[[nodiscard]] const glm::mat4& GetTransform() const;
+		[[nodiscard]] glm::vec3 GetGlobalPosition();
+		[[nodiscard]] glm::fquat GetGlobalRotation();
+		[[nodiscard]] glm::vec3 GetGlobalScale();
+		[[nodiscard]] glm::vec3 GetGlobalRotationEuler();
+
+		[[nodiscard]] glm::mat4 GetTransform() const;
 		[[nodiscard]] const glm::mat4& GetGlobalTransform();
 
 		void SetParent(Transform3DComponent* parent);
-
 		void RemoveChild(Transform3DComponent* child);
 
-
 	private:
-		void PropagateChildrenTransformChange();
+		void PropagateTransformChange();
 
-		glm::mat4 local_transform_{ 1.f };
-		glm::mat4 global_transform_{ 1.f };
+		//glm::mat4 mLocal_transform_{ 1.f };
+		glm::fquat m_rotation_ {};
+		glm::vec3 m_scale_;
+		glm::vec3 m_position_;
+		glm::mat4 m_global_transform_{ 1.f };
 
-		Transform3DComponent* parent_{ nullptr };
-		std::vector<Transform3DComponent*> children_{};
-
-		uint8_t dirty_{ NOT_DIRTY };
+		NodeComponent* m_node_;
+		uint8_t m_dirty_{ NOT_DIRTY };
 	};
 
 }

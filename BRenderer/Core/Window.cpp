@@ -31,6 +31,8 @@ namespace brr
 
 		SDL_Log("Window %d Created", winId);
 
+		scene.reset(new Scene());
+
 		return m_pWindowID;
 	}
 
