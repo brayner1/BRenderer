@@ -26,6 +26,20 @@ else()
 	return()
 endif()
 
+message("Searching Assimp...")
+find_package(assimp REQUIRED)
+if (assimp_FOUND)
+    
+	message("ASSIMP_ROOT_DIR: ${ASSIMP_ROOT_DIR}")
+	message("ASSIMP_LIBRARIES: ${ASSIMP_LIBRARIES}")
+	message("ASSIMP_LIBRARY_DIRS: ${ASSIMP_LIBRARY_DIRS}")
+	message("ASSIMP_INCLUDE_DIRS: ${ASSIMP_INCLUDE_DIRS}")
+    
+else()
+	message(FATAL_ERROR "Error: Unable to find Assimp package")
+	return()
+endif()
+
 # Define the project files
 set(BRenderer_SOURCE_FILES
 "BRenderer.cpp" 
@@ -94,8 +108,34 @@ target_precompile_headers(BRenderer PRIVATE
 	[["pch.h"]]
 )
 
-target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" "dependencies/assimp/include")
+target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )
 
-target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib;dependencies/assimp/lib/x64")
+target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib")
 
-target_link_libraries(BRenderer "vulkan-1" "SDL2" "SDL2main" "assimp-vc140-mt")
+target_link_libraries(BRenderer "vulkan-1" "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}")
+
+if (WIN32)
+	add_custom_command(TARGET BRenderer POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy "${ASSIMP_ROOT_DIR}/bin/assimp-vc143-mt.dll" $<TARGET_FILE_DIR:BRenderer>
+	)
+
+	add_custom_command(TARGET BRenderer POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy "${ASSIMP_ROOT_DIR}/bin/pugixml.dll" $<TARGET_FILE_DIR:BRenderer>
+	)
+
+	add_custom_command(TARGET BRenderer POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy "${ASSIMP_ROOT_DIR}/bin/zlib1.dll" $<TARGET_FILE_DIR:BRenderer>
+	)
+
+	add_custom_command(TARGET BRenderer POST_BUILD
+		COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/compile_shaders.bat"
+	)
+endif()
+
+add_custom_command(TARGET BRenderer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/vert.spv" $<TARGET_FILE_DIR:BRenderer>
+)
+
+add_custom_command(TARGET BRenderer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>
+)
