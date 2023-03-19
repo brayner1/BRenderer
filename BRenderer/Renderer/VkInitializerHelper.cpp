@@ -152,11 +152,29 @@ namespace brr::render::VkHelpers
 	{
 		SwapChainProperties swap_chain_properties;
 
-		swap_chain_properties.m_surfCapabilities = physical_device.getSurfaceCapabilitiesKHR(surface);
+		auto getSurfCapabResult = physical_device.getSurfaceCapabilitiesKHR(surface);
+		if (getSurfCapabResult.result != vk::Result::eSuccess)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfaceCapabilitiesKHR! Result code: %s.", vk::to_string(getSurfCapabResult.result).c_str());
+			exit(1);
+		}
+		swap_chain_properties.m_surfCapabilities = getSurfCapabResult.value;
 
-		swap_chain_properties.m_surfFormats = physical_device.getSurfaceFormatsKHR(surface);
+		 auto getSurfFormatsResult = physical_device.getSurfaceFormatsKHR(surface);
+		 if (getSurfFormatsResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfaceFormatKHR! Result code: %s.", vk::to_string(getSurfFormatsResult.result).c_str());
+			 exit(1);
+		 }
+		 swap_chain_properties.m_surfFormats = getSurfFormatsResult.value;
 
-		swap_chain_properties.m_presentModes = physical_device.getSurfacePresentModesKHR(surface);
+		 auto getSurfPresentModesResult = physical_device.getSurfacePresentModesKHR(surface);
+		 if (getSurfPresentModesResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfacePresentModeKHR! Result code: %s.", vk::to_string(getSurfPresentModesResult.result).c_str());
+			 exit(1);
+		 }
+		 swap_chain_properties.m_presentModes = getSurfPresentModesResult.value;
 
 		return swap_chain_properties;
 	}

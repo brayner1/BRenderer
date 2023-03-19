@@ -12,7 +12,13 @@ namespace brr::render
 			.setCodeSize(code.size())
 			.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
 
-		return Renderer::GetRenderer()->GetDevice()->Get_VkDevice().createShaderModule(shader_module_info);
+		auto createShaderModuleResult = Renderer::GetRenderer()->GetDevice()->Get_VkDevice().createShaderModule(shader_module_info);
+		if (createShaderModuleResult.result != vk::Result::eSuccess)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create ShaderModule! Result code: %s.", vk::to_string(createShaderModuleResult.result).c_str());
+			exit(1);
+		}
+		return createShaderModuleResult.value;
 	}
 
 

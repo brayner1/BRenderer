@@ -68,8 +68,7 @@ namespace brr{
 			void Init_DescriptorPool();
 			void Init_DescriptorSets();
 
-			// Initialize CommandPool and allocate CommandBuffers, as well as define the basic synchronization primitives.
-			void Init_CommandPool();
+			// Initialize CommandBuffers, as well as define the basic synchronization primitives.
 			void Init_CommandBuffers(RendererWindow& window);
 
 			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
@@ -99,6 +98,7 @@ namespace brr{
 			struct UniformBufferObject
 			{
 				glm::mat4 projection_view{ 1.f };
+				glm::mat4 model;
 			};
 
 			// Windows

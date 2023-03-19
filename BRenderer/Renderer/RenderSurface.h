@@ -24,7 +24,6 @@ namespace brr::render
 
 		void CreateVertexBuffer(RenderDevice* device, std::vector<Vertex3_PosColor>& vertices);
 		void CreateIndexBuffer(RenderDevice* device, std::vector<uint32_t>& indices);
-
 	};
 
 }

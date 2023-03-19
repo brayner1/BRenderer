@@ -74,7 +74,13 @@ namespace brr
 		{
 			assert(IsValid() && "DeviceBuffer must be valid before being mapped.");
 
-			mapped_ = device_.mapMemory(buffer_memory_, offset, size);
+			 auto mapMemResult = device_.mapMemory(buffer_memory_, offset, size);
+			 if (mapMemResult.result != vk::Result::eSuccess)
+			 {
+				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create map Buffer memory! Result code: %s.", vk::to_string(mapMemResult.result).c_str());
+				 exit(1);
+			 }
+			 mapped_ = mapMemResult.value;
 		}
 
 		void DeviceBuffer::Unmap()

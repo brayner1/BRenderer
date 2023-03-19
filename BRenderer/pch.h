@@ -17,6 +17,7 @@
 #include <utility>
 #include <optional>
 
+#define VULKAN_HPP_NO_EXCEPTIONS
 #include "vulkan/vulkan.hpp"
 
 #include "SDL2/SDL.h"

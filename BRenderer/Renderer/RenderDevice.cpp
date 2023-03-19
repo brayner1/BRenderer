@@ -122,7 +122,13 @@ namespace brr::render
 			.setPEnabledExtensionNames(extensions)
 			.setPEnabledLayerNames(enabled_validation_layers);
 
-		vulkan_instance_ = vk::createInstance(inst_create_info);
+		 auto createInstanceResult = vk::createInstance(inst_create_info);
+		 if (createInstanceResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Vulkan Instance! Result code: %s.", vk::to_string(createInstanceResult.result).c_str());
+			 exit(1);
+		 }
+		 vulkan_instance_ = createInstanceResult.value;
 
 		SDL_Log("Instance Created");
 	}
@@ -218,7 +224,13 @@ namespace brr::render
 			.setEnabledLayerCount(0)
 			.setPEnabledExtensionNames(device_extensions);
 
-		device_ = phys_device_.createDevice(device_create_info);
+		 auto createDeviceResult = phys_device_.createDevice(device_create_info);
+		 if (createDeviceResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Vulkan Device! Result code: %s.", vk::to_string(createDeviceResult.result).c_str());
+			 exit(1);
+		 }
+		 device_ = createDeviceResult.value;
 
 		graphics_queue_ = device_.getQueue(graphics_family_idx, 0);
 
@@ -236,7 +248,13 @@ namespace brr::render
 			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 			.setQueueFamilyIndex(queue_family_indices_.m_graphicsFamily.value());
 
-		command_pool_ = device_.createCommandPool(command_pool_info);
+		 auto createCmdPoolResult = device_.createCommandPool(command_pool_info);
+		 if (createCmdPoolResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create CommandPool! Result code: %s.", vk::to_string(createCmdPoolResult.result).c_str());
+			 exit(1);
+		 }
+		 command_pool_ = createCmdPoolResult.value;
 
 		SDL_Log("CommandPool created.");
 
@@ -247,7 +265,13 @@ namespace brr::render
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 				.setQueueFamilyIndex(queue_family_indices_.m_presentFamily.value());
 
-			present_command_pool_ = device_.createCommandPool(present_pool_info);
+			 auto createPresentCmdPoolResult = device_.createCommandPool(present_pool_info);
+			 if (createPresentCmdPoolResult.result != vk::Result::eSuccess)
+			 {
+				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create present CommandPool! Result code: %s.", vk::to_string(createPresentCmdPoolResult.result).c_str());
+				 exit(1);
+			 }
+			 present_command_pool_ = createPresentCmdPoolResult.value;
 
 			SDL_Log("Separate Present CommandPool created.");
 		}
@@ -259,7 +283,13 @@ namespace brr::render
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 				.setQueueFamilyIndex(queue_family_indices_.m_transferFamily.value());
 
-			transfer_command_pool_ = device_.createCommandPool(transfer_pool_info);
+			 auto createTransferCommandPoolResult = device_.createCommandPool(transfer_pool_info);
+			 if (createTransferCommandPoolResult.result != vk::Result::eSuccess)
+			 {
+				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create transfer CommandPool! Result code: %s.", vk::to_string(createTransferCommandPoolResult.result).c_str());
+				 exit(1);
+			 }
+			 transfer_command_pool_ = createTransferCommandPoolResult.value;
 
 			SDL_Log("Separate Transfer CommandPool created.");
 		}

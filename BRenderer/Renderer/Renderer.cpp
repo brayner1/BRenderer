@@ -110,7 +110,13 @@ namespace brr::render
 		descriptor_set_layout_create_info
 			.setBindings(ubo_LayoutBinding);
 
-		m_pDescriptorSetLayout = render_device_->Get_VkDevice().createDescriptorSetLayout(descriptor_set_layout_create_info);
+		auto createDscSetLayoutResult = render_device_->Get_VkDevice().createDescriptorSetLayout(descriptor_set_layout_create_info);
+		if (createDscSetLayoutResult.result != vk::Result::eSuccess)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: DescriptrSetLayout creation failed. Result code: %s", vk::to_string(createDscSetLayoutResult.result).c_str());
+			exit(1);
+		}
+		m_pDescriptorSetLayout = createDscSetLayoutResult.value;
 	}
 
 	void Renderer::Init_GraphicsPipeline(RendererWindow& window)
@@ -204,7 +210,13 @@ namespace brr::render
 			.setSetLayouts(m_pDescriptorSetLayout);
 			//.setPushConstantRanges(vk::PushConstantRange{vk::ShaderStageFlagBits::eVertex, 0, sizeof()});
 
-		m_pPipelineLayout = render_device_->Get_VkDevice().createPipelineLayout(pipeline_layout_info);
+		 auto createPipelineLayoutResult = render_device_->Get_VkDevice().createPipelineLayout(pipeline_layout_info);
+		 if (createPipelineLayoutResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Not able to create PipelineLayout. Result code: %s.", vk::to_string(createPipelineLayoutResult.result).c_str());
+			 exit(1);
+		 }
+		 m_pPipelineLayout = createPipelineLayoutResult.value;
 
 		vk::GraphicsPipelineCreateInfo graphics_pipeline_info {};
 		graphics_pipeline_info
@@ -222,14 +234,14 @@ namespace brr::render
 			.setBasePipelineHandle(VK_NULL_HANDLE)
 			.setBasePipelineIndex(-1);
 
-		auto result = render_device_->Get_VkDevice().createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
-		if (result.result != vk::Result::eSuccess)
+		auto createGraphicsPipelineResult = render_device_->Get_VkDevice().createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
+		if (createGraphicsPipelineResult.result != vk::Result::eSuccess)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error creating graphics pipeline!");
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create GraphicsPipeline! Result code: %s.", vk::to_string(createGraphicsPipelineResult.result).c_str());
 			exit(1);
 		}
 
-		m_pGraphicsPipeline = result.value;
+		m_pGraphicsPipeline = createGraphicsPipelineResult.value;
 
 		SDL_Log("Graphics Pipeline created.");
 	}
@@ -242,7 +254,13 @@ namespace brr::render
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(2);
 
-		window.m_pCommandBuffers = render_device_->Get_VkDevice().allocateCommandBuffers(command_buffer_alloc_info);
+		auto allocCmdBufferResult = render_device_->Get_VkDevice().allocateCommandBuffers(command_buffer_alloc_info);
+		if (allocCmdBufferResult.result != vk::Result::eSuccess)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate CommandBuffer! Result code: %s.", vk::to_string(allocCmdBufferResult.result).c_str());
+			exit(1);
+		}
+		window.m_pCommandBuffers = allocCmdBufferResult.value;
 
 		SDL_Log("CommandBuffer Created.");
 
@@ -254,7 +272,14 @@ namespace brr::render
 				.setLevel(vk::CommandBufferLevel::ePrimary)
 				.setCommandBufferCount(1);
 
-			window.m_pPresentCommandBuffer = render_device_->Get_VkDevice().allocateCommandBuffers(present_buffer_alloc_info)[0];
+			auto allocPresentCmdBufferResult = render_device_->Get_VkDevice().allocateCommandBuffers(present_buffer_alloc_info);
+			if (allocPresentCmdBufferResult.result != vk::Result::eSuccess)
+			{
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate presentation CommandBuffer! Result code: %s.", vk::to_string(allocPresentCmdBufferResult.result).c_str());
+				exit(1);
+			}
+
+			window.m_pPresentCommandBuffer = allocPresentCmdBufferResult.value[0];
 
 			SDL_Log("Separate Present CommandBuffer Created.");
 		}
@@ -289,7 +314,13 @@ namespace brr::render
 			.setPoolSizes(pool_size)
 			.setMaxSets(FRAME_LAG);
 
-		m_pDescriptorPool = render_device_->Get_VkDevice().createDescriptorPool(pool_create_info);
+		 auto createDescPoolResult = render_device_->Get_VkDevice().createDescriptorPool(pool_create_info);
+		 if (createDescPoolResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create DescriptorPool! Result code: %s.", vk::to_string(createDescPoolResult.result).c_str());
+			 exit(1);
+		 }
+		 m_pDescriptorPool = createDescPoolResult.value;
 
 		SDL_Log("Descriptor Pool created.");
 	}
@@ -303,7 +334,13 @@ namespace brr::render
 			.setDescriptorPool(m_pDescriptorPool)
 			.setSetLayouts(layouts);
 
-		m_pDescriptorSets = render_device_->Get_VkDevice().allocateDescriptorSets(desc_set_allocate_info);
+		 auto allocDescriptorSetResult = render_device_->Get_VkDevice().allocateDescriptorSets(desc_set_allocate_info);
+		 if (allocDescriptorSetResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate DescriptorSet! Result code: %s.", vk::to_string(allocDescriptorSetResult.result).c_str());
+			 exit(1);
+		 }
+		 m_pDescriptorSets = allocDescriptorSetResult.value;
 
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
@@ -322,42 +359,6 @@ namespace brr::render
 		}
 
 		SDL_Log("Descriptor Sets created.");
-	}
-
-	void Renderer::Init_CommandPool()
-	{
-		vk::CommandPoolCreateInfo command_pool_info{};
-		command_pool_info
-			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-			.setQueueFamilyIndex(render_device_->GetQueueFamilyIndices().m_graphicsFamily.value());
-
-		m_pCommandPool = render_device_->Get_VkDevice().createCommandPool(command_pool_info);
-
-		SDL_Log("CommandPool created.");
-
-		if (render_device_->IsDifferentPresentQueue())
-		{
-			vk::CommandPoolCreateInfo present_pool_info{};
-			present_pool_info
-				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-				.setQueueFamilyIndex(render_device_->GetQueueFamilyIndices().m_presentFamily.value());
-
-			m_pPresentCommandPool = render_device_->Get_VkDevice().createCommandPool(present_pool_info);
-
-			SDL_Log("Separate Present CommandPool created.");
-		}
-
-		if (render_device_->IsDifferentTransferQueue())
-		{
-			vk::CommandPoolCreateInfo transfer_pool_info{};
-			transfer_pool_info
-				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-				.setQueueFamilyIndex(render_device_->GetQueueFamilyIndices().m_transferFamily.value());
-
-			m_pTransferCommandPool = render_device_->Get_VkDevice().createCommandPool(transfer_pool_info);
-
-			SDL_Log("Separate Transfer CommandPool created.");
-		}
 	}
 
 	void Renderer::BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer,
@@ -522,7 +523,13 @@ namespace brr::render
 				buffer_create_info.setQueueFamilyIndices(indices);
 			}
 
-			buffer = render_device_->Get_VkDevice().createBuffer(buffer_create_info);
+			 auto createBufferResult = render_device_->Get_VkDevice().createBuffer(buffer_create_info);
+			 if (createBufferResult.result != vk::Result::eSuccess)
+			 {
+				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Buffer! Result code: %s.", vk::to_string(createBufferResult.result).c_str());
+				 exit(1);
+			 }
+			 buffer = createBufferResult.value;
 
 			SDL_Log("Buffer created.");
 		}
@@ -537,7 +544,13 @@ namespace brr::render
 				.setMemoryTypeIndex(FindMemoryType(memory_requirements.memoryTypeBits,
 					properties));
 
-			buffer_memory = render_device_->Get_VkDevice().allocateMemory(allocate_info);
+			 auto allocMemResult = render_device_->Get_VkDevice().allocateMemory(allocate_info);
+			 if (allocMemResult.result != vk::Result::eSuccess)
+			 {
+				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate DeviceMemory for buffer! Result code: %s.", vk::to_string(allocMemResult.result).c_str());
+				 exit(1);
+			 }
+			 buffer_memory = allocMemResult.value;
 
 			SDL_Log("Buffer Memory Allocated.");
 		}
@@ -558,7 +571,13 @@ namespace brr::render
 			.setCommandPool(transfer_cmd_pool)
 			.setCommandBufferCount(1);
 
-		vk::CommandBuffer cmd_buffer = render_device_->Get_VkDevice().allocateCommandBuffers(cmd_buffer_alloc_info)[0];
+		 auto allocCmdBuffersResult = render_device_->Get_VkDevice().allocateCommandBuffers(cmd_buffer_alloc_info);
+		 if (allocCmdBuffersResult.result != vk::Result::eSuccess)
+		 {
+			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate CommandBuffer! Result code: %s.", vk::to_string(allocCmdBuffersResult.result).c_str());
+			 exit(1);
+		 }
+		 vk::CommandBuffer cmd_buffer = allocCmdBuffersResult.value[0];
 
 		vk::CommandBufferBeginInfo cmd_begin_info{};
 		cmd_begin_info
