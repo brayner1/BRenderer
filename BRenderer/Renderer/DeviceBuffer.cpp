@@ -114,6 +114,7 @@ namespace brr
 		vk::DescriptorBufferInfo DeviceBuffer::GetDescriptorInfo(vk::DeviceSize size, vk::DeviceSize offset) const
 		{
 			assert(IsValid() && "DeviceBuffer must be valid before getting its DescriptorBufferInfo.");
+			//assert((size == VK_WHOLE_SIZE || size <= buffer_size_) && "Parameter size must be either 'VK_WHOLE_SIZE' or <= DeviceBuffer size  ");
 			return vk::DescriptorBufferInfo{ buffer_, offset, size };
 		}
 

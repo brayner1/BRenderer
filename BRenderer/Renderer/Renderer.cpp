@@ -1,5 +1,6 @@
 #include "Core/Window.h"
 #include "Core/PerspectiveCamera.h"
+#include "Renderer/VkInitializerHelper.h"
 #include "Renderer/Renderer.h"
 #include "Renderer/RenderDevice.h"
 #include "Renderer/Swapchain.h"
@@ -68,25 +69,23 @@ namespace brr::render
 		if (!render_device_)
 		{
 			render_device_ = std::make_unique<RenderDevice>(window);
-
-			/*std::vector<Vertex2_PosColor> verts = vertices;
-			std::vector<uint32_t> inds = indices;*/
-			//mesh = new Mesh2D(render_device_->Get_VkDevice(), std::move(verts), std::move(inds));
 		}
 
 		rend_window.swapchain_ = std::make_unique<Swapchain>(render_device_.get(), window);
 
+		// Create UniformBuffers
+		Init_UniformBuffers();
 		// Define the DescriptorSetLayout and Initialize the GraphicsPipeline
-		Init_DescriptorSetLayout();
+		//Init_DescriptorSetLayout();
+		// Create DescriptorPool and the DescriptorSets
+		//Init_DescriptorPool();
+		Init_DescriptorSets();
+
 		Init_GraphicsPipeline(rend_window);
 
 		// Initialize CommandBuffers
 		Init_CommandBuffers(rend_window);
 
-		// Create UniformBuffers, DescriptorPool and the DescriptorSets
-		Init_UniformBuffers();
-		Init_DescriptorPool();
-		Init_DescriptorSets();
 	}
 
 	void Renderer::Destroy_Window(Window* window)
@@ -94,6 +93,23 @@ namespace brr::render
 		if (render_device_)
 			render_device_->WaitIdle();
 		Reset();
+	}
+
+	void Renderer::Init_UniformBuffers()
+	{
+		vk::DeviceSize buffer_size = sizeof(UniformBufferObject);
+
+		m_uniform_buffers_.reserve(FRAME_LAG);
+
+		SDL_Log("Creating Uniform Buffers");
+		for (uint32_t i = 0; i < FRAME_LAG; i++)
+		{
+			m_uniform_buffers_.emplace_back(render_device_->Get_VkDevice(), buffer_size,
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		}
+
+		SDL_Log("Uniform Buffers created.");
 	}
 
 	void Renderer::Init_DescriptorSetLayout()
@@ -117,6 +133,58 @@ namespace brr::render
 			exit(1);
 		}
 		m_pDescriptorSetLayout = createDscSetLayoutResult.value;
+	}
+
+	void Renderer::Init_DescriptorPool()
+	{
+		vk::DescriptorPoolSize pool_size{};
+		pool_size
+			.setType(vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount(static_cast<uint32_t>(FRAME_LAG));
+
+		vk::DescriptorPoolCreateInfo pool_create_info{};
+		pool_create_info
+			.setPoolSizes(pool_size)
+			.setMaxSets(FRAME_LAG);
+
+		auto createDescPoolResult = render_device_->Get_VkDevice().createDescriptorPool(pool_create_info);
+		if (createDescPoolResult.result != vk::Result::eSuccess)
+		{
+			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create DescriptorPool! Result code: %s.", vk::to_string(createDescPoolResult.result).c_str());
+			exit(1);
+		}
+		m_pDescriptorPool = createDescPoolResult.value;
+
+		SDL_Log("Descriptor Pool created.");
+	}
+
+	void Renderer::Init_DescriptorSets()
+	{
+		m_pDescriptorLayoutCache = new DescriptorLayoutCache(render_device_->Get_VkDevice());
+		m_pDescriptorAllocator = new DescriptorAllocator(render_device_->Get_VkDevice());
+
+
+		DescriptorLayoutBuilder layoutBuilder = DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
+		layoutBuilder
+			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+
+		m_pDescriptorSetLayout = layoutBuilder.GetDescriptorLayout();
+
+		std::array<vk::DescriptorBufferInfo, FRAME_LAG> descriptor_buffer_infos;
+		for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
+		{
+			descriptor_buffer_infos[buffer_info_idx] = m_uniform_buffers_[buffer_info_idx].GetDescriptorInfo();
+		}
+
+		DescriptorSetBuilder setBuilder = DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(&layoutBuilder, m_pDescriptorAllocator);
+		setBuilder.BindBuffer(0, descriptor_buffer_infos);
+
+		std::array<vk::DescriptorSet, FRAME_LAG> descriptor_sets;
+		setBuilder.BuildDescriptorSet(descriptor_sets);
+
+		m_pDescriptorSets = {descriptor_sets.begin(), descriptor_sets.end()};
+
+		SDL_Log("Descriptor Sets created.");
 	}
 
 	void Renderer::Init_GraphicsPipeline(RendererWindow& window)
@@ -285,82 +353,6 @@ namespace brr::render
 		}
 	}
 
-	void Renderer::Init_UniformBuffers()
-	{
-		vk::DeviceSize buffer_size = sizeof(UniformBufferObject);
-
-		uniform_buffers_.reserve(FRAME_LAG);
-
-		SDL_Log("Creating Uniform Buffers");
-		for (uint32_t i = 0; i < FRAME_LAG; i++)
-		{
-			uniform_buffers_.emplace_back(render_device_->Get_VkDevice(), buffer_size,
-			                              vk::BufferUsageFlagBits::eUniformBuffer,
-			                              vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		}
-
-		SDL_Log("Uniform Buffers created.");
-	}
-
-	void Renderer::Init_DescriptorPool()
-	{
-		vk::DescriptorPoolSize pool_size{};
-		pool_size
-			.setType(vk::DescriptorType::eUniformBuffer)
-			.setDescriptorCount(static_cast<uint32_t>(FRAME_LAG));
-
-		vk::DescriptorPoolCreateInfo pool_create_info{};
-		pool_create_info
-			.setPoolSizes(pool_size)
-			.setMaxSets(FRAME_LAG);
-
-		 auto createDescPoolResult = render_device_->Get_VkDevice().createDescriptorPool(pool_create_info);
-		 if (createDescPoolResult.result != vk::Result::eSuccess)
-		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create DescriptorPool! Result code: %s.", vk::to_string(createDescPoolResult.result).c_str());
-			 exit(1);
-		 }
-		 m_pDescriptorPool = createDescPoolResult.value;
-
-		SDL_Log("Descriptor Pool created.");
-	}
-
-	void Renderer::Init_DescriptorSets()
-	{
-		std::vector<vk::DescriptorSetLayout> layouts(FRAME_LAG, m_pDescriptorSetLayout);
-
-		vk::DescriptorSetAllocateInfo desc_set_allocate_info{};
-		desc_set_allocate_info
-			.setDescriptorPool(m_pDescriptorPool)
-			.setSetLayouts(layouts);
-
-		 auto allocDescriptorSetResult = render_device_->Get_VkDevice().allocateDescriptorSets(desc_set_allocate_info);
-		 if (allocDescriptorSetResult.result != vk::Result::eSuccess)
-		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate DescriptorSet! Result code: %s.", vk::to_string(allocDescriptorSetResult.result).c_str());
-			 exit(1);
-		 }
-		 m_pDescriptorSets = allocDescriptorSetResult.value;
-
-		for (uint32_t i = 0; i < FRAME_LAG; i++)
-		{
-			vk::DescriptorBufferInfo desc_buffer_info = uniform_buffers_[i].GetDescriptorInfo();
-
-			vk::WriteDescriptorSet descriptor_write{};
-			descriptor_write
-				.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-				.setDescriptorCount(1)
-				.setDstSet(m_pDescriptorSets[i])
-				.setDstBinding(0)
-				.setDstArrayElement(0)
-				.setBufferInfo(desc_buffer_info);
-
-			render_device_->Get_VkDevice().updateDescriptorSets(descriptor_write, {});
-		}
-
-		SDL_Log("Descriptor Sets created.");
-	}
-
 	void Renderer::BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer,
 		uint32_t image_index)
 	{
@@ -496,9 +488,9 @@ namespace brr::render
 		UniformBufferObject ubo{};
 		ubo.projection_view = scene.GetMainCamera()->GetProjectionMatrix() * scene.GetMainCamera()->GetViewMatrix();
 
-		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Map();
-		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].WriteToBuffer(&ubo, sizeof(ubo));
-		uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Unmap();
+		m_uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Map();
+		m_uniform_buffers_[window.swapchain_->GetCurrentBuffer()].WriteToBuffer(&ubo, sizeof(ubo));
+		m_uniform_buffers_[window.swapchain_->GetCurrentBuffer()].Unmap();
 	}
 
 	void Renderer::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
@@ -624,9 +616,9 @@ namespace brr::render
 		}
 
 		// Destroy Uniform Buffers
-		if (!uniform_buffers_.empty())
+		if (!m_uniform_buffers_.empty())
 		{
-			uniform_buffers_.clear();
+			m_uniform_buffers_.clear();
 		}
 
 		render_device_ = nullptr;

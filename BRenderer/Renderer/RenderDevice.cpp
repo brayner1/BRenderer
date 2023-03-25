@@ -81,7 +81,8 @@ namespace brr::render
 		std::vector<char const*> enabled_validation_layers;
 		if (use_validation_layers)
 		{
-			std::vector<vk::LayerProperties> layers = vk::enumerateInstanceLayerProperties();
+			auto enumInstLayerPropsResult = vk::enumerateInstanceLayerProperties();
+			std::vector<vk::LayerProperties> layers = enumInstLayerPropsResult.value;
 			std::vector<char const*> acceptedLayers;
 			if (VkHelpers::Check_ValidationLayers(instance_validation_layers, layers, acceptedLayers))
 			{
@@ -101,7 +102,8 @@ namespace brr::render
 
 			// TODO: Check if the required extensions are supported by Vulkan
 			uint32_t extension_count = 0;
-			std::vector<vk::ExtensionProperties> extension_properties = vk::enumerateInstanceExtensionProperties();
+			auto enumInstExtPropsResult = vk::enumerateInstanceExtensionProperties();
+			std::vector<vk::ExtensionProperties> extension_properties = enumInstExtPropsResult.value;
 
 			SDL_Log("Available Extensions");
 			for (vk::ExtensionProperties& extension : extension_properties)
@@ -135,7 +137,8 @@ namespace brr::render
 
 	void RenderDevice::Init_PhysDevice(vk::SurfaceKHR surface)
 	{
-		std::vector<vk::PhysicalDevice> devices = vulkan_instance_.enumeratePhysicalDevices();
+		auto enumPhysDevicesResult = vulkan_instance_.enumeratePhysicalDevices();
+		std::vector<vk::PhysicalDevice> devices = enumPhysDevicesResult.value;
 
 		if (devices.size() == 0)
 		{

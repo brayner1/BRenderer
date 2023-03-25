@@ -179,7 +179,8 @@ namespace brr::render
 	{
 		// Acquire swapchain images and create ImageViews
 		{
-			std::vector<vk::Image> swapchain_images = device_->Get_VkDevice().getSwapchainImagesKHR(swapchain_);
+			auto swapchainImagesKHRResult = device_->Get_VkDevice().getSwapchainImagesKHR(swapchain_);
+			std::vector<vk::Image> swapchain_images = swapchainImagesKHRResult.value;
 			image_resources_.resize(swapchain_images.size());
 			for (uint32_t i = 0; i < image_resources_.size(); i++)
 			{

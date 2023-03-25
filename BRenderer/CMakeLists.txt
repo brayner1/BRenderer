@@ -139,17 +139,20 @@ target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib"
 
 target_link_libraries(BRenderer "vulkan-1" "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}")
 
+set(DLL_FILES $<TARGET_FILE:assimp::assimp>)
+message("assimp dlls: ${DLL_FILES}")
+
 if (WIN32)
 	add_custom_command(TARGET BRenderer POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy "${ASSIMP_ROOT_DIR}/bin/assimp-vc143-mt.dll" $<TARGET_FILE_DIR:BRenderer>
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different  $<TARGET_FILE:assimp::assimp> $<TARGET_FILE_DIR:BRenderer>
 	)
 
 	add_custom_command(TARGET BRenderer POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy "${ASSIMP_ROOT_DIR}/bin/pugixml.dll" $<TARGET_FILE_DIR:BRenderer>
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ASSIMP_ROOT_DIR}/bin/pugixml.dll" $<TARGET_FILE_DIR:BRenderer>
 	)
 
 	add_custom_command(TARGET BRenderer POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy "${ASSIMP_ROOT_DIR}/bin/zlib1.dll" $<TARGET_FILE_DIR:BRenderer>
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ASSIMP_ROOT_DIR}/bin/zlib1.dll" $<TARGET_FILE_DIR:BRenderer>
 	)
 
 	add_custom_command(TARGET BRenderer POST_BUILD

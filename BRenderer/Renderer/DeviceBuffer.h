@@ -24,6 +24,12 @@ namespace brr
 
 			void WriteToBuffer(void* data, vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 
+            /**
+			 * \brief Get this buffer DescriptorBufferInfo.
+			 * \param size The size of the
+			 * \param offset 
+			 * \return 
+			 */
 			[[nodiscard]] vk::DescriptorBufferInfo GetDescriptorInfo(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) const;
 
 			[[nodiscard]] vk::Buffer GetBuffer() const { return buffer_; }

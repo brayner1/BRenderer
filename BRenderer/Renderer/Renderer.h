@@ -3,7 +3,7 @@
 #include "Renderer/Swapchain.h"
 #include "Renderer/RenderDevice.h"
 #include "Geometry/Mesh2D.h"
-#include "Renderer/VkInitializerHelper.h"
+#include "Renderer/Descriptors.h"
 
 namespace brr{
 	class Scene;
@@ -109,18 +109,22 @@ namespace brr{
 
 			// Descriptor Sets
 			// TODO: Each window must have its own Descriptor Sets and Uniform Buffers? (If they use the same pipeline, I think not)
+			// TODO: (Actually I think yes, because the pipeline defines only the layout, not the sets that we will use. Each resource may have its own combination of sets/buffers)
 			vk::DescriptorSetLayout m_pDescriptorSetLayout {};
 			vk::DescriptorPool m_pDescriptorPool {};
 			std::vector<vk::DescriptorSet> m_pDescriptorSets {};
 
 			// Pipeline
 
+			DescriptorAllocator*	m_pDescriptorAllocator;
+			DescriptorLayoutCache*	m_pDescriptorLayoutCache;
+
 			vk::PipelineLayout m_pPipelineLayout {};
 			vk::Pipeline m_pGraphicsPipeline {};
 
 			// Uniforms
 
-			std::vector<DeviceBuffer> uniform_buffers_ {};
+			std::vector<DeviceBuffer> m_uniform_buffers_ {};
 
 			// Commands
 

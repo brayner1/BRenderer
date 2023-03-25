@@ -31,8 +31,13 @@ namespace brr::render::VkHelpers
 			// Query if the device provides support for swapchain 
 			{
 				bool swapchain_support = false;
-
-				std::vector<vk::ExtensionProperties>  device_extensions = device.enumerateDeviceExtensionProperties();
+				auto enumDeviceExtPropsResult = device.enumerateDeviceExtensionProperties();
+				if (enumDeviceExtPropsResult.result != vk::Result::eSuccess)
+				{
+					SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfaceCapabilitiesKHR! Result code: %s.", vk::to_string(enumDeviceExtPropsResult.result).c_str());
+					exit(1);
+				}
+				std::vector<vk::ExtensionProperties>  device_extensions = enumDeviceExtPropsResult.value;
 				for (vk::ExtensionProperties& extension_properties : device_extensions)
 				{
 					if (!strcmp(extension_properties.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
@@ -101,7 +106,8 @@ namespace brr::render::VkHelpers
 				}
 			}
 			// Check surface support
-			if (physical_device.getSurfaceSupportKHR(i, surface))
+			auto surfSupportKHRResult = physical_device.getSurfaceSupportKHR(i, surface);
+			if (surfSupportKHRResult.result == vk::Result::eSuccess && surfSupportKHRResult.value)
 			{
 				SDL_Log("Found Present Queue in Family %d", i);
 				if (!indices.m_presentFamily.has_value()

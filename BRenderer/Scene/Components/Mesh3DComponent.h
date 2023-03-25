@@ -6,6 +6,11 @@
 namespace brr
 {
 
+	struct Mesh3DUniform
+	{
+		glm::mat4 model_matrix;
+	};
+
 	struct Mesh3DComponent
 	{
 		struct SurfaceData
@@ -28,10 +33,14 @@ namespace brr
 			void CreateIndexBuffer();
 
 			std::vector<Vertex3_PosColor> m_vertices{};
-			std::vector<uint32_t> m_indices{};
+			std::vector<uint32_t>		  m_indices{};
 
 			render::DeviceBuffer m_vertex_buffer;
 			render::DeviceBuffer m_index_buffer;
+
+			render::DeviceBuffer m_uniform_buffer;
+
+			vk::DescriptorSet m_descriptor_set;
 		};
 
 		std::vector<SurfaceData> surfaces{};

@@ -52,6 +52,8 @@ namespace brr
 		{
 			command_buffer.bindIndexBuffer(m_index_buffer.GetBuffer(), 0, vk::IndexType::eUint32);
 		}
+
+		//command_buffer.bindDescriptorSets(1, );
 	}
 
 	void Mesh3DComponent::SurfaceData::Draw(vk::CommandBuffer command_buffer) const
