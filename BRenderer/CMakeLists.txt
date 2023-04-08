@@ -29,12 +29,12 @@ endif()
 message("Searching Assimp...")
 find_package(assimp REQUIRED)
 if (assimp_FOUND)
-    
+	
 	message("ASSIMP_ROOT_DIR: ${ASSIMP_ROOT_DIR}")
 	message("ASSIMP_LIBRARIES: ${ASSIMP_LIBRARIES}")
 	message("ASSIMP_LIBRARY_DIRS: ${ASSIMP_LIBRARY_DIRS}")
 	message("ASSIMP_INCLUDE_DIRS: ${ASSIMP_INCLUDE_DIRS}")
-    
+	
 else()
 	message(FATAL_ERROR "Error: Unable to find Assimp package")
 	return()
@@ -139,8 +139,10 @@ target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib"
 
 target_link_libraries(BRenderer "vulkan-1" "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}")
 
-set(DLL_FILES $<TARGET_FILE:assimp::assimp>)
-message("assimp dlls: ${DLL_FILES}")
+# Set MSVC working directory to the target executable directory.
+if (MSVC AND CMAKE_VERSION VERSION_GREATER 3.8)
+	set_property(TARGET BRenderer PROPERTY VS_DEBUGGER_WORKING_DIRECTORY $<TARGET_FILE_DIR:BRenderer>)
+endif()
 
 if (WIN32)
 	add_custom_command(TARGET BRenderer POST_BUILD
@@ -161,9 +163,9 @@ if (WIN32)
 endif()
 
 add_custom_command(TARGET BRenderer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/vert.spv" $<TARGET_FILE_DIR:BRenderer>
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/vert.spv" $<TARGET_FILE_DIR:BRenderer>
 )
 
 add_custom_command(TARGET BRenderer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>
 )

@@ -3,7 +3,9 @@
 
 namespace brr::render
 {
-    //-----------------
+    //--------------------------------------------//
+    //-----------  DescriptorAllocator  ----------//
+    //--------------------------------------------//
     class DescriptorAllocator
     {
     public:
@@ -52,43 +54,63 @@ namespace brr::render
         std::vector<vk::DescriptorPool> free_pools_ {};
     };
 
-    //-----------------
+    //--------------------------------------------//
+    //--------  DescriptorLayoutBindings  --------//
+    //--------------------------------------------//
+    struct DescriptorLayoutBindings
+    {
+        DescriptorLayoutBindings() = default;
+
+        bool operator==(const DescriptorLayoutBindings& other) const;
+
+        vk::DescriptorSetLayoutBinding& operator [] (uint32_t binding) { return m_bindings[binding]; }
+
+        size_t Hash() const;
+
+        std::vector<vk::DescriptorSetLayoutBinding> m_bindings {};
+    };
+
+    //--------------------------------------------//
+    //------------  DescriptorLayout  ------------//
+    //--------------------------------------------//
+    struct DescriptorLayout
+    {
+        vk::DescriptorSetLayout  m_descriptor_set_layout;
+        DescriptorLayoutBindings m_bindings;
+    };
+
+    //--------------------------------------------//
+    //----------  DescriptorLayoutCache  ---------//
+    //--------------------------------------------//
     class DescriptorLayoutCache
     {
     public:
         DescriptorLayoutCache() = default;
         explicit DescriptorLayoutCache(vk::Device device);
 
-        vk::DescriptorSetLayout CreateDescriptorLayout(vk::DescriptorSetLayoutCreateInfo* layout_create_info);
+        vk::DescriptorSetLayout CreateDescriptorLayout(DescriptorLayoutBindings layout_bindings);
 
         void Cleanup();
 
         [[nodiscard]] bool IsValid() const { return m_device; }
 
-        struct DescriptorLayoutInfo
-        {
-            std::vector<vk::DescriptorSetLayoutBinding> m_bindings;
-
-            bool operator==(const DescriptorLayoutInfo& other) const;
-
-            size_t Hash() const;
-        };
-
     private:
 
         struct DescriptorLayoutHash
         {
-            size_t operator()(const DescriptorLayoutInfo& info) const
+            size_t operator()(const DescriptorLayoutBindings& info) const
             {
                 return info.Hash();
             }
         };
 
-        std::unordered_map<DescriptorLayoutInfo, vk::DescriptorSetLayout, DescriptorLayoutHash> m_layoutCache;
+        std::unordered_map<DescriptorLayoutBindings, vk::DescriptorSetLayout, DescriptorLayoutHash> m_layoutCache;
         vk::Device m_device {};
     };
 
-    //---------------
+    //--------------------------------------------//
+    //---------  DescriptorLayoutBuilder  --------//
+    //--------------------------------------------//
     class DescriptorLayoutBuilder
     {
 	public:
@@ -98,22 +120,29 @@ namespace brr::render
 								            vk::DescriptorType type,
 								            vk::ShaderStageFlags stageFlags);
 
-        const std::vector<vk::DescriptorSetLayoutBinding>& GetBindings() const { return m_layoutBindings; }
+        [[nodiscard]] DescriptorLayout BuildDescriptorLayout();
 
-        [[nodiscard]] vk::DescriptorSetLayout GetDescriptorLayout() const;
-	private:
+    private:
+        template <uint32_t N_Sets>
+        friend class DescriptorSetBuilder;
+
         DescriptorLayoutBuilder() = default;
 
-        std::vector<vk::DescriptorSetLayoutBinding> m_layoutBindings;
+        DescriptorLayoutBindings m_descriptor_layout_bindings {};
 
         DescriptorLayoutCache* m_layoutCache = nullptr;
     };
 
+
+    //--------------------------------------------//
+    //----------  DescriptorSetBuilder  ----------//
+    //--------------------------------------------//
     template <uint32_t N_Sets>
     class DescriptorSetBuilder {
     public:
 
-        static DescriptorSetBuilder MakeDescriptorSetBuilder(DescriptorLayoutBuilder* layoutBuilder, DescriptorAllocator* descriptorAllocator);
+        static DescriptorSetBuilder MakeDescriptorSetBuilder(const DescriptorLayout& layout, DescriptorAllocator* descriptor_allocator);
+        static DescriptorSetBuilder MakeDescriptorSetBuilder(DescriptorLayoutBuilder& layout_builder, DescriptorAllocator* descriptor_allocator);
 
         DescriptorSetBuilder& BindBuffer(uint32_t binding, std::array<vk::DescriptorBufferInfo, N_Sets> bufferInfo);
 
@@ -122,41 +151,57 @@ namespace brr::render
         
         bool BuildDescriptorSet(std::array<vk::DescriptorSet, N_Sets>& sets, vk::DescriptorSetLayout& layout);
         bool BuildDescriptorSet(std::array<vk::DescriptorSet, N_Sets>& sets);
+
     private:
         DescriptorSetBuilder() = default;
 
         std::array<std::vector<vk::WriteDescriptorSet>, N_Sets> m_descriptorWrites;
 
 
-        DescriptorLayoutBuilder*	m_descriptorLayoutBuilder = nullptr;
-        DescriptorAllocator*        m_descriptorAlloc = nullptr;
+        DescriptorLayout            m_descriptor_layout     = {};
+        DescriptorAllocator*        m_descriptorAlloc       = nullptr;
     };
 
     template <uint32_t N_Sets>
     DescriptorSetBuilder<N_Sets>
     DescriptorSetBuilder<N_Sets>::MakeDescriptorSetBuilder(
-        DescriptorLayoutBuilder* layoutBuilder, 
-        DescriptorAllocator* descriptorAllocator
+        const DescriptorLayout& layout,
+        DescriptorAllocator* descriptor_allocator
     )
     {
-        DescriptorSetBuilder builder;
+        DescriptorSetBuilder set_builder;
 
-        builder.m_descriptorLayoutBuilder = layoutBuilder;
-        builder.m_descriptorAlloc = descriptorAllocator;
-        return builder;
+        set_builder.m_descriptor_layout         = layout;
+        set_builder.m_descriptorAlloc           = descriptor_allocator;
+        return set_builder;
     }
 
     template <uint32_t N_Sets>
-    DescriptorSetBuilder<N_Sets>& DescriptorSetBuilder<N_Sets>::BindBuffer(uint32_t binding,
-        std::array<vk::DescriptorBufferInfo, N_Sets> bufferInfo)
+    DescriptorSetBuilder<N_Sets> DescriptorSetBuilder<N_Sets>::MakeDescriptorSetBuilder(
+        DescriptorLayoutBuilder& layout_builder, 
+        DescriptorAllocator* descriptor_allocator
+    )
     {
-        if (!m_descriptorAlloc || !m_descriptorLayoutBuilder)
+        DescriptorSetBuilder set_builder;
+
+        set_builder.m_descriptor_layout         = layout_builder.BuildDescriptorLayout();
+        set_builder.m_descriptorAlloc           = descriptor_allocator;
+        return set_builder;
+    }
+
+    template <uint32_t N_Sets>
+    DescriptorSetBuilder<N_Sets>& DescriptorSetBuilder<N_Sets>::BindBuffer(
+        uint32_t binding,
+        std::array<vk::DescriptorBufferInfo, N_Sets> bufferInfo
+    )
+    {
+        if (!m_descriptorAlloc)
         {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't bind buffer with non-initialized DescriptorSetBuilder");
             return *this;
         }
 
-        vk::DescriptorSetLayoutBinding setLayoutBinding = m_descriptorLayoutBuilder->GetBindings()[binding];
+        vk::DescriptorSetLayoutBinding descriptor_binding = m_descriptor_layout.m_bindings[binding];
 
         for (uint32_t info_idx = 0; info_idx < N_Sets; info_idx++)
         {
@@ -164,7 +209,7 @@ namespace brr::render
             descriptor_write
                 .setPBufferInfo(&bufferInfo[info_idx])
                 .setDstBinding(binding)
-                .setDescriptorType(setLayoutBinding.descriptorType)
+                .setDescriptorType(descriptor_binding.descriptorType)
                 .setDescriptorCount(1);
 
             m_descriptorWrites[info_idx].push_back(descriptor_write);
@@ -174,16 +219,18 @@ namespace brr::render
     }
 
     template <uint32_t N_Sets>
-    DescriptorSetBuilder<N_Sets>& DescriptorSetBuilder<N_Sets>::BindImage(uint32_t binding,
-        std::array<vk::DescriptorImageInfo, N_Sets> imageInfo)
+    DescriptorSetBuilder<N_Sets>& DescriptorSetBuilder<N_Sets>::BindImage(
+        uint32_t binding,
+        std::array<vk::DescriptorImageInfo, N_Sets> imageInfo
+    )
     {
-        if (!m_descriptorAlloc || !m_descriptorLayoutBuilder)
+        if (!m_descriptorAlloc)
         {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't bind image with non-initialized DescriptorSetBuilder");
             return *this;
         }
 
-        vk::DescriptorSetLayoutBinding setLayoutBinding = m_descriptorLayoutBuilder->GetBindings()[binding];
+        vk::DescriptorSetLayoutBinding descriptor_binding = m_descriptor_layout.m_bindings[binding];
 
         for (uint32_t info_idx = 0; info_idx < N_Sets; info_idx++)
         {
@@ -191,7 +238,7 @@ namespace brr::render
             descriptor_write
                 .setPImageInfo(imageInfo[info_idx])
                 .setDstBinding(binding)
-                .setDescriptorType(setLayoutBinding.descriptorType)
+                .setDescriptorType(descriptor_binding.descriptorType)
                 .setDescriptorCount(1);
 
             m_descriptorWrites[info_idx].push_back(descriptor_write);
@@ -202,9 +249,9 @@ namespace brr::render
 
     template <uint32_t N_Sets>
     bool DescriptorSetBuilder<N_Sets>::BuildDescriptorSet(std::array<vk::DescriptorSet, N_Sets>& sets,
-        vk::DescriptorSetLayout& layout)
+                                                          vk::DescriptorSetLayout&               layout)
     {
-        layout = m_descriptorLayoutBuilder->GetDescriptorLayout();
+        layout = m_descriptor_layout.m_descriptor_set_layout;
         std::vector<vk::DescriptorSetLayout> layouts (N_Sets, layout);
 
         // Allocate descriptor

@@ -31,14 +31,6 @@ namespace brr::render
 
 	std::unique_ptr<Renderer> Renderer::singleton = nullptr;
 
-	Renderer::Renderer()
-	{
-		if (!singleton)
-		{
-			singleton.reset(this);
-		}
-	}
-
 	Renderer::~Renderer()
 	{
 		Reset();
@@ -168,7 +160,8 @@ namespace brr::render
 		layoutBuilder
 			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
-		m_pDescriptorSetLayout = layoutBuilder.GetDescriptorLayout();
+		DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+		m_pDescriptorSetLayout = descriptor_layout.m_descriptor_set_layout;
 
 		std::array<vk::DescriptorBufferInfo, FRAME_LAG> descriptor_buffer_infos;
 		for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
@@ -176,7 +169,7 @@ namespace brr::render
 			descriptor_buffer_infos[buffer_info_idx] = m_uniform_buffers_[buffer_info_idx].GetDescriptorInfo();
 		}
 
-		DescriptorSetBuilder setBuilder = DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(&layoutBuilder, m_pDescriptorAllocator);
+		DescriptorSetBuilder setBuilder = DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(descriptor_layout, m_pDescriptorAllocator);
 		setBuilder.BindBuffer(0, descriptor_buffer_infos);
 
 		std::array<vk::DescriptorSet, FRAME_LAG> descriptor_sets;
@@ -626,7 +619,12 @@ namespace brr::render
 		
 	}
 
-	uint32_t Renderer::FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const
+    Renderer::Renderer()
+    {
+		singleton.reset(this);
+    }
+
+    uint32_t Renderer::FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const
 	{
 		vk::PhysicalDeviceMemoryProperties pDev_memory_properties = render_device_->Get_PhysicalDevice().getMemoryProperties();
 		for (uint32_t i = 0; i < pDev_memory_properties.memoryTypeCount; i++)
@@ -640,4 +638,14 @@ namespace brr::render
 
 		throw std::runtime_error("Failed to find valid memory type.");
 	}
+
+    DescriptorLayoutBuilder Renderer::GetDescriptorLayoutBuilder() const
+    {
+		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
+    }
+
+    DescriptorSetBuilder<FRAME_LAG> Renderer::GetDescriptorSetBuilder(const DescriptorLayout& layout) const
+    {
+		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator);
+    }
 }

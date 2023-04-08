@@ -6,7 +6,8 @@
 #include "Renderer/Descriptors.h"
 
 namespace brr{
-	class Scene;
+    class WindowManager;
+    class Scene;
 	static constexpr int FRAME_LAG = 2;
 
 	class Window;
@@ -18,20 +19,12 @@ namespace brr{
 			struct ImageResources;
 			struct RendererWindow;
 		public:
-			Renderer();
-
 			~Renderer();
 
 			static Renderer* GetRenderer()
 			{
-				if (!singleton)
-				{
-					singleton = std::make_unique<Renderer>();
-				}
 				return singleton.get();
 			}
-
-			void Init_VulkanRenderer(Window* main_window);
 
 			void Window_Resized(Window* window);
 
@@ -52,9 +45,17 @@ namespace brr{
 			[[nodiscard]] RenderDevice* GetDevice() const { return render_device_.get(); }
 			[[nodiscard]] uint32_t FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const;
 
+			[[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
+			[[nodiscard]] DescriptorSetBuilder<FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
+
 			void Reset();
 
 		private:
+			friend class brr::WindowManager;
+			Renderer();
+
+			void Init_VulkanRenderer(Window* main_window);
+
 			// NOTE: Function is private for now since multiple windows is not yet supported
 			// TODO: Add multi-window support and make 'Create_Window' public.
 			void Create_Window(Window* window);
@@ -116,8 +117,8 @@ namespace brr{
 
 			// Pipeline
 
-			DescriptorAllocator*	m_pDescriptorAllocator;
-			DescriptorLayoutCache*	m_pDescriptorLayoutCache;
+			DescriptorAllocator*	m_pDescriptorAllocator   = nullptr;
+			DescriptorLayoutCache*	m_pDescriptorLayoutCache = nullptr;
 
 			vk::PipelineLayout m_pPipelineLayout {};
 			vk::Pipeline m_pGraphicsPipeline {};

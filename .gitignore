@@ -33,6 +33,7 @@
 
 # Visual Studio
 /.vs
+/CMakePresets.json
 
 # Build
 /out/build/x64-debug

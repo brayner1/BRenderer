@@ -26,9 +26,9 @@ vk::DescriptorPool CreatePool(vk::Device device, const brr::render::DescriptorAl
 
 namespace brr::render
 {
-	//////////////////////////////
-	//// Descriptor Allocator ////
-	//////////////////////////////
+	//--------------------------------------------//
+	//-----------  DescriptorAllocator  ----------//
+	//--------------------------------------------//
 	
 	DescriptorAllocator::DescriptorAllocator(vk::Device device) : m_device(device)
 	{
@@ -125,78 +125,11 @@ namespace brr::render
 		}
 	}
 
-	/////////////////////////////////
-	//// Descriptor Layout Cache ////
-	/////////////////////////////////
+	//--------------------------------------------//
+    //----------  DescriptorLayoutBindings  ----------//
+    //--------------------------------------------//
 
-	DescriptorLayoutCache::DescriptorLayoutCache(vk::Device device)
-	: m_device(device)
-	{
-	}
-
-	vk::DescriptorSetLayout DescriptorLayoutCache::CreateDescriptorLayout(
-		vk::DescriptorSetLayoutCreateInfo* layout_create_info)
-	{
-		assert(IsValid() && "'CreateDescriptorLayout' called on invalid DescriptorLayoutCache");
-		DescriptorLayoutInfo layoutInfo;
-		layoutInfo.m_bindings.reserve(layout_create_info->bindingCount);
-		bool isSorted = true;
-		int32_t lastBinding = -1;
-		for (uint32_t i = 0; i < layout_create_info->bindingCount; i++)
-		{
-			layoutInfo.m_bindings.push_back(layout_create_info->pBindings[i]);
-
-			if (static_cast<int32_t>(layout_create_info->pBindings[i].binding) > lastBinding)
-			{
-				lastBinding = layout_create_info->pBindings[i].binding;
-			}
-			else
-			{
-				isSorted = false;
-			}
-		}
-
-		if (!isSorted)
-		{
-			std::sort(layoutInfo.m_bindings.begin(), layoutInfo.m_bindings.end(), 
-			[](vk::DescriptorSetLayoutBinding& a, vk::DescriptorSetLayoutBinding& b)
-			{
-				return a.binding < b.binding;
-			}
-			);
-		}
-
-		auto it = m_layoutCache.find(layoutInfo);
-		if (it != m_layoutCache.end())
-		{
-			return (*it).second;
-		}
-		else
-		{
-			vk::DescriptorSetLayout layout;
-			auto createDescSetLayoutResult = m_device.createDescriptorSetLayout(*layout_create_info);
-			if (createDescSetLayoutResult.result != vk::Result::eSuccess)
-			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create DescriptorSetLayout! Result code: %s.", vk::to_string(createDescSetLayoutResult.result).c_str());
-				exit(1);
-			}
-			layout = createDescSetLayoutResult.value;
-
-			m_layoutCache[layoutInfo] = layout;
-			return layout;
-		}
-	}
-
-	void DescriptorLayoutCache::Cleanup()
-	{
-		for (auto layout_pair : m_layoutCache)
-		{
-			m_device.destroyDescriptorSetLayout(layout_pair.second);
-		}
-		m_layoutCache.clear();
-	}
-
-	bool DescriptorLayoutCache::DescriptorLayoutInfo::operator==(const DescriptorLayoutInfo& other) const
+	bool DescriptorLayoutBindings::operator==(const DescriptorLayoutBindings& other) const
 	{
 		if (other.m_bindings.size() != m_bindings.size())
 		{
@@ -226,7 +159,7 @@ namespace brr::render
 		}
 	}
 
-	size_t DescriptorLayoutCache::DescriptorLayoutInfo::Hash() const
+	size_t DescriptorLayoutBindings::Hash() const
 	{
 		using std::size_t;
 		using std::hash;
@@ -246,6 +179,78 @@ namespace brr::render
 	}
 
 	//--------------------------------------------//
+	//----------  DescriptorLayoutCache  ---------//
+	//--------------------------------------------//
+
+	DescriptorLayoutCache::DescriptorLayoutCache(vk::Device device)
+	: m_device(device)
+	{
+	}
+
+	vk::DescriptorSetLayout DescriptorLayoutCache::CreateDescriptorLayout(
+        DescriptorLayoutBindings layout_info)
+	{
+		assert(IsValid() && "'CreateDescriptorLayout' called on invalid DescriptorLayoutCache");
+		assert(!layout_info.m_bindings.empty() && "Can't create empty DescriptorSetLayout");
+
+		bool isSorted = true;
+		int32_t lastBinding = -1;
+		for (uint32_t i = 0; i < layout_info.m_bindings.size(); i++)
+		{
+			if (static_cast<int32_t>(layout_info.m_bindings[i].binding) > lastBinding)
+			{
+				lastBinding = layout_info.m_bindings[i].binding;
+			}
+			else
+			{
+				isSorted = false;
+			}
+		}
+
+		if (!isSorted)
+		{
+			std::sort(layout_info.m_bindings.begin(), layout_info.m_bindings.end(),
+			[](const vk::DescriptorSetLayoutBinding& a, const vk::DescriptorSetLayoutBinding& b)
+			{
+				return a.binding < b.binding;
+			}
+			);
+		}
+
+		auto it = m_layoutCache.find(layout_info);
+		if (it != m_layoutCache.end())
+		{
+			return (*it).second;
+		}
+		else
+		{
+			vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info;
+			descriptor_set_layout_create_info
+				.setBindings(layout_info.m_bindings);
+
+            auto createDescSetLayoutResult = m_device.createDescriptorSetLayout(descriptor_set_layout_create_info);
+			if (createDescSetLayoutResult.result != vk::Result::eSuccess)
+			{
+				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create DescriptorSetLayout! Result code: %s.", vk::to_string(createDescSetLayoutResult.result).c_str());
+				exit(1);
+			}
+			vk::DescriptorSetLayout layout = createDescSetLayoutResult.value;
+
+			m_layoutCache[layout_info] = layout;
+			return layout;
+		}
+	}
+
+	void DescriptorLayoutCache::Cleanup()
+	{
+		for (auto layout_pair : m_layoutCache)
+		{
+			m_device.destroyDescriptorSetLayout(layout_pair.second);
+		}
+		m_layoutCache.clear();
+	}
+
+    //--------------------------------------------//
 	//--------  DescriptorLayoutBuilder  ---------//
 	//--------------------------------------------//
 
@@ -271,17 +276,16 @@ namespace brr::render
 			.setDescriptorCount(1)
 			.setPImmutableSamplers(nullptr);
 
-		m_layoutBindings.push_back(layoutBinding);
+		m_descriptor_layout_bindings.m_bindings.push_back(layoutBinding);
 
 		return *this;
 	}
 
-	vk::DescriptorSetLayout DescriptorLayoutBuilder::GetDescriptorLayout() const
+	DescriptorLayout DescriptorLayoutBuilder::BuildDescriptorLayout()
 	{
-		vk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info{};
-		descriptor_set_layout_create_info
-			.setBindings(m_layoutBindings);
-
-		return m_layoutCache->CreateDescriptorLayout(&descriptor_set_layout_create_info);
+		DescriptorLayout descriptor_layout;
+		descriptor_layout.m_descriptor_set_layout = m_layoutCache->CreateDescriptorLayout(m_descriptor_layout_bindings);
+		descriptor_layout.m_bindings = std::move(m_descriptor_layout_bindings);
+		return descriptor_layout;
 	}
 }
