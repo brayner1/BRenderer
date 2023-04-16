@@ -57,6 +57,8 @@ namespace brr{
 			[[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
 			[[nodiscard]] DescriptorSetBuilder<FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
 
+			[[nodiscard]] const DevicePipeline& GetGraphicsPipeline() const { return m_graphics_pipeline; }
+
 			void Reset();
 
 		private:
@@ -70,21 +72,19 @@ namespace brr{
 			void Create_Window(Window* window);
 
 			// Define DescriptorSetLayout and create the GraphicsPipeline
-			void Init_DescriptorSetLayout();
 			void Init_GraphicsPipeline(RendererWindow& window);
 
 			// Create UniformBuffers and the DescriptorSets
 			void Init_UniformBuffers();
-			void Init_DescriptorPool();
 			void Init_DescriptorSets();
 
 			// Initialize CommandBuffers, as well as define the basic synchronization primitives.
 			void Init_CommandBuffers(RendererWindow& window);
 
-			void BeginRenderPass_CommandBuffer(RendererWindow& rend_window, vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
-			void BindPipeline_CommandBuffer(RendererWindow& rend_window, const DevicePipeline& pipeline, vk::CommandBuffer cmd_buffer);
+			void BeginRenderPass_CommandBuffer(RendererWindow& rend_window, vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index) const;
+			void BindPipeline_CommandBuffer(RendererWindow& rend_window, const DevicePipeline& pipeline, vk::CommandBuffer cmd_buffer) const;
 			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index, Scene* scene);
-			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer);
+			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const;
 
 			void Recreate_Swapchain(RendererWindow& window);
 
@@ -108,7 +108,6 @@ namespace brr{
 			struct UniformBufferObject
 			{
 				glm::mat4 projection_view{ 1.f };
-				glm::mat4 model;
 			};
 
 			// Windows
@@ -121,7 +120,6 @@ namespace brr{
 			// TODO: Each window must have its own Descriptor Sets and Uniform Buffers? (If they use the same pipeline, I think not)
 			// TODO: (Actually I think yes, because the pipeline defines only the layout, not the sets that we will use. Each resource may have its own combination of sets/buffers)
 			vk::DescriptorSetLayout m_pDescriptorSetLayout {};
-			vk::DescriptorPool m_pDescriptorPool {};
 			std::vector<vk::DescriptorSet> m_pDescriptorSets {};
 
 			// DevicePipeline
@@ -133,7 +131,7 @@ namespace brr{
 
 			// Uniforms
 
-			std::vector<DeviceBuffer> m_uniform_buffers_ {};
+			std::vector<DeviceBuffer> m_pUniform_buffers {};
 
 			// Commands
 

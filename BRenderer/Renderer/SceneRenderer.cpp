@@ -1,17 +1,126 @@
 #include "SceneRenderer.h"
 
-#include "Renderer/Renderer.h"
-
+#include "Scene/Scene.h"
 #include "Scene/Components/Mesh3DComponent.h"
 #include "Scene/Components/Transform3DComponent.h"
 
 namespace brr::render
 {
     SceneRenderer::SceneRenderer(entt::registry& registry)
-    : m_registry(&registry)
+    : m_scene_registry(&registry)
     {
 		SDL_Log("Creating SceneRenderer");
         registry.on_construct<Mesh3DComponent>().connect<&SceneRenderer::OnAddedMesh3D>(this);
+
+		//m_render_registry.group<RenderData>();
+    }
+
+    void SceneRenderer::UpdateRenderData(uint32_t buffer_index, const std::vector<DeviceBuffer>& camera_uniform_buffers)
+    {
+		if (!m_render_device)
+		{
+			m_render_device = Renderer::GetRenderer()->GetDevice();
+		}
+		auto render_group = m_scene_registry->group<Transform3DComponent, Mesh3DComponent>();
+
+		Renderer* renderer = Renderer::GetRenderer();
+		render_group.each([&](auto entity, Transform3DComponent& transform, Mesh3DComponent& mesh)
+		{
+			for (Mesh3DComponent::SurfaceData& surface : mesh.surfaces)
+			{
+			    if (!surface.NeedUpdate() && (transform.Dirty() != Transform3DComponent::NOT_DIRTY))
+			    {
+					continue;
+			    }
+
+                SurfaceId surf_id = static_cast<SurfaceId>(surface.GetSurfaceID());
+				assert(m_render_registry.valid(surf_id) && "Surface is not in the render registry. Something went wrong.");
+				RenderData& render_data = m_render_registry.get<RenderData>(surf_id);
+
+				// atualiza vertex e index buffer
+				if (surface.NeedUpdate())
+			    {
+			        CreateVertexBuffer(surface, render_data);
+                    CreateIndexBuffer(surface, render_data);
+
+					surface.m_need_update = false;
+			    }
+
+				// atualiza uniform
+				if (transform.Dirty() != Transform3DComponent::NOT_DIRTY || render_data.m_uniform_dirty[buffer_index])
+				{
+					if (!render_data.m_descriptor_sets[0])
+					{
+						Init_UniformBuffers(render_data);
+
+						DescriptorLayoutBuilder layoutBuilder = renderer->GetDescriptorLayoutBuilder();
+						layoutBuilder
+							.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+							.SetBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+
+						render_data.m_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+
+                        std::array<vk::DescriptorBufferInfo, FRAME_LAG> model_descriptor_buffer_infos;
+						std::array<vk::DescriptorBufferInfo, FRAME_LAG> camera_descriptor_buffer_infos;
+                        for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
+                        {
+                           model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
+						   camera_descriptor_buffer_infos[buffer_info_idx] = camera_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
+                        }
+
+                        auto setBuilder = renderer->GetDescriptorSetBuilder(render_data.m_descriptor_layout);
+						setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
+					    setBuilder.BindBuffer(1, model_descriptor_buffer_infos);
+
+                        setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
+
+                        SDL_Log("Model Descriptor Sets created.");
+					}
+
+					if (transform.Dirty() != Transform3DComponent::NOT_DIRTY)
+					{
+						render_data.m_uniform_dirty.fill(true);
+					}
+
+					Mesh3DUniform uniform;
+					uniform.model_matrix = transform.GetGlobalTransform();
+
+					render_data.m_uniform_buffers[buffer_index].Map();
+					render_data.m_uniform_buffers[buffer_index].WriteToBuffer(&uniform, sizeof(uniform));
+					render_data.m_uniform_buffers[buffer_index].Unmap();
+
+					render_data.m_uniform_dirty[buffer_index] = false;
+				}
+
+			}
+		});
+
+    }
+
+    void SceneRenderer::Render(vk::CommandBuffer cmd_buffer, uint32_t buffer_index, const DevicePipeline& render_pipeline)
+    {
+		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipeline());
+
+		//auto render_group = m_render_registry.group<RenderData>();
+		auto render_view = m_render_registry.view<RenderData>();
+
+		render_view.each([&](auto entity, RenderData& render_data)
+		{
+			cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 0, render_data.m_descriptor_sets[buffer_index], {});
+
+			assert(render_data.m_vertex_buffer.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
+			cmd_buffer.bindVertexBuffers(0, render_data.m_vertex_buffer.GetBuffer(), { 0 });
+
+			if (render_data.m_index_buffer.IsValid())
+			{
+				cmd_buffer.bindIndexBuffer(render_data.m_index_buffer.GetBuffer(), 0, vk::IndexType::eUint32);
+				cmd_buffer.drawIndexed(render_data.num_indices, 1, 0, 0, 0);
+			}
+			else
+			{
+				cmd_buffer.draw( render_data.num_vertices, 1, 0, 0);
+			}
+		});
     }
 
     void SceneRenderer::OnAddedMesh3D(entt::registry& registry, entt::entity entity)
@@ -21,13 +130,16 @@ namespace brr::render
 
 		for (Mesh3DComponent::SurfaceData& surface : mesh_3d_component.surfaces)
 		{
-			SDL_Log("Configuring surface");
-			CreateVertexBuffer(surface);
-			CreateIndexBuffer(surface);
+			SurfaceId surf_id = static_cast<SurfaceId>(surface.GetSurfaceID());
+			if (!m_render_registry.valid(surf_id))
+			{
+				m_render_registry.create(surf_id);
+				m_render_registry.emplace<RenderData>(surf_id);
+			}
 		}
     }
 
-    void SceneRenderer::CreateVertexBuffer(Mesh3DComponent::SurfaceData& surface_data)
+    void SceneRenderer::CreateVertexBuffer(Mesh3DComponent::SurfaceData& surface_data, RenderData& render_data)
     {
 		assert(!surface_data.m_vertices.empty() && "Vertices data can't be empty.");
 		render::Renderer* render = render::Renderer::GetRenderer();
@@ -51,18 +163,20 @@ namespace brr::render
 
 		SDL_Log("Creating Vertex Buffer.");
 
-		surface_data.m_vertex_buffer = render::DeviceBuffer(vkDevice, buffer_size,
+		render_data.m_vertex_buffer = DeviceBuffer(vkDevice, buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
+		render_data.num_vertices = surface_data.m_vertices.size();
+
 		SDL_Log("Copying Staging Buffer into Vertex Buffer.");
 
-		render->Copy_Buffer(staging_buffer.GetBuffer(), surface_data.m_vertex_buffer.GetBuffer(), buffer_size);
+		render->Copy_Buffer(staging_buffer.GetBuffer(), render_data.m_vertex_buffer.GetBuffer(), buffer_size);
 
 		SDL_Log("Destroying Staging Buffer.");
     }
 
-    void SceneRenderer::CreateIndexBuffer(Mesh3DComponent::SurfaceData& surface_data)
+    void SceneRenderer::CreateIndexBuffer(Mesh3DComponent::SurfaceData& surface_data, RenderData& render_data)
     {
 		if (surface_data.m_indices.empty())
 			return;
@@ -87,14 +201,31 @@ namespace brr::render
 
 		SDL_Log("Creating Index Buffer.");
 
-		surface_data.m_index_buffer = render::DeviceBuffer(vkDevice, buffer_size,
+		render_data.m_index_buffer = DeviceBuffer(vkDevice, buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
+		render_data.num_indices = surface_data.m_indices.size();
+
 		SDL_Log("Copying Staging Buffer into Index Buffer.");
 
-		render->Copy_Buffer(staging_buffer.GetBuffer(), surface_data.m_index_buffer.GetBuffer(), buffer_size);
+		render->Copy_Buffer(staging_buffer.GetBuffer(), render_data.m_index_buffer.GetBuffer(), buffer_size);
 
 		SDL_Log("Destroying Staging Buffer.");
     }
+
+    void SceneRenderer::Init_UniformBuffers(RenderData& render_data)
+	{
+		vk::DeviceSize buffer_size = sizeof(Mesh3DUniform);
+
+		SDL_Log("Creating Uniform Buffers");
+		for (uint32_t i = 0; i < FRAME_LAG; i++)
+		{
+			render_data.m_uniform_buffers[i].Reset(m_render_device->Get_VkDevice(), buffer_size,
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		}
+
+		SDL_Log("Uniform Buffers created.");
+	}
 }

@@ -34,8 +34,8 @@ namespace brr
 
 			[[nodiscard]] vk::Buffer GetBuffer() const { return buffer_; }
 
-			bool IsValid() const { return device_ && buffer_; }
-			operator bool() const { return IsValid(); }
+			[[nodiscard]] bool IsValid() const { return device_ && buffer_; }
+            explicit [[nodiscard]] operator bool() const { return IsValid(); }
 
 		private:
 

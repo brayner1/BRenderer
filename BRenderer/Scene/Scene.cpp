@@ -26,7 +26,7 @@ namespace brr
 		entt::entity new_entity = m_registry_.create();
 
 		NodeComponent& node = m_registry_.emplace<NodeComponent>(new_entity);
-		Transform3DComponent& transform = m_registry_.emplace<Transform3DComponent>(new_entity);
+		Transform3DComponent& transform = m_registry_.emplace<Transform3DComponent>(new_entity, &node);
 		if (parent)
 		{
 			assert(m_registry_.valid(parent.entity_) && "Parent Entity must be valid.");

@@ -19,7 +19,9 @@ namespace brr
 	{
 		struct SurfaceData
 		{
-			SurfaceData() = default;
+            inline static uint64_t currentSurfaceID = 0;
+
+			SurfaceData();
 
 			SurfaceData(const SurfaceData& surface);
 
@@ -31,8 +33,7 @@ namespace brr
 
 			[[nodiscard]] bool NeedUpdate() const { return m_need_update; }
 
-			void Bind(vk::CommandBuffer command_buffer) const;
-			void Draw(vk::CommandBuffer command_buffer) const;
+			[[nodiscard]] uint64_t GetSurfaceID() const { return m_surfaceId; }
 
 		private:
 			friend class brr::render::SceneRenderer;
@@ -40,12 +41,7 @@ namespace brr
 			std::vector<Vertex3_PosColor> m_vertices{};
 			std::vector<uint32_t>		  m_indices{};
 
-			render::DeviceBuffer m_vertex_buffer {};
-			render::DeviceBuffer m_index_buffer {};
-
-			render::DeviceBuffer m_uniform_buffer {};
-
-			vk::DescriptorSet m_descriptor_set {};
+			uint64_t m_surfaceId;
 
 			bool m_need_update = false;
 		};

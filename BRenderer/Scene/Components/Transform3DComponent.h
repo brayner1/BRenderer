@@ -7,7 +7,9 @@ namespace brr
 
 	struct alignas(64) Transform3DComponent
 	{
-		//static constexpr auto in_place_delete = true;
+        explicit Transform3DComponent (NodeComponent* my_node);
+
+		Transform3DComponent(NodeComponent* my_node, NodeComponent* parent_node);
 
 		enum DirtyFlags
 		{
@@ -39,6 +41,8 @@ namespace brr
 		[[nodiscard]] glm::mat4 GetTransform() const;
 		[[nodiscard]] const glm::mat4& GetGlobalTransform();
 
+		[[nodiscard]] DirtyFlags Dirty() const { return static_cast<DirtyFlags>(m_dirty_); }
+
 		void SetParent(Transform3DComponent* parent);
 		void RemoveChild(Transform3DComponent* child);
 
@@ -46,13 +50,13 @@ namespace brr
 		void PropagateTransformChange();
 
 		//glm::mat4 mLocal_transform_{ 1.f };
-		glm::fquat m_rotation_ {};
-		glm::vec3 m_scale_;
-		glm::vec3 m_position_;
+		glm::fquat m_rotation_ {1.0, 0.0, 0.0, 0.0};
+		glm::vec3 m_scale_	{1.0f};
+		glm::vec3 m_position_ {0.0f};
 		glm::mat4 m_global_transform_{ 1.f };
 
 		NodeComponent* m_node_;
-		uint8_t m_dirty_{ NOT_DIRTY };
+		uint8_t m_dirty_{ GLOBAL_DIRTY };
 	};
 
 }

@@ -8,7 +8,19 @@ namespace brr
 	/// Transform3DComponent ///
 	////////////////////////////
 
-	void Transform3DComponent::SetTransform(const glm::mat4& transform)
+    Transform3DComponent::Transform3DComponent(NodeComponent* my_node)
+    : m_node_(my_node)
+    {
+		assert(my_node != nullptr && "Can't initialize Transform3DComponent with NULL node.");
+    }
+
+    Transform3DComponent::Transform3DComponent(NodeComponent* my_node, NodeComponent* parent_node)
+    : Transform3DComponent(my_node)
+    {
+		m_node_->SetParent(parent_node);
+    }
+
+    void Transform3DComponent::SetTransform(const glm::mat4& transform)
 	{
 		//mLocal_transform_ = transform;
 		glm::vec3 skew; glm::vec4 perspective;
