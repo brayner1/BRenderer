@@ -29,8 +29,6 @@ namespace brr
 
 		//m_pMainWindow.reset();
 
-		SDL_Log("Renderer Destroyed");
-
 		SDL_Quit();
 	}
 

@@ -168,6 +168,7 @@ namespace brr::render
 		// If old swapchain is valid, destroy it. (It happens on swapchain recreation)
 		if (swapchain_)
 		{
+			SDL_Log("Swapchain was recreated. Cleaning old swapchain.");
 			Cleanup_Swapchain();
 		}
 

@@ -29,12 +29,12 @@ endif()
 message("Searching Assimp...")
 find_package(assimp REQUIRED)
 if (assimp_FOUND)
-	
+    
 	message("ASSIMP_ROOT_DIR: ${ASSIMP_ROOT_DIR}")
 	message("ASSIMP_LIBRARIES: ${ASSIMP_LIBRARIES}")
 	message("ASSIMP_LIBRARY_DIRS: ${ASSIMP_LIBRARY_DIRS}")
 	message("ASSIMP_INCLUDE_DIRS: ${ASSIMP_INCLUDE_DIRS}")
-	
+    
 else()
 	message(FATAL_ERROR "Error: Unable to find Assimp package")
 	return()
@@ -65,9 +65,11 @@ set(BRenderer_SOURCE_FILES
 
 "Renderer/Descriptors.cpp"
 "Renderer/DeviceBuffer.cpp"
+"Renderer/DevicePipeline.cpp"
 "Renderer/RenderDevice.cpp"
 "Renderer/Renderer.cpp" 
 "Renderer/RenderSurface.cpp"
+"Renderer/SceneRenderer.cpp"
 "Renderer/Shader.cpp" 
 "Renderer/Swapchain.cpp"
 "Renderer/VkInitializerHelper.cpp" 
@@ -99,9 +101,12 @@ set(BRenderer_HEADER_FILES
 
 "Renderer/Descriptors.h"
 "Renderer/DeviceBuffer.h"
+"Renderer/DevicePipeline.h"
 "Renderer/RenderDevice.h"
 "Renderer/Renderer.h"
 "Renderer/RenderSurface.h"
+"Renderer/SceneRenderer.h"
+
 "Renderer/Shader.h"
 "Renderer/Swapchain.h"
 "Renderer/VkInitializerHelper.h" 
@@ -163,9 +168,9 @@ if (WIN32)
 endif()
 
 add_custom_command(TARGET BRenderer POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/vert.spv" $<TARGET_FILE_DIR:BRenderer>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/vert.spv" $<TARGET_FILE_DIR:BRenderer>
 )
 
 add_custom_command(TARGET BRenderer POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>
 )

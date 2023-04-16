@@ -4,43 +4,40 @@
 
 namespace brr
 {
-	Mesh3DComponent::SurfaceData::SurfaceData()
-	{
-	}
-
 	Mesh3DComponent::SurfaceData::SurfaceData(const SurfaceData& surface)
-	{
-		m_vertices = surface.m_vertices;
-		m_indices = surface.m_indices;
-
-		CreateVertexBuffer();
-		CreateIndexBuffer();
-	}
+    : m_vertices(surface.m_vertices),
+      m_indices(surface.m_indices)
+    {
+		m_need_update = true;
+		SDL_Log("Mesh3DComponent Initialized.");
+    }
 
 	Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor>&& vertices)
 	: m_vertices(std::move(vertices))
 	{
-		CreateVertexBuffer();
+		m_need_update = true;
+		SDL_Log("Mesh3DComponent Initialized.");
 	}
 
 	Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor> vertices)
 	: m_vertices(std::move(vertices))
 	{
-		CreateVertexBuffer();
+		m_need_update = true;
+		SDL_Log("Mesh3DComponent Initialized.");
 	}
 
 	Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor>&& vertices, std::vector<uint32_t>&& indices)
 	: m_vertices(std::move(vertices)), m_indices(std::move(indices))
 	{
-		CreateVertexBuffer();
-		CreateIndexBuffer();
+		m_need_update = true;
+		SDL_Log("Mesh3DComponent Initialized.");
 	}
 
 	Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor> vertices, std::vector<uint32_t> indices)
 	: m_vertices(std::move(vertices)), m_indices(std::move(indices))
 	{
-		CreateVertexBuffer();
-		CreateIndexBuffer();
+		m_need_update = true;
+		SDL_Log("Mesh3DComponent Initialized.");
 	}
 
 	void Mesh3DComponent::SurfaceData::Bind(vk::CommandBuffer command_buffer) const
@@ -69,74 +66,4 @@ namespace brr
 		}
 	}
 
-	void Mesh3DComponent::SurfaceData::CreateVertexBuffer()
-	{
-		assert(!m_vertices.empty() && "Vertices data can't be empty.");
-		render::Renderer* render = render::Renderer::GetRenderer();
-		render::RenderDevice* render_device = render->GetDevice();
-		vk::Device vkDevice = render_device->Get_VkDevice();
-
-		vk::DeviceSize buffer_size = sizeof(Vertex3_PosColor) * m_vertices.size();
-
-		SDL_Log("Creating Staging Buffer.");
-
-		render::DeviceBuffer staging_buffer{ vkDevice,
-			buffer_size,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent };
-
-		staging_buffer.Map();
-		staging_buffer.WriteToBuffer(m_vertices.data());
-		//staging_buffer.Unmap();
-
-		SDL_Log("Vertices data copied to Staging Buffer.");
-
-		SDL_Log("Creating Vertex Buffer.");
-
-		m_vertex_buffer = render::DeviceBuffer(vkDevice, buffer_size,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		SDL_Log("Copying Staging Buffer into Vertex Buffer.");
-
-		render->Copy_Buffer(staging_buffer.GetBuffer(), m_vertex_buffer.GetBuffer(), buffer_size);
-
-		SDL_Log("Destroying Staging Buffer.");
-	}
-
-	void Mesh3DComponent::SurfaceData::CreateIndexBuffer()
-	{
-		if (m_indices.empty())
-			return;
-
-		render::Renderer* render = render::Renderer::GetRenderer();
-		render::RenderDevice* render_device = render->GetDevice();
-		vk::Device vkDevice = render_device->Get_VkDevice();
-
-		vk::DeviceSize buffer_size = sizeof(uint32_t) * m_indices.size();
-
-		SDL_Log("Creating Staging Buffer.");
-
-		render::DeviceBuffer staging_buffer{ vkDevice,
-			buffer_size,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent };
-
-		staging_buffer.Map();
-		staging_buffer.WriteToBuffer(m_indices.data());
-
-		SDL_Log("Indices data copied to Staging Buffer.");
-
-		SDL_Log("Creating Index Buffer.");
-
-		m_index_buffer = render::DeviceBuffer(vkDevice, buffer_size,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
-
-		SDL_Log("Copying Staging Buffer into Index Buffer.");
-
-		render->Copy_Buffer(staging_buffer.GetBuffer(), m_index_buffer.GetBuffer(), buffer_size);
-
-		SDL_Log("Destroying Staging Buffer.");
-	}
 }

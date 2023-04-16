@@ -1,5 +1,6 @@
 #ifndef BRR_RENDERER_H
 #define BRR_RENDERER_H
+#include "Renderer/DevicePipeline.h"
 #include "Renderer/Swapchain.h"
 #include "Renderer/RenderDevice.h"
 #include "Geometry/Mesh2D.h"
@@ -14,7 +15,9 @@ namespace brr{
 	class PerspectiveCamera;
 	namespace render
 	{
-		class Renderer
+        class Shader;
+
+        class Renderer
 		{
 			struct ImageResources;
 			struct RendererWindow;
@@ -31,6 +34,12 @@ namespace brr{
 			void Destroy_Window(Window* window);
 
 			void Draw(Window* window);
+
+			/*
+			 * Pipelines
+			 */
+
+			vk::Pipeline CreateGraphicsPipeline(const Shader& shader);
 
 			/*
 			 * Buffers
@@ -72,8 +81,8 @@ namespace brr{
 			// Initialize CommandBuffers, as well as define the basic synchronization primitives.
 			void Init_CommandBuffers(RendererWindow& window);
 
-			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
-			void BindPipeline_CommandBuffer(vk::Pipeline pipeline, vk::CommandBuffer cmd_buffer);
+			void BeginRenderPass_CommandBuffer(RendererWindow& rend_window, vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
+			void BindPipeline_CommandBuffer(RendererWindow& rend_window, const DevicePipeline& pipeline, vk::CommandBuffer cmd_buffer);
 			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index, Scene* scene);
 			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer);
 
@@ -115,13 +124,12 @@ namespace brr{
 			vk::DescriptorPool m_pDescriptorPool {};
 			std::vector<vk::DescriptorSet> m_pDescriptorSets {};
 
-			// Pipeline
+			// DevicePipeline
 
 			DescriptorAllocator*	m_pDescriptorAllocator   = nullptr;
 			DescriptorLayoutCache*	m_pDescriptorLayoutCache = nullptr;
 
-			vk::PipelineLayout m_pPipelineLayout {};
-			vk::Pipeline m_pGraphicsPipeline {};
+			DevicePipeline m_graphics_pipeline {};
 
 			// Uniforms
 

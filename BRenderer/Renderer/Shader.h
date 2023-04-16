@@ -17,6 +17,8 @@ namespace brr::render
 
 		[[nodiscard]] const std::vector<vk::PipelineShaderStageCreateInfo>& GetPipelineStagesInfo() const { return pipeline_stage_infos_; }
 
+		[[nodiscard]] vk::PipelineVertexInputStateCreateInfo GetPipelineVertexInputState() const;
+
 	private:
 		Shader();
 
@@ -26,6 +28,9 @@ namespace brr::render
 		vk::ShaderModule vert_shader_module_ {};
 		vk::ShaderModule frag_shader_module_ {};
 		std::vector<vk::PipelineShaderStageCreateInfo> pipeline_stage_infos_;
+
+		vk::VertexInputBindingDescription vertex_input_binding_description_;
+		std::array<vk::VertexInputAttributeDescription, 2> vertex_input_attribute_descriptions_;
 
 		std::vector<vk::DescriptorSetLayout>  descriptor_set_layouts_;
 	};

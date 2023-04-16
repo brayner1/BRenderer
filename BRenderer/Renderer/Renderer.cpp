@@ -51,18 +51,17 @@ namespace brr::render
 
 	void Renderer::Create_Window(Window* window)
 	{
+		if (!render_device_)
+		{
+			render_device_ = std::make_unique<RenderDevice>(window);
+		}
+
 		m_pWindows.resize(m_pWindow_number + 1);
 		RendererWindow& rend_window = m_pWindows[m_pWindow_number];
 		m_pWindowId_index_map[window->GetWindowID()] = m_pWindow_number;
 		m_pWindow_number++;
 
 		rend_window.m_associated_window = window;
-
-		if (!render_device_)
-		{
-			render_device_ = std::make_unique<RenderDevice>(window);
-		}
-
 		rend_window.swapchain_ = std::make_unique<Swapchain>(render_device_.get(), window);
 
 		// Create UniformBuffers
@@ -184,127 +183,7 @@ namespace brr::render
 	{
 		Shader shader = Shader::Create_Shader("vert", "frag");
 
-		vk::PipelineVertexInputStateCreateInfo vertex_input_info{};
-		{
-			vk::VertexInputBindingDescription binding_description = Vertex3_PosColor::GetBindingDescription();
-			std::array<vk::VertexInputAttributeDescription, 2> attribute_descriptions = Vertex3_PosColor::GetAttributeDescriptions();
-			
-			vertex_input_info
-				.setVertexBindingDescriptions(binding_description)
-				.setVertexAttributeDescriptions(attribute_descriptions);
-		}
-
-		vk::PipelineInputAssemblyStateCreateInfo input_assembly_info{};
-		input_assembly_info
-			.setTopology(vk::PrimitiveTopology::eTriangleList)
-			.setPrimitiveRestartEnable(false);
-
-		vk::Extent2D swapchain_extent = window.swapchain_->GetSwapchain_Extent();
-
-		vk::Viewport viewport {};
-		viewport
-			.setX(0.f)
-			.setY(0.f)
-			.setWidth((float)swapchain_extent.width)
-			.setHeight((float)swapchain_extent.height)
-			.setMinDepth(0.f)
-			.setMaxDepth(1.f);
-
-		vk::Rect2D scissor{ {0, 0}, swapchain_extent };
-
-		vk::PipelineViewportStateCreateInfo viewport_state_info {};
-		viewport_state_info
-			.setViewportCount(1)
-			.setViewports(viewport)
-			.setScissorCount(1)
-			.setScissors(scissor);
-
-		vk::PipelineRasterizationStateCreateInfo rasterization_state_info {};
-		rasterization_state_info
-			.setDepthClampEnable(false)
-			.setRasterizerDiscardEnable(false)
-			.setPolygonMode(vk::PolygonMode::eFill)
-			.setLineWidth(1.f)
-			.setCullMode(vk::CullModeFlagBits::eBack)
-			.setFrontFace(vk::FrontFace::eCounterClockwise)
-			.setDepthBiasEnable(false)
-			.setDepthBiasConstantFactor(0.f)
-			.setDepthBiasClamp(0.f)
-			.setDepthBiasSlopeFactor(0.f);
-
-		vk::PipelineMultisampleStateCreateInfo multisampling_info {};
-		multisampling_info
-			.setSampleShadingEnable(false)
-			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
-			.setMinSampleShading(1.f)
-			.setPSampleMask(nullptr)
-			.setAlphaToCoverageEnable(false)
-			.setAlphaToOneEnable(false);
-
-		vk::PipelineColorBlendAttachmentState color_blend_attachment {};
-		color_blend_attachment
-			.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-			.setBlendEnable(false)
-			.setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
-			.setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
-			.setColorBlendOp(vk::BlendOp::eAdd)
-			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
-			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
-			.setAlphaBlendOp(vk::BlendOp::eAdd);
-
-		vk::PipelineColorBlendStateCreateInfo color_blending_info {};
-		color_blending_info
-			.setLogicOpEnable(false)
-			.setLogicOp(vk::LogicOp::eCopy)
-			.setAttachments(color_blend_attachment);
-		
-#if 0
-		std::vector<vk::DynamicState> dynamic_states{ vk::DynamicState::eViewport, vk::DynamicState::eLineWidth };
-
-		vk::PipelineDynamicStateCreateInfo dynamic_state_info{};
-		dynamic_state_info
-			.setDynamicStates(dynamic_states);
-#endif
-
-		vk::PipelineLayoutCreateInfo pipeline_layout_info{};
-		pipeline_layout_info
-			.setSetLayouts(m_pDescriptorSetLayout);
-			//.setPushConstantRanges(vk::PushConstantRange{vk::ShaderStageFlagBits::eVertex, 0, sizeof()});
-
-		 auto createPipelineLayoutResult = render_device_->Get_VkDevice().createPipelineLayout(pipeline_layout_info);
-		 if (createPipelineLayoutResult.result != vk::Result::eSuccess)
-		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Not able to create PipelineLayout. Result code: %s.", vk::to_string(createPipelineLayoutResult.result).c_str());
-			 exit(1);
-		 }
-		 m_pPipelineLayout = createPipelineLayoutResult.value;
-
-		vk::GraphicsPipelineCreateInfo graphics_pipeline_info {};
-		graphics_pipeline_info
-			.setStages(shader.GetPipelineStagesInfo())
-			.setPVertexInputState(&vertex_input_info)
-			.setPInputAssemblyState(&input_assembly_info)
-			.setPViewportState(&viewport_state_info)
-			.setPRasterizationState(&rasterization_state_info)
-			.setPMultisampleState(&multisampling_info)
-			.setPColorBlendState(&color_blending_info);
-		graphics_pipeline_info
-			.setLayout(m_pPipelineLayout)
-			.setRenderPass(window.swapchain_->GetRender_Pass())
-			.setSubpass(0)
-			.setBasePipelineHandle(VK_NULL_HANDLE)
-			.setBasePipelineIndex(-1);
-
-		auto createGraphicsPipelineResult = render_device_->Get_VkDevice().createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
-		if (createGraphicsPipelineResult.result != vk::Result::eSuccess)
-		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create GraphicsPipeline! Result code: %s.", vk::to_string(createGraphicsPipelineResult.result).c_str());
-			exit(1);
-		}
-
-		m_pGraphicsPipeline = createGraphicsPipelineResult.value;
-
-		SDL_Log("Graphics Pipeline created.");
+		m_graphics_pipeline.Init_GraphicsPipeline(render_device_->Get_VkDevice(), m_pDescriptorSetLayout, shader, window.swapchain_.get());
 	}
 
 	void Renderer::Init_CommandBuffers(RendererWindow& window)
@@ -346,10 +225,9 @@ namespace brr::render
 		}
 	}
 
-	void Renderer::BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer,
-		uint32_t image_index)
+	void Renderer::BeginRenderPass_CommandBuffer(RendererWindow& rend_window, vk::CommandBuffer cmd_buffer,
+                                                 vk::CommandBuffer present_cmd_buffer, uint32_t image_index)
 	{
-		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
 		vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
 
 		cmd_buffer.begin(cmd_buffer_begin_info);
@@ -363,23 +241,21 @@ namespace brr::render
 
 		vk::RenderPassBeginInfo render_pass_begin_info{};
 		render_pass_begin_info
-			.setRenderPass(window.swapchain_->GetRender_Pass())
-			.setFramebuffer(window.swapchain_->GetFramebuffer(image_index))
-			.setRenderArea(vk::Rect2D{ {0, 0}, window.swapchain_->GetSwapchain_Extent() })
+			.setRenderPass(rend_window.swapchain_->GetRender_Pass())
+			.setFramebuffer(rend_window.swapchain_->GetFramebuffer(image_index))
+			.setRenderArea(vk::Rect2D{ {0, 0}, rend_window.swapchain_->GetSwapchain_Extent() })
 			.setClearValues(clear_value);
 
 		cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
 	}
 
-	void Renderer::BindPipeline_CommandBuffer(vk::Pipeline pipeline, vk::CommandBuffer cmd_buffer)
+	void Renderer::BindPipeline_CommandBuffer(RendererWindow& rend_window, const DevicePipeline& pipeline, vk::CommandBuffer cmd_buffer)
 	{
-		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
-
-		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline());
 
 		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-			m_pPipelineLayout, 0,
-			m_pDescriptorSets[window.swapchain_->GetCurrentBuffer()],
+			pipeline.GetPipelineLayout(), 0,
+			m_pDescriptorSets[rend_window.swapchain_->GetCurrentBuffer()],
 			{});
 	}
 
@@ -393,33 +269,12 @@ namespace brr::render
 	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index, Scene* scene)
 	{
 		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
-		vk::CommandBufferBeginInfo cmd_buffer_begin_info {};
+		BeginRenderPass_CommandBuffer(window, cmd_buffer, present_cmd_buffer, image_index);
 
-		cmd_buffer.begin(cmd_buffer_begin_info);
+		BindPipeline_CommandBuffer(window, m_graphics_pipeline, cmd_buffer);
 
-		if (render_device_->IsDifferentPresentQueue())
-		{
-			present_cmd_buffer.begin(cmd_buffer_begin_info);
-		}
-
-		vk::ClearValue clear_value (std::array<float, 4>({ {0.2f, 0.2f, 0.2f, 1.f} }));
-
-		vk::RenderPassBeginInfo render_pass_begin_info {};
-		render_pass_begin_info
-			.setRenderPass(window.swapchain_->GetRender_Pass())
-			.setFramebuffer(window.swapchain_->GetFramebuffer(image_index))
-			.setRenderArea(vk::Rect2D{{0, 0}, window.swapchain_->GetSwapchain_Extent()})
-			.setClearValues(clear_value);
-
-		cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
-
-		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pGraphicsPipeline);
-
-		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-			m_pPipelineLayout, 0,
-			m_pDescriptorSets[window.swapchain_->GetCurrentBuffer()],
-			{});
-
+		// Render Scene
+		// TODO: Pass this logic to SceneRenderer
 		auto group_3dRender = scene->m_registry_.group<Transform3DComponent, Mesh3DComponent>();
 
 		uint32_t idx = 0;
@@ -433,12 +288,7 @@ namespace brr::render
 			}
 		});
 
-		/*mesh->Bind(cmd_buffer);
-		mesh->Draw(cmd_buffer);*/
-
-		cmd_buffer.endRenderPass();
-
-		cmd_buffer.end();
+		EndRenderPass_CommandBuffer(cmd_buffer);
 	}
 
 	void Renderer::Draw(Window* window)
@@ -614,9 +464,11 @@ namespace brr::render
 			m_uniform_buffers_.clear();
 		}
 
+		m_graphics_pipeline.DestroyPipeline();
+
 		render_device_ = nullptr;
 
-		
+		SDL_Log("Renderer Destroyed");
 	}
 
     Renderer::Renderer()

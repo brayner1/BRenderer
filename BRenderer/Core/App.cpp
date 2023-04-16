@@ -35,8 +35,10 @@ namespace brr
 
 		scene_ = m_pWindowManager->GetMainWindow()->GetScene();
 		Entity entity = scene_->AddEntity({});
-		Mesh3DComponent& mesh = entity.AddComponent<Mesh3DComponent>();
-		mesh.surfaces.emplace_back(vertices, indices);
+		Mesh3DComponent& mesh = entity.AddComponent<Mesh3DComponent>( 
+			std::vector<Mesh3DComponent::SurfaceData>{1, {vertices, indices} } 
+		);
+		//mesh.surfaces.emplace_back(vertices, indices);
 	}
 
 	void App::MainLoop()
