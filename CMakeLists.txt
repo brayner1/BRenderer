@@ -5,5 +5,7 @@ cmake_minimum_required (VERSION 3.8)
 
 project ("BRenderer")
 
+add_subdirectory ("BRenderer/dependencies/spdlog")
+
 # Include sub-projects.
 add_subdirectory ("BRenderer")

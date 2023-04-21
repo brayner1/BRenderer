@@ -142,7 +142,7 @@ target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CUR
 
 target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib")
 
-target_link_libraries(BRenderer "vulkan-1" "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}")
+target_link_libraries(BRenderer PUBLIC "vulkan-1" "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
 
 # Set MSVC working directory to the target executable directory.
 if (MSVC AND CMAKE_VERSION VERSION_GREATER 3.8)
