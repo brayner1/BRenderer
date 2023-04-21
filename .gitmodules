@@ -1,0 +1,3 @@
+[submodule "BRenderer/dependencies/spdlog"]
+	path = BRenderer/dependencies/spdlog
+	url = https://github.com/gabime/spdlog.git
