@@ -117,13 +117,14 @@ namespace brr
 			exit(1);
 		}
 
-		std::stringstream aLogMsg;
+		LogStreamBuffer aLogMsg = BRR_InfoStrBuff();
 		aLogMsg << "Required Extensions\n";
 		for (const char* extension : extensions)
 		{
 			aLogMsg << "\tExtension name: " << extension << "\n";
 		}
-		BRR_LogInfo(aLogMsg.str());
+		aLogMsg.Flush();
+		//BRR_LogInfo(aLogMsg.str());
 	}
 
 	glm::ivec2 Window::GetWindowExtent() const

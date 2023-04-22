@@ -29,8 +29,6 @@ namespace brr{
 
 		entt::registry m_registry_ {};
 
-		render::SceneRenderer m_scene_renderer;
-
 		std::unique_ptr<PerspectiveCamera> m_camera_ {};
 	};
 }

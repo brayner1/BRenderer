@@ -14,8 +14,8 @@ namespace brr
 		                           vk::MemoryPropertyFlags properties) :
 		device_(device), buffer_size_(buffer_size), usage_(usage), properties_(properties)
 		{
-			BRR_LogInfo("Creating Buffer. New buffer: { size: {}, usage: {}, properties: {} }", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
-			Renderer::GetRenderer()->Create_Buffer(buffer_size, usage, properties, buffer_, buffer_memory_);
+			BRR_LogInfo("Creating Buffer. New buffer: [ size: {}, usage: {}, properties: {} ]", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
+			Renderer::GetRenderer()->Create_Buffer(buffer_size_, usage_, properties_, buffer_, buffer_memory_);
 		}
 
 		DeviceBuffer::DeviceBuffer(DeviceBuffer&& device_buffer) noexcept
@@ -59,7 +59,7 @@ namespace brr
 		void DeviceBuffer::Reset(vk::Device device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
 			vk::MemoryPropertyFlags properties)
 		{
-			BRR_LogInfo("Resetting Buffer. New buffer: { size: {}, usage: {}, properties: {} }", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
+			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {}, usage: {}, properties: {} ]", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
 			if (IsValid())
 			{
 				DestroyBuffer();

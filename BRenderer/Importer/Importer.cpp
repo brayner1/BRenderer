@@ -48,7 +48,7 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 	//			//brr::Entity mesh_entity = scene.AddEntity();
 	//			brr::Mesh3DComponent& mesh_component = entity.AddComponent<brr::Mesh3DComponent>();
 
-	//			mesh_component.surfaces.resize(node->mNumMeshes);
+	//			mesh_component.m_surfaces.resize(node->mNumMeshes);
 	//		
 	//			for (size_t i = 0; i < node->mNumMeshes; i++)
 	//			{
@@ -59,18 +59,18 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 	//				aiMesh* mesh = assimp_scene->mMeshes[mesh_index];
 
 	//			
-	//				mesh_component.surfaces[i].m_vertices.resize(mesh->mNumVertices);
-	//				memcpy(mesh_component.surfaces[i].m_vertices.data(), &mesh->mVertices, mesh->mNumVertices * sizeof(glm::vec3));
+	//				mesh_component.m_surfaces[i].m_vertices.resize(mesh->mNumVertices);
+	//				memcpy(mesh_component.m_surfaces[i].m_vertices.data(), &mesh->mVertices, mesh->mNumVertices * sizeof(glm::vec3));
 
-	//				mesh_component.surfaces[i].m_indices.resize(mesh->mNumFaces * 3);
+	//				mesh_component.m_surfaces[i].m_indices.resize(mesh->mNumFaces * 3);
 
 	//				for (uint32_t i = 0, j = 0; i < mesh->mNumFaces; i++, j += 3)
 	//				{
 	//					aiFace face = mesh->mFaces[i];
 
-	//					mesh_component.surfaces[i].m_indices[ j ] = face.mIndices[0];
-	//					mesh_component.surfaces[i].m_indices[j+1] = face.mIndices[1];
-	//					mesh_component.surfaces[i].m_indices[j+2] = face.mIndices[2];
+	//					mesh_component.m_surfaces[i].m_indices[ j ] = face.mIndices[0];
+	//					mesh_component.m_surfaces[i].m_indices[j+1] = face.mIndices[1];
+	//					mesh_component.m_surfaces[i].m_indices[j+2] = face.mIndices[2];
 	//				}
 	//			}
 	//		}

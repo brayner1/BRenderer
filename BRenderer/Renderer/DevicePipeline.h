@@ -11,22 +11,28 @@ namespace brr::render
     {
     public:
         DevicePipeline() = default;
-        DevicePipeline(vk::Device device, vk::DescriptorSetLayout descriptor_layout, const Shader& shader, Swapchain* swapchain);
+        DevicePipeline(vk::Device device, 
+                       std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
+                       const Shader& shader, 
+                       Swapchain* swapchain);
 
-        DevicePipeline(DevicePipeline&& other);
+        DevicePipeline(DevicePipeline&& other) noexcept;
 
         ~DevicePipeline();
 
-        bool Init_GraphicsPipeline(vk::Device device, vk::DescriptorSetLayout descriptor_layout, const Shader& shader, Swapchain* swapchain);
+        bool Init_GraphicsPipeline(vk::Device device, 
+                                   std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
+                                   const Shader& shader, 
+                                   Swapchain* swapchain);
 
-        [[nodiscard]] vk::Pipeline GetPipeline() const{ return m_pipeline; }
-        [[nodiscard]] vk::PipelineLayout GetPipelineLayout() const { return m_pipeline_layout; }
+        [[nodiscard]] constexpr vk::Pipeline GetPipeline() const{ return m_pipeline; }
+        [[nodiscard]] constexpr vk::PipelineLayout GetPipelineLayout() const { return m_pipeline_layout; }
 
         void DestroyPipeline();
 
-        FORCEINLINE [[nodiscard ]]explicit operator bool() const VULKAN_HPP_NOEXCEPT { return m_pipeline; }
+        FORCEINLINE [[nodiscard]] explicit operator bool() const noexcept { return m_pipeline; }
 
-        FORCEINLINE [[nodiscard]] bool operator!() const VULKAN_HPP_NOEXCEPT { return !m_pipeline; }
+        FORCEINLINE [[nodiscard]] bool operator!() const noexcept { return !m_pipeline; }
 
     private:
         vk::Device m_device;

@@ -22,6 +22,10 @@ namespace brr
     void LogStreamBuffer::Flush()
     {
 #ifdef USE_SPDLOG
+        if (message.str().empty())
+        {
+            return;
+        }
         spdlog::log(
             spdlog::source_loc{ filename, line, funcname },
             static_cast<spdlog::level::level_enum>(log_level),

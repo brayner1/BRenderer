@@ -124,14 +124,17 @@ namespace brr
 #define BRR_LogError(...)       (SPDLOG_ERROR(__VA_ARGS__))
 #define BRR_LogCritical(...)    (SPDLOG_CRITICAL(__VA_ARGS__))
 
-enum class LogLevel : int {
-    Trace    = SPDLOG_LEVEL_TRACE,
-    Debug    = SPDLOG_LEVEL_DEBUG,
-    Info     = SPDLOG_LEVEL_INFO,
-    Warning  = SPDLOG_LEVEL_WARN,
-    Error    = SPDLOG_LEVEL_ERROR,
-    Critical = SPDLOG_LEVEL_CRITICAL
-};
+namespace brr
+{
+    enum class LogLevel : int {
+        Trace    = SPDLOG_LEVEL_TRACE,
+        Debug    = SPDLOG_LEVEL_DEBUG,
+        Info     = SPDLOG_LEVEL_INFO,
+        Warning  = SPDLOG_LEVEL_WARN,
+        Error    = SPDLOG_LEVEL_ERROR,
+        Critical = SPDLOG_LEVEL_CRITICAL
+    };
+}
 
 #else
 

@@ -96,12 +96,15 @@ namespace brr::render::VkHelpers
 		bool full_queue_support;
 		// Check for queue families
 		std::vector<vk::QueueFamilyProperties> queue_props = physical_device.getQueueFamilyProperties();
+		LogStreamBuffer log_msg = BRR_InfoStrBuff();
+		log_msg << "Searching Queue Families.";
 		for (uint32_t i = 0; i < queue_props.size(); i++)
 		{
+			log_msg << "\nFamily " << i << ": ";
 			// Check graphics family support
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eGraphics)
 			{
-				BRR_LogInfo("Found Graphics Queue in Family %d", i);
+				log_msg << "\n\tFound Graphics Queue";
 				if (!indices.m_graphicsFamily.has_value())
 				{
 					indices.m_graphicsFamily = i;
@@ -111,7 +114,7 @@ namespace brr::render::VkHelpers
 			auto surfSupportKHRResult = physical_device.getSurfaceSupportKHR(i, surface);
 			if (surfSupportKHRResult.result == vk::Result::eSuccess && surfSupportKHRResult.value)
 			{
-				BRR_LogInfo("Found Present Queue in Family {}", i);
+				log_msg << "\n\tFound Present Queue";
 				if (!indices.m_presentFamily.has_value()
 					|| (indices.m_graphicsFamily.has_value() && indices.m_graphicsFamily.value() == i))
 				{
@@ -121,7 +124,7 @@ namespace brr::render::VkHelpers
 			// Check for compute support (Not required)
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eCompute)
 			{
-				BRR_LogInfo("Found Compute Queue in Family {}", i);
+				log_msg << "\n\tFound Compute Queue";
 				if (!indices.m_computeFamily.has_value())
 				{
 					indices.m_computeFamily = i;
@@ -129,16 +132,18 @@ namespace brr::render::VkHelpers
 			}
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eTransfer)
 			{
-				BRR_LogInfo("Found Transfer Queue in Family {}", i);
+				log_msg << "\n\tFound Transfer Queue";
 				if (!indices.m_transferFamily.has_value() || 
-					(indices.m_graphicsFamily.has_value() && i != indices.m_graphicsFamily.value()))
+					(indices.m_graphicsFamily.has_value()
+					 && indices.m_transferFamily.value() == indices.m_graphicsFamily.value()
+					 && i != indices.m_graphicsFamily.value()))
 				{
 					indices.m_transferFamily = i;
 				}
 			}
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eSparseBinding)
 			{
-				BRR_LogInfo("Found Sparse Binding Queue in Family {}", i);
+				log_msg << "\n\tFound Sparse Binding Queue";
 			}
 
 			//full_queue_support = indices.m_graphicsFamily.has_value() && indices.m_presentFamily.has_value();

@@ -87,21 +87,6 @@ namespace brr
 				m_pWindowManager->ProcessWindowEvent(pEvent.window);
 				if (m_pWindowManager->IsMainWindowClosed())
 					m_pShouldFinish = true;
-				/*Window* window;
-				if (pEvent.window.windowID == m_pMainWindowID)
-				{
-					window = m_pMainWindow.get();
-				}
-				else
-				{
-					const uint32_t window_index = m_pSecondaryWindows_Id_Index_Map[pEvent.window.windowID];
-					window = m_pSecondaryWindows[window_index].get();
-				}
-				window->ProcessWindowEvent(pEvent.window);
-				if (window->NeedToClose())
-				{
-					CloseWindow(pEvent.window.windowID);
-				}*/
 				break;
 			}
 			case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.

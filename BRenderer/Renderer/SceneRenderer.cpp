@@ -8,26 +8,49 @@
 namespace brr::render
 {
     SceneRenderer::SceneRenderer(entt::registry& registry)
-    : m_scene_registry(&registry)
+    : m_render_device(Renderer::GetRenderer()->GetDevice())
     {
+		assert(m_render_device && "Can't create SceneRenderer without RenderDevice.");
 		BRR_LogInfo("Creating SceneRenderer");
         registry.on_construct<Mesh3DComponent>().connect<&SceneRenderer::OnAddedMesh3D>(this);
 
-		//m_render_registry.group<RenderData>();
+		Renderer* renderer = Renderer::GetRenderer();
+
+		for (size_t idx = 0; idx < FRAME_LAG; idx++)
+		{
+			m_camera_uniform_info.m_uniform_buffers[idx] = 
+				DeviceBuffer(m_render_device->Get_VkDevice(), sizeof(UniformBufferObject),
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		}
+
+		DescriptorLayoutBuilder layoutBuilder = renderer->GetDescriptorLayoutBuilder();
+		layoutBuilder
+			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+
+		std::array<vk::DescriptorBufferInfo, FRAME_LAG> camera_descriptor_buffer_infos;
+		for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
+		{
+			camera_descriptor_buffer_infos[buffer_info_idx] =
+				m_camera_uniform_info.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
+		}
+
+		DescriptorLayout layout = layoutBuilder.BuildDescriptorLayout();
+		auto setBuilder = renderer->GetDescriptorSetBuilder(layout);
+		setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
+
+		setBuilder.BuildDescriptorSet(m_camera_uniform_info.m_descriptor_sets);
     }
 
-    void SceneRenderer::UpdateRenderData(uint32_t buffer_index, const std::vector<DeviceBuffer>& camera_uniform_buffers)
+    void SceneRenderer::UpdateRenderData(entt::registry& scene_registry, uint32_t buffer_index, glm::mat4& projection_view)
     {
-		if (!m_render_device)
-		{
-			m_render_device = Renderer::GetRenderer()->GetDevice();
-		}
-		auto render_group = m_scene_registry->group<Transform3DComponent, Mesh3DComponent>();
+		assert(m_render_device && "RenderDevice must be initialized on construction.");
+		auto render_group = scene_registry.group<Transform3DComponent, Mesh3DComponent>();
 
 		Renderer* renderer = Renderer::GetRenderer();
 		render_group.each([&](auto entity, Transform3DComponent& transform, Mesh3DComponent& mesh)
 		{
-			for (Mesh3DComponent::SurfaceData& surface : mesh.surfaces)
+			for (Mesh3DComponent::SurfaceData& surface : mesh)
 			{
 			    if (!surface.NeedUpdate() && (transform.Dirty() != Transform3DComponent::NOT_DIRTY))
 			    {
@@ -38,16 +61,16 @@ namespace brr::render
 				assert(m_render_registry.valid(surf_id) && "Surface is not in the render registry. Something went wrong.");
 				RenderData& render_data = m_render_registry.get<RenderData>(surf_id);
 
-				// atualiza vertex e index buffer
+				// Update vertex and index buffer
 				if (surface.NeedUpdate())
 			    {
 			        CreateVertexBuffer(surface, render_data);
                     CreateIndexBuffer(surface, render_data);
 
-					surface.m_need_update = false;
+					surface.SetUpdated();
 			    }
 
-				// atualiza uniform
+				// update transformation uniform
 				if (transform.Dirty() != Transform3DComponent::NOT_DIRTY || render_data.m_uniform_dirty[buffer_index])
 				{
 					if (!render_data.m_descriptor_sets[0])
@@ -56,22 +79,18 @@ namespace brr::render
 
 						DescriptorLayoutBuilder layoutBuilder = renderer->GetDescriptorLayoutBuilder();
 						layoutBuilder
-							.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-							.SetBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+							.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
 						render_data.m_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
 
                         std::array<vk::DescriptorBufferInfo, FRAME_LAG> model_descriptor_buffer_infos;
-						std::array<vk::DescriptorBufferInfo, FRAME_LAG> camera_descriptor_buffer_infos;
                         for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
                         {
                            model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
-						   camera_descriptor_buffer_infos[buffer_info_idx] = camera_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
                         }
 
                         auto setBuilder = renderer->GetDescriptorSetBuilder(render_data.m_descriptor_layout);
-						setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
-					    setBuilder.BindBuffer(1, model_descriptor_buffer_infos);
+					    setBuilder.BindBuffer(0, model_descriptor_buffer_infos);
 
                         setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
 
@@ -83,7 +102,7 @@ namespace brr::render
 						render_data.m_uniform_dirty.fill(true);
 					}
 
-					Mesh3DUniform uniform;
+					Mesh3DUniform uniform {};
 					uniform.model_matrix = transform.GetGlobalTransform();
 
 					render_data.m_uniform_buffers[buffer_index].Map();
@@ -92,6 +111,13 @@ namespace brr::render
 
 					render_data.m_uniform_dirty[buffer_index] = false;
 				}
+
+				UniformBufferObject ubo;
+				ubo.projection_view = projection_view;
+
+				m_camera_uniform_info.m_uniform_buffers[buffer_index].Map();
+				m_camera_uniform_info.m_uniform_buffers[buffer_index].WriteToBuffer(&ubo, sizeof(ubo));
+				m_camera_uniform_info.m_uniform_buffers[buffer_index].Unmap();
 
 			}
 		});
@@ -102,12 +128,13 @@ namespace brr::render
     {
 		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipeline());
 
-		//auto render_group = m_render_registry.group<RenderData>();
+		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 0, m_camera_uniform_info.m_descriptor_sets[buffer_index], {});
+
 		auto render_view = m_render_registry.view<RenderData>();
 
 		render_view.each([&](auto entity, RenderData& render_data)
 		{
-			cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 0, render_data.m_descriptor_sets[buffer_index], {});
+			cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 1, render_data.m_descriptor_sets[buffer_index], {});
 
 			assert(render_data.m_vertex_buffer.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
 			cmd_buffer.bindVertexBuffers(0, render_data.m_vertex_buffer.GetBuffer(), { 0 });
@@ -127,11 +154,11 @@ namespace brr::render
     void SceneRenderer::OnAddedMesh3D(entt::registry& registry, entt::entity entity)
     {
         Mesh3DComponent& mesh_3d_component = registry.get<Mesh3DComponent>(entity);
-		BRR_LogInfo("OnAddedMesh3D");
+		BRR_LogInfo("Mesh3DComponent added to scene. Creating its RenderData.");
 
-		for (Mesh3DComponent::SurfaceData& surface : mesh_3d_component.surfaces)
+		for (Mesh3DComponent::SurfaceData& surface : mesh_3d_component)
 		{
-			SurfaceId surf_id = static_cast<SurfaceId>(surface.GetSurfaceID());
+            auto surf_id = static_cast<SurfaceId>(surface.GetSurfaceID());
 			if (!m_render_registry.valid(surf_id))
 			{
 				m_render_registry.create(surf_id);

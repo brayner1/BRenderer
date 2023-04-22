@@ -57,6 +57,9 @@ namespace brr::render
 		if (!render_device_)
 		{
 			render_device_ = std::make_unique<RenderDevice>(window);
+
+			m_pDescriptorLayoutCache = new DescriptorLayoutCache(render_device_->Get_VkDevice());
+			m_pDescriptorAllocator = new DescriptorAllocator(render_device_->Get_VkDevice());
 		}
 
 		m_pWindows.resize(m_pWindow_number + 1);
@@ -66,11 +69,10 @@ namespace brr::render
 
 		rend_window.m_associated_window = window;
 		rend_window.swapchain_ = std::make_unique<Swapchain>(render_device_.get(), window);
+		rend_window.scene_renderer = std::make_unique<SceneRenderer>(window->GetScene()->m_registry_);
 
-		// Create UniformBuffers
-		Init_UniformBuffers();
 		// Create DescriptorPool and the DescriptorSets
-		Init_DescriptorSets();
+		Init_DescriptorLayouts();
 
 		Init_GraphicsPipeline(rend_window);
 
@@ -86,59 +88,21 @@ namespace brr::render
 		Reset();
 	}
 
-	void Renderer::Init_UniformBuffers()
+	void Renderer::Init_DescriptorLayouts()
 	{
-		vk::DeviceSize buffer_size = sizeof(UniformBufferObject);
-
-		m_pUniform_buffers.reserve(FRAME_LAG);
-
-		BRR_LogInfo("Creating Uniform Buffers");
-		for (uint32_t i = 0; i < FRAME_LAG; i++)
-		{
-			m_pUniform_buffers.emplace_back(render_device_->Get_VkDevice(), buffer_size,
-				vk::BufferUsageFlagBits::eUniformBuffer,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		}
-
-		BRR_LogInfo("Uniform Buffers created.");
-	}
-
-	void Renderer::Init_DescriptorSets()
-	{
-		m_pDescriptorLayoutCache = new DescriptorLayoutCache(render_device_->Get_VkDevice());
-		m_pDescriptorAllocator = new DescriptorAllocator(render_device_->Get_VkDevice());
-
-
 		DescriptorLayoutBuilder layoutBuilder = DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
 		layoutBuilder
-			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-	        .SetBinding(1, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
 		DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
 		m_pDescriptorSetLayout = descriptor_layout.m_descriptor_set_layout;
-		/*
-		std::array<vk::DescriptorBufferInfo, FRAME_LAG> descriptor_buffer_infos;
-		for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
-		{
-			descriptor_buffer_infos[buffer_info_idx] = m_pUniform_buffers[buffer_info_idx].GetDescriptorInfo();
-		}
-
-		DescriptorSetBuilder setBuilder = DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(descriptor_layout, m_pDescriptorAllocator);
-		setBuilder.BindBuffer(0, descriptor_buffer_infos);
-
-		std::array<vk::DescriptorSet, FRAME_LAG> descriptor_sets;
-		setBuilder.BuildDescriptorSet(descriptor_sets);
-
-		m_pDescriptorSets = {descriptor_sets.begin(), descriptor_sets.end()};
-
-		BRR_LogInfo("Descriptor Sets created.");*/
 	}
 
 	void Renderer::Init_GraphicsPipeline(RendererWindow& window)
 	{
 		Shader shader = Shader::Create_Shader("vert", "frag");
 
-		m_graphics_pipeline.Init_GraphicsPipeline(render_device_->Get_VkDevice(), m_pDescriptorSetLayout, shader, window.swapchain_.get());
+		m_graphics_pipeline.Init_GraphicsPipeline(render_device_->Get_VkDevice(), {2, m_pDescriptorSetLayout }, shader, window.swapchain_.get());
 	}
 
 	void Renderer::Init_CommandBuffers(RendererWindow& window)
@@ -180,8 +144,8 @@ namespace brr::render
 		}
 	}
 
-	void Renderer::BeginRenderPass_CommandBuffer(RendererWindow& rend_window, vk::CommandBuffer cmd_buffer,
-                                                 vk::CommandBuffer present_cmd_buffer, uint32_t image_index) const
+	void Renderer::BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer,
+                                                 RendererWindow& rend_window, uint32_t image_index) const
     {
 		vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
 
@@ -204,13 +168,13 @@ namespace brr::render
 		cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
 	}
 
-	void Renderer::BindPipeline_CommandBuffer(RendererWindow& rend_window, const DevicePipeline& pipeline, vk::CommandBuffer cmd_buffer) const
+	void Renderer::BindPipeline_CommandBuffer(vk::CommandBuffer cmd_buffer, RendererWindow& rend_window, const DevicePipeline& pipeline, vk::DescriptorSet descriptor_set) const
     {
 		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline());
 
 		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
 			pipeline.GetPipelineLayout(), 0,
-			m_pDescriptorSets[rend_window.swapchain_->GetCurrentBuffer()],
+			descriptor_set,
 			{});
 	}
 
@@ -223,27 +187,10 @@ namespace brr::render
 
 	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index, Scene* scene)
 	{
-		RendererWindow& window = m_pWindows[MAIN_WINDOW_ID];
-		BeginRenderPass_CommandBuffer(window, cmd_buffer, present_cmd_buffer, image_index);
+		RendererWindow& rend_window = m_pWindows[MAIN_WINDOW_ID];
+		BeginRenderPass_CommandBuffer(cmd_buffer, present_cmd_buffer, rend_window, image_index);
 
-
-		scene->m_scene_renderer.Render(cmd_buffer, window.swapchain_->GetCurrentBuffer(), m_graphics_pipeline);
-		//BindPipeline_CommandBuffer(window, m_graphics_pipeline, cmd_buffer);
-
-		// Render Scene
-		// TODO: Pass this logic to SceneRenderer
-		//auto group_3dRender = scene->m_registry_.group<Transform3DComponent, Mesh3DComponent>();
-
-		//uint32_t idx = 0;
-		//group_3dRender.each([&](auto entity, Transform3DComponent& transform, Mesh3DComponent& mesh)
-		//{
-		//	for (Mesh3DComponent::SurfaceData& surface : mesh.surfaces)
-		//	{
-		//		//BRR_LogInfo("Rendering surface idx %d", idx);
-		//		/*surface.Bind(cmd_buffer);
-		//		surface.Draw(cmd_buffer);*/
-		//	}
-		//});
+		rend_window.scene_renderer->Render(cmd_buffer, rend_window.swapchain_->GetCurrentBuffer(), m_graphics_pipeline);
 
 		EndRenderPass_CommandBuffer(cmd_buffer);
 	}
@@ -266,7 +213,8 @@ namespace brr::render
 		}
 
 		Scene* scene = window->GetScene();
-		scene->m_scene_renderer.UpdateRenderData(rend_window.swapchain_->GetCurrentBuffer(), m_pUniform_buffers);
+		glm::mat4 projection_view = scene->GetMainCamera()->GetProjectionMatrix() * scene->GetMainCamera()->GetViewMatrix();
+		rend_window.scene_renderer->UpdateRenderData(scene->m_registry_, rend_window.swapchain_->GetCurrentBuffer(), projection_view);
 
 		vk::CommandBuffer current_cmd_buffer = rend_window.m_pCommandBuffers[rend_window.swapchain_->GetCurrentBuffer()];
 
@@ -274,26 +222,7 @@ namespace brr::render
 
 		Record_CommandBuffer(current_cmd_buffer, (render_device_->IsDifferentPresentQueue())? rend_window.m_pPresentCommandBuffer : current_cmd_buffer, image_index, window->GetScene());
 
-		Update_UniformBuffers(rend_window, *scene);
-
 		rend_window.swapchain_->SubmitCommandBuffer(current_cmd_buffer, image_index);
-	}
-
-	void Renderer::Update_UniformBuffers(RendererWindow& window, Scene& scene)
-	{
-		static auto startTime = std::chrono::high_resolution_clock::now();
-
-		auto currentTime = std::chrono::high_resolution_clock::now();
-		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-		float aspect = window.swapchain_->GetSwapchain_Extent().width / (float)window.swapchain_->GetSwapchain_Extent().height;
-
-		UniformBufferObject ubo;
-		ubo.projection_view = scene.GetMainCamera()->GetProjectionMatrix() * scene.GetMainCamera()->GetViewMatrix();
-
-		m_pUniform_buffers[window.swapchain_->GetCurrentBuffer()].Map();
-		m_pUniform_buffers[window.swapchain_->GetCurrentBuffer()].WriteToBuffer(&ubo, sizeof(ubo));
-		m_pUniform_buffers[window.swapchain_->GetCurrentBuffer()].Unmap();
 	}
 
 	void Renderer::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties,
@@ -416,12 +345,6 @@ namespace brr::render
 			{
 				window.swapchain_ = nullptr;
 			}
-		}
-
-		// Destroy Uniform Buffers
-		if (!m_pUniform_buffers.empty())
-		{
-			m_pUniform_buffers.clear();
 		}
 
 		m_graphics_pipeline.DestroyPipeline();

@@ -6,16 +6,19 @@
 
 namespace brr::render
 {
-    DevicePipeline::DevicePipeline(vk::Device device, vk::DescriptorSetLayout descriptor_layout, const Shader& shader, Swapchain* swapchain)
+    DevicePipeline::DevicePipeline(vk::Device device, 
+		                           std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
+		                           const Shader& shader, 
+		                           Swapchain* swapchain)
     {
-        if (!Init_GraphicsPipeline(device, descriptor_layout, shader, swapchain))
+        if (!Init_GraphicsPipeline(device, descriptors_layouts, shader, swapchain))
         {
 			m_pipeline = VK_NULL_HANDLE;
 			m_pipeline_layout = VK_NULL_HANDLE;
         }
     }
 
-    DevicePipeline::DevicePipeline(DevicePipeline&& other)
+    DevicePipeline::DevicePipeline(DevicePipeline&& other) noexcept
     {
 		m_pipeline = other.m_pipeline;
 		other.m_pipeline = VK_NULL_HANDLE;
@@ -29,7 +32,10 @@ namespace brr::render
 		DestroyPipeline();
     }
 
-    bool DevicePipeline::Init_GraphicsPipeline(vk::Device device, vk::DescriptorSetLayout descriptor_layout, const Shader& shader, Swapchain* swapchain)
+    bool DevicePipeline::Init_GraphicsPipeline(vk::Device device,
+                                               std::vector<vk::DescriptorSetLayout> descriptors_layouts,
+                                               const Shader& shader,
+                                               Swapchain* swapchain)
     {
 		m_device = device;
 		vk::PipelineVertexInputStateCreateInfo vertex_input_info = shader.GetPipelineVertexInputState();
@@ -108,8 +114,7 @@ namespace brr::render
 
 		vk::PipelineLayoutCreateInfo pipeline_layout_info{};
 		pipeline_layout_info
-			.setSetLayouts(descriptor_layout);
-		//.setPushConstantRanges(vk::PushConstantRange{vk::ShaderStageFlagBits::eVertex, 0, sizeof()});
+			.setSetLayouts(descriptors_layouts);
 
 		auto createPipelineLayoutResult = m_device.createPipelineLayout(pipeline_layout_info);
 		if (createPipelineLayoutResult.result != vk::Result::eSuccess)

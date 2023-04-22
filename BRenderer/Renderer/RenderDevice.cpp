@@ -120,12 +120,15 @@ namespace brr::render
 			auto enumInstExtPropsResult = vk::enumerateInstanceExtensionProperties();
 			std::vector<vk::ExtensionProperties> extension_properties = enumInstExtPropsResult.value;
 
-			BRR_LogInfo("Available Extensions");
-			for (vk::ExtensionProperties& extension : extension_properties)
-			{
-				BRR_LogInfo("\tExtension name: {}", extension.extensionName);
-
-			}
+		    {
+		        LogStreamBuffer log_msg = BRR_InfoStrBuff();
+				log_msg << "Available Extensions:";
+			    for (vk::ExtensionProperties& extension : extension_properties)
+			    {
+			        log_msg << "\n\tExtension name: " << extension.extensionName;
+			    }
+				//BRR_LogInfo(log_msg.str());
+		    }
 		}
 
 		vk::ApplicationInfo app_info{ };
@@ -166,11 +169,14 @@ namespace brr::render
 			exit(1);
 		}
 
-		BRR_LogInfo("Available devices:");
-		for (vk::PhysicalDevice& device : devices)
-		{
-			BRR_LogInfo("\tDevice: {}", device.getProperties().deviceName);
-		}
+	    {
+			LogStreamBuffer log_msg = BRR_InfoStrBuff();
+			log_msg << "Available devices:";
+		    for (vk::PhysicalDevice& device : devices)
+		    {
+		        log_msg << "\n\tDevice: " << device.getProperties().deviceName;
+		    }
+	    }
 
 		phys_device_ = VkHelpers::Select_PhysDevice(devices, surface);
 
@@ -207,9 +213,10 @@ namespace brr::render
 		const uint32_t presentation_family_idx = queue_family_indices_.m_presentFamily.value();
 		const uint32_t transfer_family_idx = queue_family_indices_.m_transferFamily.has_value() ? queue_family_indices_.m_transferFamily.value() : graphics_family_idx;
 
-		BRR_LogInfo("Graphics Queue Family:\t {}\n"
-		            "Present Queue Family:\t {}\n"
-			        "Transfer Queue Family:\t {}", 
+		BRR_LogInfo("Selected Queue Families:\n"
+			        "\tGraphics Queue Family:\t {}\n"
+		            "\tPresent Queue Family:\t {}\n"
+			        "\tTransfer Queue Family:\t {}", 
 			        graphics_family_idx, 
 			        presentation_family_idx, 
 			        transfer_family_idx);

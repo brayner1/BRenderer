@@ -48,6 +48,10 @@ namespace brr
         m_need_update = true;
     }
 
+    Mesh3DComponent::Mesh3DComponent(std::vector<SurfaceData>&& surfaces)
+    : m_surfaces(surfaces)
+    {}
+
     //void Mesh3DComponent::SurfaceData::Bind(vk::CommandBuffer command_buffer) const
     //{
     //	assert(m_vertex_buffer.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");

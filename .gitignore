@@ -38,3 +38,6 @@
 # Build
 /out/build/x64-debug
 /CMakeSettings.json
+
+#shader spv files
+*.spv

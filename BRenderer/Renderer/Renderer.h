@@ -15,6 +15,7 @@ namespace brr{
 	class PerspectiveCamera;
 	namespace render
 	{
+        class SceneRenderer;
         class Shader;
 
         class Renderer
@@ -75,21 +76,17 @@ namespace brr{
 			void Init_GraphicsPipeline(RendererWindow& window);
 
 			// Create UniformBuffers and the DescriptorSets
-			void Init_UniformBuffers();
-			void Init_DescriptorSets();
+			void Init_DescriptorLayouts();
 
 			// Initialize CommandBuffers, as well as define the basic synchronization primitives.
 			void Init_CommandBuffers(RendererWindow& window);
 
-			void BeginRenderPass_CommandBuffer(RendererWindow& rend_window, vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index) const;
-			void BindPipeline_CommandBuffer(RendererWindow& rend_window, const DevicePipeline& pipeline, vk::CommandBuffer cmd_buffer) const;
+			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, RendererWindow& rend_window, uint32_t image_index) const;
+			void BindPipeline_CommandBuffer(vk::CommandBuffer cmd_buffer, RendererWindow& rend_window, const DevicePipeline& pipeline, vk::DescriptorSet descriptor_set) const;
 			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index, Scene* scene);
 			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const;
 
 			void Recreate_Swapchain(RendererWindow& window);
-
-			void Update_UniformBuffers(RendererWindow& window, Scene& scene);
-
 
 			static Renderer* singleton;
 
@@ -103,6 +100,8 @@ namespace brr{
 				// Command Buffers
 				std::vector<vk::CommandBuffer> m_pCommandBuffers{};
 				vk::CommandBuffer m_pPresentCommandBuffer{};
+
+				std::unique_ptr<SceneRenderer> scene_renderer;
 			};
 
 			struct UniformBufferObject
@@ -120,7 +119,6 @@ namespace brr{
 			// TODO: Each window must have its own Descriptor Sets and Uniform Buffers? (If they use the same pipeline, I think not)
 			// TODO: (Actually I think yes, because the pipeline defines only the layout, not the sets that we will use. Each resource may have its own combination of sets/buffers)
 			vk::DescriptorSetLayout m_pDescriptorSetLayout {};
-			std::vector<vk::DescriptorSet> m_pDescriptorSets {};
 
 			// DevicePipeline
 
@@ -128,10 +126,6 @@ namespace brr{
 			DescriptorLayoutCache*	m_pDescriptorLayoutCache = nullptr;
 
 			DevicePipeline m_graphics_pipeline {};
-
-			// Uniforms
-
-			std::vector<DeviceBuffer> m_pUniform_buffers {};
 
 			// Commands
 

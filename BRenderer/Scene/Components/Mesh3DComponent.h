@@ -10,13 +10,9 @@ namespace brr
         class SceneRenderer;
     }
 
-    struct Mesh3DUniform
+	class Mesh3DComponent
 	{
-		glm::mat4 model_matrix;
-	};
-
-	struct Mesh3DComponent
-	{
+    public:
 		struct SurfaceData
 		{
             inline static uint64_t currentSurfaceID = 0;
@@ -32,6 +28,7 @@ namespace brr
 			SurfaceData(std::vector<Vertex3_PosColor> vertices, std::vector<uint32_t> indices);
 
 			[[nodiscard]] bool NeedUpdate() const { return m_need_update; }
+			void SetUpdated() { m_need_update = false; }
 
 			[[nodiscard]] uint64_t GetSurfaceID() const { return m_surfaceId; }
 
@@ -46,7 +43,17 @@ namespace brr
 			bool m_need_update = false;
 		};
 
-		std::vector<SurfaceData> surfaces{};
+        explicit Mesh3DComponent(std::vector<SurfaceData>&& surfaces);
+
+		std::vector<SurfaceData>::iterator GetSurfacesBegin() { return m_surfaces.begin(); }
+		std::vector<SurfaceData>::iterator GetSurfacesEnd() { return m_surfaces.end(); }
+
+		std::vector<SurfaceData>::iterator begin() { return GetSurfacesBegin(); }
+		std::vector<SurfaceData>::iterator end() { return GetSurfacesEnd(); }
+
+
+    private:
+		std::vector<SurfaceData> m_surfaces{};
 	};
 }
 

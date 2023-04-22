@@ -8,10 +8,10 @@
 
 namespace brr
 {
-	Scene::Scene() : m_scene_renderer(m_registry_)
+	Scene::Scene()
 	{}
 
-	Scene::Scene(PerspectiveCamera* camera) : m_scene_renderer(m_registry_), m_camera_(camera)
+	Scene::Scene(PerspectiveCamera* camera) : m_camera_(camera)
 	{
 		m_registry_.group<Transform3DComponent, Mesh3DComponent>();
 	}

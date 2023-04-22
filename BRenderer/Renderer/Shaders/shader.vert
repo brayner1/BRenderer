@@ -1,11 +1,11 @@
 #version 450
 
-layout(binding = 0) uniform CameraUBO
+layout(set = 0, binding = 0) uniform CameraUBO
 {
     mat4 projection_view;
 } camera_ubo;
 
-layout(binding = 1) uniform ModelUBO
+layout(set = 1, binding = 0) uniform ModelUBO
 {
     mat4 model;
 } model_ubo;
