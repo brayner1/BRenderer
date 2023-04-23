@@ -24,7 +24,7 @@ namespace brr
 
 	void App::Run()
 	{
-		spdlog::set_pattern("[%Y-%m-%d %T.%e] [%^%l%$] [%!] [%s:%#]\n%v\n");
+		LogSystem::SetPattern("[%Y-%m-%d %T.%e] [%^%l%$] [%!] [%s:%#]\n%v\n");
 
 		Init();
 		MainLoop();

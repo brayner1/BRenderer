@@ -12,6 +12,15 @@ namespace brr
         return instance;
     }
 
+    void LogSystem::SetPattern(const std::string& format_str)
+    {
+#ifdef USE_SPDLOG
+        spdlog::set_pattern(format_str);
+#else
+        //TODO: Implement own
+#endif
+    }
+
 
     LogSystem::LogSystem()
     {
