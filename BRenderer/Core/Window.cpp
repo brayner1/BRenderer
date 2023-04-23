@@ -1,5 +1,8 @@
 #include "Core/Window.h"
+
+#include "Core/LogSystem.h"
 #include "Renderer/Renderer.h"
+
 
 namespace brr
 {
@@ -16,20 +19,20 @@ namespace brr
 
 		if (!m_pWindow)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to open %d x %d window: %s", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_GetError());
+			BRR_LogError("Failed to open {} x {} window: {}", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_GetError());
 			exit(1);
 		}
 
 		uint32_t winId = SDL_GetWindowID(m_pWindow);
 		if (!winId)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to get window ID: %s", SDL_GetError());
+			BRR_LogError("Failed to get window ID: {}", SDL_GetError());
 			exit(1);
 		}
 
 		m_pWindowID = winId;
 
-		SDL_Log("Window %d Created", winId);
+		BRR_LogInfo("Window {} Created", winId);
 		int width, height;
 		SDL_Vulkan_GetDrawableSize(m_pWindow, &width, &height);
 		const glm::ivec2 extent{ width, height };
@@ -57,7 +60,7 @@ namespace brr
 	Window::~Window()
 	{
 		CloseWindow();
-		SDL_Log("Window Closed");
+		BRR_LogInfo("Window Closed");
 	}
 
 	void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)
@@ -100,7 +103,7 @@ namespace brr
 		if (!SDL_Vulkan_GetInstanceExtensions(m_pWindow,
 			&extension_count, nullptr))
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not get the number of extensions required by SDL: %s", SDL_GetError());
+			BRR_LogError("Could not get the number of extensions required by SDL: {}", SDL_GetError());
 			exit(1);
 		}
 
@@ -110,15 +113,17 @@ namespace brr
 		if (!SDL_Vulkan_GetInstanceExtensions(m_pWindow,
 			&extension_count, extensions.data() + additional_extension_count))
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not get extensions required by SDL: %s", SDL_GetError());
+			BRR_LogError("Could not get extensions required by SDL: {}", SDL_GetError());
 			exit(1);
 		}
 
-		SDL_Log("Required Extensions");
+		std::stringstream aLogMsg;
+		aLogMsg << "Required Extensions\n";
 		for (const char* extension : extensions)
 		{
-			SDL_Log("\tExtension name: %s", extension);
+			aLogMsg << "\tExtension name: " << extension << "\n";
 		}
+		BRR_LogInfo(aLogMsg.str());
 	}
 
 	glm::ivec2 Window::GetWindowExtent() const
@@ -133,7 +138,7 @@ namespace brr
 		if (!window_surface_ &&
 			!SDL_Vulkan_CreateSurface(m_pWindow, instance, reinterpret_cast<VkSurfaceKHR*>(&window_surface_)))
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not create Vulkan surface of SDL window %u: %s", m_pWindowID, SDL_GetError());
+			BRR_LogError("Could not create Vulkan surface of SDL window {}: {}", m_pWindowID, SDL_GetError());
 		}
 
 		return window_surface_;

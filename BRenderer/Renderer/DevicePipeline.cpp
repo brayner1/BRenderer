@@ -2,6 +2,7 @@
 
 #include "Renderer/Shader.h"
 #include "Renderer/Swapchain.h"
+#include "Core/LogSystem.h"
 
 namespace brr::render
 {
@@ -113,7 +114,7 @@ namespace brr::render
 		auto createPipelineLayoutResult = m_device.createPipelineLayout(pipeline_layout_info);
 		if (createPipelineLayoutResult.result != vk::Result::eSuccess)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Not able to create PipelineLayout. Result code: %s.", vk::to_string(createPipelineLayoutResult.result).c_str());
+			BRR_LogError("Not able to create PipelineLayout. Result code: {}.", vk::to_string(createPipelineLayoutResult.result).c_str());
 			return false;
 		}
 		m_pipeline_layout = createPipelineLayoutResult.value;
@@ -137,13 +138,13 @@ namespace brr::render
 		auto createGraphicsPipelineResult = m_device.createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
 		if (createGraphicsPipelineResult.result != vk::Result::eSuccess)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create GraphicsPipeline! Result code: %s.", vk::to_string(createGraphicsPipelineResult.result).c_str());
+			BRR_LogError("Could not create GraphicsPipeline! Result code: {}.", vk::to_string(createGraphicsPipelineResult.result).c_str());
 			return false;
 		}
 
 		m_pipeline = createGraphicsPipelineResult.value;
 
-		SDL_Log("Graphics DevicePipeline created.");
+		BRR_LogInfo("Graphics DevicePipeline created.");
 
 		return true;
     }
@@ -158,6 +159,6 @@ namespace brr::render
 		m_pipeline = VK_NULL_HANDLE;
 		m_device.destroyPipelineLayout(m_pipeline_layout);
 		m_pipeline_layout = VK_NULL_HANDLE;
-		SDL_Log("Destroyed Pipeline and PipelineLayout");
+		BRR_LogInfo("Destroyed Pipeline and PipelineLayout");
     }
 }

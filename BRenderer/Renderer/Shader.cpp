@@ -1,7 +1,10 @@
 #include "Renderer/Shader.h"
 #include "Renderer/Renderer.h"
 #include "Files/FilesUtils.h"
+#include "Core/LogSystem.h"
+
 #include <filesystem>
+
 
 namespace brr::render
 {
@@ -15,7 +18,7 @@ namespace brr::render
 		auto createShaderModuleResult = Renderer::GetRenderer()->GetDevice()->Get_VkDevice().createShaderModule(shader_module_info);
 		if (createShaderModuleResult.result != vk::Result::eSuccess)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create ShaderModule! Result code: %s.", vk::to_string(createShaderModuleResult.result).c_str());
+			BRR_LogError("Could not create ShaderModule! Result code: {}.", vk::to_string(createShaderModuleResult.result).c_str());
 			exit(1);
 		}
 		return createShaderModuleResult.value;
@@ -37,7 +40,7 @@ namespace brr::render
 			std::filesystem::path file_path{ vertex_file_name + ".spv" };
 			if (!file_path.has_filename())
 			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "'%s' is not a valid file path.");
+				BRR_LogInfo("'{}' is not a valid file path.", file_path.string());
 				return Shader{};
 			}
 
@@ -56,7 +59,7 @@ namespace brr::render
 			std::filesystem::path file_path{ frag_file_name + ".spv" };
 			if (!file_path.has_filename())
 			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "'%s' is not a valid file path.");
+				BRR_LogError("'{}' is not a valid file path.", file_path.string());
 				return Shader{};
 			}
 
@@ -92,7 +95,7 @@ namespace brr::render
 			Renderer::GetRenderer()->GetDevice()->Get_VkDevice().destroyShaderModule(frag_shader_module_);
 		}
 		frag_shader_module_ = VK_NULL_HANDLE;
-		SDL_Log("Shader modules destroyed.");
+		BRR_LogInfo("Shader modules destroyed.");
 	}
 
     vk::PipelineVertexInputStateCreateInfo Shader::GetPipelineVertexInputState() const

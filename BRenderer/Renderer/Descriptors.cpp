@@ -1,5 +1,7 @@
 #include "Renderer/Descriptors.h"
 
+#include "Core/LogSystem.h"
+
 vk::DescriptorPool CreatePool(vk::Device device, const brr::render::DescriptorAllocator::PoolSizes& poolSizes, int count, vk::DescriptorPoolCreateFlags flags)
 {
 	std::vector<vk::DescriptorPoolSize> sizes;
@@ -16,7 +18,7 @@ vk::DescriptorPool CreatePool(vk::Device device, const brr::render::DescriptorAl
 	auto createDescriptorPoolResult = device.createDescriptorPool(pool_info);
 	if (createDescriptorPoolResult.result != vk::Result::eSuccess)
 	{
-		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create DescriptorPool! Result code: %s.", vk::to_string(createDescriptorPoolResult.result).c_str());
+		BRR_LogError("Could not create DescriptorPool! Result code: {}.", vk::to_string(createDescriptorPoolResult.result).c_str());
 		exit(1);
 	}
 	vk::DescriptorPool descriptorPool = createDescriptorPoolResult.value;
@@ -231,7 +233,7 @@ namespace brr::render
             auto createDescSetLayoutResult = m_device.createDescriptorSetLayout(descriptor_set_layout_create_info);
 			if (createDescSetLayoutResult.result != vk::Result::eSuccess)
 			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create DescriptorSetLayout! Result code: %s.", vk::to_string(createDescSetLayoutResult.result).c_str());
+				BRR_LogError("Could not create DescriptorSetLayout! Result code: {}.", vk::to_string(createDescSetLayoutResult.result).c_str());
 				exit(1);
 			}
 			vk::DescriptorSetLayout layout = createDescSetLayoutResult.value;

@@ -16,7 +16,6 @@ namespace brr
       m_surfaceId(currentSurfaceID++)
     {
         m_need_update = true;
-        SDL_Log("Mesh3DComponent Initialized.");
     }
 
     Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor>&& vertices)
@@ -24,7 +23,6 @@ namespace brr
       m_surfaceId(currentSurfaceID++)
     {
         m_need_update = true;
-        SDL_Log("Mesh3DComponent Initialized.");
     }
 
     Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor> vertices)
@@ -32,7 +30,6 @@ namespace brr
       m_surfaceId(currentSurfaceID++)
     {
         m_need_update = true;
-        SDL_Log("Mesh3DComponent Initialized.");
     }
 
     Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor>&& vertices, std::vector<uint32_t>&& indices)
@@ -41,7 +38,6 @@ namespace brr
       m_surfaceId(currentSurfaceID++)
     {
         m_need_update = true;
-        SDL_Log("Mesh3DComponent Initialized.");
     }
 
     Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor> vertices, std::vector<uint32_t> indices)
@@ -50,7 +46,6 @@ namespace brr
       m_surfaceId(currentSurfaceID++)
     {
         m_need_update = true;
-        SDL_Log("Mesh3DComponent Initialized.");
     }
 
     //void Mesh3DComponent::SurfaceData::Bind(vk::CommandBuffer command_buffer) const

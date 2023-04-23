@@ -1,7 +1,8 @@
 #include "Renderer/RenderDevice.h"
-#include "Renderer.h"
-#include "Shader.h"
+
 #include "Core/Window.h"
+#include "Core/LogSystem.h"
+
 
 namespace brr::render
 {
@@ -90,7 +91,7 @@ namespace brr::render
 			}
 			else
 			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Could not find any of the required validation layers.");
+				BRR_LogError("Could not find any of the required validation layers.");
 				/*exit(1);*/
 			}
 		}
@@ -105,10 +106,10 @@ namespace brr::render
 			auto enumInstExtPropsResult = vk::enumerateInstanceExtensionProperties();
 			std::vector<vk::ExtensionProperties> extension_properties = enumInstExtPropsResult.value;
 
-			SDL_Log("Available Extensions");
+			BRR_LogInfo("Available Extensions");
 			for (vk::ExtensionProperties& extension : extension_properties)
 			{
-				SDL_Log("\tExtension name: %s", extension.extensionName);
+				BRR_LogInfo("\tExtension name: {}", extension.extensionName);
 
 			}
 		}
@@ -127,12 +128,12 @@ namespace brr::render
 		 auto createInstanceResult = vk::createInstance(inst_create_info);
 		 if (createInstanceResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Vulkan Instance! Result code: %s.", vk::to_string(createInstanceResult.result).c_str());
+			 BRR_LogError("Could not create Vulkan Instance! Result code: {}.", vk::to_string(createInstanceResult.result).c_str());
 			 exit(1);
 		 }
 		 vulkan_instance_ = createInstanceResult.value;
 
-		SDL_Log("Instance Created");
+		 BRR_LogInfo("Instance Created");
 	}
 
 	void RenderDevice::Init_PhysDevice(vk::SurfaceKHR surface)
@@ -142,19 +143,19 @@ namespace brr::render
 
 		if (devices.size() == 0)
 		{
-			SDL_Log("Failed to find a physical device with Vulkan support. Exitting program.");
+			BRR_LogError("Failed to find a physical device with Vulkan support. Exitting program.");
 			exit(1);
 		}
 
-		SDL_Log("Available devices:");
+		BRR_LogInfo("Available devices:");
 		for (vk::PhysicalDevice& device : devices)
 		{
-			SDL_Log("\tDevice: %s", device.getProperties().deviceName);
+			BRR_LogInfo("\tDevice: {}", device.getProperties().deviceName);
 		}
 
 		phys_device_ = VkHelpers::Select_PhysDevice(devices, surface);
 
-		SDL_Log("Selected physical device: %s", phys_device_.getProperties().deviceName);
+		BRR_LogInfo("Selected physical device: {}", phys_device_.getProperties().deviceName);
 	}
 
 	void RenderDevice::Init_Queues_Indices(vk::SurfaceKHR surface)
@@ -164,13 +165,13 @@ namespace brr::render
 
 		if (!queue_family_indices_.m_graphicsFamily.has_value())
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find graphics family queue. Exitting program.");
+			BRR_LogError("Failed to find graphics family queue. Exitting program.");
 			exit(1);
 		}
 
 		if (!queue_family_indices_.m_presentFamily.has_value())
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to find presentation family queue. Exitting program.");
+			BRR_LogError("Failed to find presentation family queue. Exitting program.");
 			exit(1);
 		}
 	}
@@ -179,7 +180,7 @@ namespace brr::render
 	{
 		if (!queue_family_indices_.m_graphicsFamily.has_value())
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Cannot create device without initializing at least the graphics queue.");
+			BRR_LogError("Cannot create device without initializing at least the graphics queue.");
 			exit(1);
 		}
 
@@ -187,9 +188,12 @@ namespace brr::render
 		const uint32_t presentation_family_idx = queue_family_indices_.m_presentFamily.value();
 		const uint32_t transfer_family_idx = queue_family_indices_.m_transferFamily.has_value() ? queue_family_indices_.m_transferFamily.value() : graphics_family_idx;
 
-		SDL_Log("Graphics Queue Family: %d", graphics_family_idx);
-		SDL_Log("Present Queue Family: %d", presentation_family_idx);
-		SDL_Log("Transfer Queue Family: %d", transfer_family_idx);
+		BRR_LogInfo("Graphics Queue Family:\t {}\n"
+		            "Present Queue Family:\t {}\n"
+			        "Transfer Queue Family:\t {}", 
+			        graphics_family_idx, 
+			        presentation_family_idx, 
+			        transfer_family_idx);
 
 		float priorities = 1.0;
 		std::vector<vk::DeviceQueueCreateInfo> queues;
@@ -230,7 +234,7 @@ namespace brr::render
 		 auto createDeviceResult = phys_device_.createDevice(device_create_info);
 		 if (createDeviceResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Vulkan Device! Result code: %s.", vk::to_string(createDeviceResult.result).c_str());
+			 BRR_LogError("Could not create Vulkan Device! Result code: {}.", vk::to_string(createDeviceResult.result).c_str());
 			 exit(1);
 		 }
 		 device_ = createDeviceResult.value;
@@ -241,7 +245,7 @@ namespace brr::render
 
 		transfer_queue_ = (different_transfer_queue_) ? device_.getQueue(transfer_family_idx, 0) : graphics_queue_;
 
-		SDL_Log("Device Created");
+		BRR_LogInfo("Device Created");
 	}
 
 	void RenderDevice::Init_CommandPool()
@@ -254,12 +258,12 @@ namespace brr::render
 		 auto createCmdPoolResult = device_.createCommandPool(command_pool_info);
 		 if (createCmdPoolResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create CommandPool! Result code: %s.", vk::to_string(createCmdPoolResult.result).c_str());
+			 BRR_LogError("Could not create CommandPool! Result code: {}.", vk::to_string(createCmdPoolResult.result).c_str());
 			 exit(1);
 		 }
 		 command_pool_ = createCmdPoolResult.value;
 
-		SDL_Log("CommandPool created.");
+		 BRR_LogInfo("CommandPool created.");
 
 		if (different_present_queue_)
 		{
@@ -271,12 +275,12 @@ namespace brr::render
 			 auto createPresentCmdPoolResult = device_.createCommandPool(present_pool_info);
 			 if (createPresentCmdPoolResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create present CommandPool! Result code: %s.", vk::to_string(createPresentCmdPoolResult.result).c_str());
+				 BRR_LogError("Could not create present CommandPool! Result code: {}.", vk::to_string(createPresentCmdPoolResult.result).c_str());
 				 exit(1);
 			 }
 			 present_command_pool_ = createPresentCmdPoolResult.value;
 
-			SDL_Log("Separate Present CommandPool created.");
+			 BRR_LogInfo("Separate Present CommandPool created.");
 		}
 
 		if (different_transfer_queue_)
@@ -289,12 +293,12 @@ namespace brr::render
 			 auto createTransferCommandPoolResult = device_.createCommandPool(transfer_pool_info);
 			 if (createTransferCommandPoolResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create transfer CommandPool! Result code: %s.", vk::to_string(createTransferCommandPoolResult.result).c_str());
+				 BRR_LogError("Could not create transfer CommandPool! Result code: {}.", vk::to_string(createTransferCommandPoolResult.result).c_str());
 				 exit(1);
 			 }
 			 transfer_command_pool_ = createTransferCommandPoolResult.value;
 
-			SDL_Log("Separate Transfer CommandPool created.");
+			 BRR_LogInfo("Separate Transfer CommandPool created.");
 		}
 	}
 }

@@ -1,7 +1,9 @@
 #include "Core/App.h"
 #include "Core/Window.h"
+#include "Core/LogSystem.h"
 #include "Scene/Entity.h"
 #include "Scene/Components/Mesh3DComponent.h"
+
 
 namespace brr
 {
@@ -17,12 +19,13 @@ namespace brr
 		0, 1, 2, 2, 3, 0
 	};
 
-	App::App()
-	{
-	}
+	App::App() : scene_(nullptr)
+	{}
 
 	void App::Run()
 	{
+		spdlog::set_pattern("[%Y-%m-%d %T.%e] [%^%l%$] [%!] [%s:%#]\n%v\n");
+
 		Init();
 		MainLoop();
 		Clear();
@@ -58,6 +61,7 @@ namespace brr
 
 	void App::Clear()
 	{
+		m_pWindowManager.reset();
 	}
 
 	void App::ProcessEvent(SDL_Event& pEvent)

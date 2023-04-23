@@ -1,5 +1,7 @@
 #include "Renderer/RenderSurface.h"
+
 #include "Renderer/Renderer.h"
+#include "Core/LogSystem.h"
 
 namespace brr::render
 {
@@ -42,7 +44,7 @@ namespace brr::render
 
 		vk::DeviceSize buffer_size = sizeof(Vertex2_PosColor) * vertices.size();
 
-		SDL_Log("Creating Staging Buffer.");
+		BRR_LogInfo("Creating Staging Buffer.");
 
 		render::DeviceBuffer staging_buffer{ device->Get_VkDevice(),
 			buffer_size,
@@ -53,30 +55,31 @@ namespace brr::render
 		staging_buffer.WriteToBuffer(vertices.data());
 		//staging_buffer.Unmap();
 
-		SDL_Log("Vertices data copied to Staging Buffer.");
+		BRR_LogInfo("Vertices data copied to Staging Buffer.");
 
-		SDL_Log("Creating Vertex Buffer.");
+		BRR_LogInfo("Creating Vertex Buffer.");
 
 		vertex_buffer = std::make_unique<render::DeviceBuffer>( device->Get_VkDevice(), buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-		SDL_Log("Copying Staging Buffer into Vertex Buffer.");
+		BRR_LogInfo("Copying Staging Buffer into Vertex Buffer.");
 
 		render->Copy_Buffer(staging_buffer.GetBuffer(), vertex_buffer->GetBuffer(), buffer_size);
 
-		SDL_Log("Destroying Staging Buffer.");
+		BRR_LogInfo("Destroying Staging Buffer.");
 	}
 
 	void RenderSurface::CreateIndexBuffer(RenderDevice* device, std::vector<uint32_t>& indices)
 	{
 		assert(indices.size() > 0 && "Can't create IndexBuffer without indices!");
+		BRR_LogInfo("Creating IndexBuffer.");
 
 		render::Renderer* render = render::Renderer::GetRenderer();
 
 		vk::DeviceSize buffer_size = sizeof(Vertex2_PosColor) * indices.size();
 
-		SDL_Log("Creating Staging Buffer.");
+		BRR_LogInfo("Allocating IndexBuffer Staging Buffer.");
 
 		render::DeviceBuffer staging_buffer{ device->Get_VkDevice(),
 			buffer_size,
@@ -86,19 +89,19 @@ namespace brr::render
 		staging_buffer.Map();
 		staging_buffer.WriteToBuffer(indices.data());
 
-		SDL_Log("Indices data copied to Staging Buffer.");
+		BRR_LogInfo("Indices data copied to Staging Buffer.");
 
-		SDL_Log("Creating Index Buffer.");
+		BRR_LogInfo("Allocating Index Buffer.");
 
 		index_buffer = std::make_unique<render::DeviceBuffer>(device->Get_VkDevice(), buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-		SDL_Log("Copying Staging Buffer into Index Buffer.");
+		BRR_LogInfo("Copying Staging Buffer into Index Buffer.");
 
 		render->Copy_Buffer(staging_buffer.GetBuffer(), index_buffer->GetBuffer(), buffer_size);
 
-		SDL_Log("Destroying Staging Buffer.");
+		BRR_LogInfo("Destroying Staging Buffer.");
 	}
 
 }

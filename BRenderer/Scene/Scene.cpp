@@ -1,9 +1,10 @@
-#include "Scene.h"
+#include "Scene/Scene.h"
 
-#include "Components/NodeComponent.h"
-#include "Renderer/Renderer.h"
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
+#include "Scene/Components/NodeComponent.h"
+#include "Core/LogSystem.h"
+
 
 namespace brr
 {
@@ -22,7 +23,7 @@ namespace brr
 
 	Entity Scene::AddEntity(Entity parent)
 	{
-		SDL_Log("Adding new Entity");
+		BRR_LogInfo("Adding new Entity");
 		entt::entity new_entity = m_registry_.create();
 
 		NodeComponent& node = m_registry_.emplace<NodeComponent>(new_entity);

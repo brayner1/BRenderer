@@ -67,7 +67,7 @@ namespace brr
 
 	Mesh2D::~Mesh2D()
 	{
-		SDL_Log("Mesh destroyed");
+		BRR_LogInfo("Mesh destroyed");
 	}
 
 	void Mesh2D::Bind(vk::CommandBuffer command_buffer)
@@ -99,7 +99,7 @@ namespace brr
 
 		vk::DeviceSize buffer_size = sizeof(Vertex2_PosColor) * vertices_vec_.size();
 
-		SDL_Log("Creating Staging Buffer.");
+		BRR_LogInfo("Creating Staging Buffer.");
 
 		render::DeviceBuffer staging_buffer {device_,
 			buffer_size,
@@ -110,19 +110,19 @@ namespace brr
 		staging_buffer.WriteToBuffer(vertices_vec_.data());
 		//staging_buffer.Unmap();
 
-		SDL_Log("Vertices data copied to Staging Buffer.");
+		BRR_LogInfo("Vertices data copied to Staging Buffer.");
 
-		SDL_Log("Creating Vertex Buffer.");
+		BRR_LogInfo("Creating Vertex Buffer.");
 
 		vertex_buffer_ = std::make_unique<render::DeviceBuffer>(device_, buffer_size,
 		                                                        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
 		                                                        vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-		SDL_Log("Copying Staging Buffer into Vertex Buffer.");
+		BRR_LogInfo("Copying Staging Buffer into Vertex Buffer.");
 
 		render->Copy_Buffer(staging_buffer.GetBuffer(), vertex_buffer_->GetBuffer(), buffer_size);
 
-		SDL_Log("Destroying Staging Buffer.");
+		BRR_LogInfo("Destroying Staging Buffer.");
 	}
 
 	void Mesh2D::CreateIndexBuffer()
@@ -135,7 +135,7 @@ namespace brr
 
 		vk::DeviceSize buffer_size = sizeof(Vertex2_PosColor) * indices_vec_.size();
 
-		SDL_Log("Creating Staging Buffer.");
+		BRR_LogInfo("Creating Staging Buffer.");
 
 		render::DeviceBuffer staging_buffer{ device_,
 			buffer_size,
@@ -145,18 +145,18 @@ namespace brr
 		staging_buffer.Map();
 		staging_buffer.WriteToBuffer(indices_vec_.data());
 
-		SDL_Log("Indices data copied to Staging Buffer.");
+		BRR_LogInfo("Indices data copied to Staging Buffer.");
 
-		SDL_Log("Creating Index Buffer.");
+		BRR_LogInfo("Creating Index Buffer.");
 
 		index_buffer = std::make_unique<render::DeviceBuffer>(device_, buffer_size,
 		                                                      vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 		                                                      vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-		SDL_Log("Copying Staging Buffer into Index Buffer.");
+		BRR_LogInfo("Copying Staging Buffer into Index Buffer.");
 
 		render->Copy_Buffer(staging_buffer.GetBuffer(), index_buffer->GetBuffer(), buffer_size);
 
-		SDL_Log("Destroying Staging Buffer.");
+		BRR_LogInfo("Destroying Staging Buffer.");
 	}
 }

@@ -1,15 +1,16 @@
-#include "SceneRenderer.h"
+#include "Renderer/SceneRenderer.h"
 
 #include "Scene/Scene.h"
 #include "Scene/Components/Mesh3DComponent.h"
 #include "Scene/Components/Transform3DComponent.h"
+#include "Core/LogSystem.h"
 
 namespace brr::render
 {
     SceneRenderer::SceneRenderer(entt::registry& registry)
     : m_scene_registry(&registry)
     {
-		SDL_Log("Creating SceneRenderer");
+		BRR_LogInfo("Creating SceneRenderer");
         registry.on_construct<Mesh3DComponent>().connect<&SceneRenderer::OnAddedMesh3D>(this);
 
 		//m_render_registry.group<RenderData>();
@@ -74,7 +75,7 @@ namespace brr::render
 
                         setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
 
-                        SDL_Log("Model Descriptor Sets created.");
+                        BRR_LogInfo("Model Descriptor Sets created.");
 					}
 
 					if (transform.Dirty() != Transform3DComponent::NOT_DIRTY)
@@ -126,7 +127,7 @@ namespace brr::render
     void SceneRenderer::OnAddedMesh3D(entt::registry& registry, entt::entity entity)
     {
         Mesh3DComponent& mesh_3d_component = registry.get<Mesh3DComponent>(entity);
-		SDL_Log("OnAddedMesh3D");
+		BRR_LogInfo("OnAddedMesh3D");
 
 		for (Mesh3DComponent::SurfaceData& surface : mesh_3d_component.surfaces)
 		{
@@ -148,7 +149,7 @@ namespace brr::render
 
 		vk::DeviceSize buffer_size = sizeof(Vertex3_PosColor) * surface_data.m_vertices.size();
 
-		SDL_Log("Creating Staging Buffer.");
+		BRR_LogInfo("Creating Staging Buffer.");
 
 		render::DeviceBuffer staging_buffer{ vkDevice,
 			buffer_size,
@@ -159,9 +160,9 @@ namespace brr::render
 		staging_buffer.WriteToBuffer(surface_data.m_vertices.data());
 		//staging_buffer.Unmap();
 
-		SDL_Log("Vertices data copied to Staging Buffer.");
+		BRR_LogInfo("Vertices data copied to Staging Buffer.");
 
-		SDL_Log("Creating Vertex Buffer.");
+		BRR_LogInfo("Creating Vertex Buffer.");
 
 		render_data.m_vertex_buffer = DeviceBuffer(vkDevice, buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
@@ -169,11 +170,11 @@ namespace brr::render
 
 		render_data.num_vertices = surface_data.m_vertices.size();
 
-		SDL_Log("Copying Staging Buffer into Vertex Buffer.");
+		BRR_LogInfo("Copying Staging Buffer into Vertex Buffer.");
 
 		render->Copy_Buffer(staging_buffer.GetBuffer(), render_data.m_vertex_buffer.GetBuffer(), buffer_size);
 
-		SDL_Log("Destroying Staging Buffer.");
+		BRR_LogInfo("Destroying Staging Buffer.");
     }
 
     void SceneRenderer::CreateIndexBuffer(Mesh3DComponent::SurfaceData& surface_data, RenderData& render_data)
@@ -187,7 +188,7 @@ namespace brr::render
 
 		vk::DeviceSize buffer_size = sizeof(uint32_t) * surface_data.m_indices.size();
 
-		SDL_Log("Creating Staging Buffer.");
+		BRR_LogInfo("Creating Staging Buffer.");
 
 		render::DeviceBuffer staging_buffer{ vkDevice,
 			buffer_size,
@@ -197,9 +198,9 @@ namespace brr::render
 		staging_buffer.Map();
 		staging_buffer.WriteToBuffer(surface_data.m_indices.data());
 
-		SDL_Log("Indices data copied to Staging Buffer.");
+		BRR_LogInfo("Indices data copied to Staging Buffer.");
 
-		SDL_Log("Creating Index Buffer.");
+		BRR_LogInfo("Creating Index Buffer.");
 
 		render_data.m_index_buffer = DeviceBuffer(vkDevice, buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
@@ -207,18 +208,18 @@ namespace brr::render
 
 		render_data.num_indices = surface_data.m_indices.size();
 
-		SDL_Log("Copying Staging Buffer into Index Buffer.");
+		BRR_LogInfo("Copying Staging Buffer into Index Buffer.");
 
 		render->Copy_Buffer(staging_buffer.GetBuffer(), render_data.m_index_buffer.GetBuffer(), buffer_size);
 
-		SDL_Log("Destroying Staging Buffer.");
+		BRR_LogInfo("Destroying Staging Buffer.");
     }
 
     void SceneRenderer::Init_UniformBuffers(RenderData& render_data)
 	{
 		vk::DeviceSize buffer_size = sizeof(Mesh3DUniform);
 
-		SDL_Log("Creating Uniform Buffers");
+		BRR_LogInfo("Creating Uniform Buffers");
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
 			render_data.m_uniform_buffers[i].Reset(m_render_device->Get_VkDevice(), buffer_size,
@@ -226,6 +227,6 @@ namespace brr::render
 				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		}
 
-		SDL_Log("Uniform Buffers created.");
+		BRR_LogInfo("Uniform Buffers created.");
 	}
 }

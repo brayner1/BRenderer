@@ -1,5 +1,8 @@
 #include "Renderer/DeviceBuffer.h"
+
 #include "Renderer/Renderer.h"
+#include "Core/LogSystem.h"
+
 
 namespace brr
 {
@@ -11,7 +14,7 @@ namespace brr
 		                           vk::MemoryPropertyFlags properties) :
 		device_(device), buffer_size_(buffer_size), usage_(usage), properties_(properties)
 		{
-			SDL_Log("Creating Buffer. New buffer: { size: %d, usage: %s, properties: %s }", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
+			BRR_LogInfo("Creating Buffer. New buffer: { size: {}, usage: {}, properties: {} }", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
 			Renderer::GetRenderer()->Create_Buffer(buffer_size, usage, properties, buffer_, buffer_memory_);
 		}
 
@@ -56,7 +59,7 @@ namespace brr
 		void DeviceBuffer::Reset(vk::Device device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
 			vk::MemoryPropertyFlags properties)
 		{
-			SDL_Log("Resetting Buffer. New buffer: { size: %d, usage: %s, properties: %s }", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
+			BRR_LogInfo("Resetting Buffer. New buffer: { size: {}, usage: {}, properties: {} }", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
 			if (IsValid())
 			{
 				DestroyBuffer();
@@ -77,7 +80,7 @@ namespace brr
 			 auto mapMemResult = device_.mapMemory(buffer_memory_, offset, size);
 			 if (mapMemResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create map Buffer memory! Result code: %s.", vk::to_string(mapMemResult.result).c_str());
+				 BRR_LogError("Could not create map Buffer memory! Result code: {}.", vk::to_string(mapMemResult.result).c_str());
 				 exit(1);
 			 }
 			 mapped_ = mapMemResult.value;
@@ -124,7 +127,7 @@ namespace brr
 			device_.destroyBuffer(buffer_);
 			device_.freeMemory(buffer_memory_);
 
-			SDL_Log("Buffer Destroyed");
+			BRR_LogInfo("Buffer Destroyed");
 		}
 	}
 }

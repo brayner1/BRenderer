@@ -1,6 +1,8 @@
 #include "Renderer/VkInitializerHelper.h"
 
+#include "Core/LogSystem.h"
 #include "Core/Window.h"
+
 
 namespace brr::render::VkHelpers
 {
@@ -9,7 +11,7 @@ namespace brr::render::VkHelpers
 		vk::PhysicalDevice result = VK_NULL_HANDLE;
 		for (vk::PhysicalDevice& device : physical_devices)
 		{
-			SDL_Log("Checking if device '%s' supports application.", device.getProperties().deviceName.data());
+			BRR_LogInfo("Checking if device '{}' supports application.", device.getProperties().deviceName.data());
 
 			// Check for needed queue families
 			{
@@ -17,13 +19,13 @@ namespace brr::render::VkHelpers
 
 				if (!indices.m_graphicsFamily.has_value())
 				{
-					SDL_Log("Could not find graphics queue family support. Checking next device.");
+					BRR_LogInfo("Could not find graphics queue family support. Checking next device.");
 					continue;
 				}
 
 				if (!indices.m_presentFamily.has_value())
 				{
-					SDL_Log("Could not find presentation queue family support. Checking next device.");
+					BRR_LogInfo("Could not find presentation queue family support. Checking next device.");
 					continue;
 				}
 			}
@@ -34,7 +36,7 @@ namespace brr::render::VkHelpers
 				auto enumDeviceExtPropsResult = device.enumerateDeviceExtensionProperties();
 				if (enumDeviceExtPropsResult.result != vk::Result::eSuccess)
 				{
-					SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfaceCapabilitiesKHR! Result code: %s.", vk::to_string(enumDeviceExtPropsResult.result).c_str());
+					BRR_LogError("Could not get SurfaceCapabilitiesKHR! Result code: {}.", vk::to_string(enumDeviceExtPropsResult.result).c_str());
 					exit(1);
 				}
 				std::vector<vk::ExtensionProperties>  device_extensions = enumDeviceExtPropsResult.value;
@@ -48,7 +50,7 @@ namespace brr::render::VkHelpers
 
 				if (!swapchain_support)
 				{
-					SDL_Log("Could not find swapchain extension support on the device. Checking next device.");
+					BRR_LogInfo("Could not find swapchain extension support on the device. Checking next device.");
 					continue;
 				}
 			}
@@ -58,13 +60,13 @@ namespace brr::render::VkHelpers
 
 				if (swapchain_properties.m_presentModes.empty())
 				{
-					SDL_Log("Could not find available presentation modes for the swapchain. Exiting application.");
+					BRR_LogError("Could not find available presentation modes for the swapchain. Exiting application.");
 					exit(1);
 				}
 
 				if (swapchain_properties.m_surfFormats.empty())
 				{
-					SDL_Log("Could not find available surface formats for the swapchain. Exiting application.");
+					BRR_LogError("Could not find available surface formats for the swapchain. Exiting application.");
 					exit(1);
 				}
 			}
@@ -73,14 +75,14 @@ namespace brr::render::VkHelpers
 			result = device;
 			if (result.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 			{
-				SDL_Log("Found dedicated GPU. Selecting it for processing.");
+				BRR_LogInfo("Found dedicated GPU. Selecting it for processing.");
 				break;
 			}
 		}
 
 		if (!result)
 		{
-			SDL_Log("Could not find any device capable of running this application. Exiting application.");
+			BRR_LogError("Could not find any device capable of running this application. Exiting application.");
 			exit(1);
 		}
 
@@ -99,7 +101,7 @@ namespace brr::render::VkHelpers
 			// Check graphics family support
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eGraphics)
 			{
-				SDL_Log("Found Graphics Queue in Family %d", i);
+				BRR_LogInfo("Found Graphics Queue in Family %d", i);
 				if (!indices.m_graphicsFamily.has_value())
 				{
 					indices.m_graphicsFamily = i;
@@ -109,7 +111,7 @@ namespace brr::render::VkHelpers
 			auto surfSupportKHRResult = physical_device.getSurfaceSupportKHR(i, surface);
 			if (surfSupportKHRResult.result == vk::Result::eSuccess && surfSupportKHRResult.value)
 			{
-				SDL_Log("Found Present Queue in Family %d", i);
+				BRR_LogInfo("Found Present Queue in Family {}", i);
 				if (!indices.m_presentFamily.has_value()
 					|| (indices.m_graphicsFamily.has_value() && indices.m_graphicsFamily.value() == i))
 				{
@@ -119,7 +121,7 @@ namespace brr::render::VkHelpers
 			// Check for compute support (Not required)
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eCompute)
 			{
-				SDL_Log("Found Compute Queue in Family %d", i);
+				BRR_LogInfo("Found Compute Queue in Family {}", i);
 				if (!indices.m_computeFamily.has_value())
 				{
 					indices.m_computeFamily = i;
@@ -127,7 +129,7 @@ namespace brr::render::VkHelpers
 			}
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eTransfer)
 			{
-				SDL_Log("Found Transfer Queue in Family %d", i);
+				BRR_LogInfo("Found Transfer Queue in Family {}", i);
 				if (!indices.m_transferFamily.has_value() || 
 					(indices.m_graphicsFamily.has_value() && i != indices.m_graphicsFamily.value()))
 				{
@@ -136,7 +138,7 @@ namespace brr::render::VkHelpers
 			}
 			if (queue_props[i].queueFlags & vk::QueueFlagBits::eSparseBinding)
 			{
-				SDL_Log("Found Sparse Binding Queue in Family %d", i);
+				BRR_LogInfo("Found Sparse Binding Queue in Family {}", i);
 			}
 
 			//full_queue_support = indices.m_graphicsFamily.has_value() && indices.m_presentFamily.has_value();
@@ -161,7 +163,7 @@ namespace brr::render::VkHelpers
 		auto getSurfCapabResult = physical_device.getSurfaceCapabilitiesKHR(surface);
 		if (getSurfCapabResult.result != vk::Result::eSuccess)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfaceCapabilitiesKHR! Result code: %s.", vk::to_string(getSurfCapabResult.result).c_str());
+			BRR_LogError("Could not get SurfaceCapabilitiesKHR! Result code: {}.", vk::to_string(getSurfCapabResult.result).c_str());
 			exit(1);
 		}
 		swap_chain_properties.m_surfCapabilities = getSurfCapabResult.value;
@@ -169,7 +171,7 @@ namespace brr::render::VkHelpers
 		 auto getSurfFormatsResult = physical_device.getSurfaceFormatsKHR(surface);
 		 if (getSurfFormatsResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfaceFormatKHR! Result code: %s.", vk::to_string(getSurfFormatsResult.result).c_str());
+			 BRR_LogError("Could not get SurfaceFormatKHR! Result code: {}.", vk::to_string(getSurfFormatsResult.result).c_str());
 			 exit(1);
 		 }
 		 swap_chain_properties.m_surfFormats = getSurfFormatsResult.value;
@@ -177,7 +179,7 @@ namespace brr::render::VkHelpers
 		 auto getSurfPresentModesResult = physical_device.getSurfacePresentModesKHR(surface);
 		 if (getSurfPresentModesResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not get SurfacePresentModeKHR! Result code: %s.", vk::to_string(getSurfPresentModesResult.result).c_str());
+			 BRR_LogError("Could not get SurfacePresentModeKHR! Result code: {}.", vk::to_string(getSurfPresentModesResult.result).c_str());
 			 exit(1);
 		 }
 		 swap_chain_properties.m_presentModes = getSurfPresentModesResult.value;

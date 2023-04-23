@@ -8,6 +8,7 @@ namespace brr{
 	namespace render
 	{
 		class Renderer;
+		class SceneRenderer;
 	}
 	class Entity;
 	class Scene

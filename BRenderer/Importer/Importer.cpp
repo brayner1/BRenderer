@@ -1,5 +1,8 @@
-#include "Importer.h"
+#include "Importer/Importer.h"
+
+#include "Core/LogSystem.h"
 #include "Scene/Components.h"
+
 #include <assimp/Importer.hpp>
 #include <assimp/types.h>
 #include <assimp/scene.h>
@@ -91,7 +94,7 @@ namespace brr
 
 		if (!assimp_scene)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Assimp could not load Scene. Assimp Error:\n%s", assimp_importer.GetErrorString());
+			BRR_LogError("Assimp could not load Scene. Assimp Error:\n{}", assimp_importer.GetErrorString());
 		}
 
 		ConvertAssimpScene(assimp_scene, *scene, parent);

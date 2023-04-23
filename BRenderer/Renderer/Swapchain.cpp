@@ -1,8 +1,10 @@
 #include "Renderer/Swapchain.h"
 
-#include "RenderDevice.h"
-#include "Core/Window.h"
 #include "Renderer/VkInitializerHelper.h"
+#include "Renderer/RenderDevice.h"
+#include "Core/Window.h"
+#include "Core/LogSystem.h"
+
 
 namespace brr::render
 {
@@ -19,7 +21,7 @@ namespace brr::render
 	{
 		if (device_->Get_VkDevice().waitForFences(in_flight_fences_[current_buffer_], true, UINT64_MAX) != vk::Result::eSuccess)
 		{
-			SDL_Log("Error waiting for In Flight Fence");
+			BRR_LogInfo("Error waiting for In Flight Fence");
 			exit(1);
 		}
 
@@ -66,7 +68,7 @@ namespace brr::render
 		}
 		else if (result != vk::Result::eSuccess)
 		{
-			SDL_Log("Presentation Failed.");
+			BRR_LogInfo("Presentation Failed.");
 			exit(1);
 		}
 
@@ -159,16 +161,16 @@ namespace brr::render
 		 auto createSwapchainResult = device_->Get_VkDevice().createSwapchainKHR(swapchain_create_info);
 		 if (createSwapchainResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create SwapchainKHR! Result code: %s.", vk::to_string(createSwapchainResult.result).c_str());
+			 BRR_LogError("Could not create SwapchainKHR! Result code: {}.", vk::to_string(createSwapchainResult.result).c_str());
 			 exit(1);
 		 }
 		 vk::SwapchainKHR new_swapchain = createSwapchainResult.value;
-		SDL_Log("Swapchain created");
+		BRR_LogInfo("Swapchain created");
 
 		// If old swapchain is valid, destroy it. (It happens on swapchain recreation)
 		if (swapchain_)
 		{
-			SDL_Log("Swapchain was recreated. Cleaning old swapchain.");
+			BRR_LogInfo("Swapchain was recreated. Cleaning old swapchain.");
 			Cleanup_Swapchain();
 		}
 
@@ -203,14 +205,14 @@ namespace brr::render
 				 auto createImgViewResult = device_->Get_VkDevice().createImageView(image_view_create_info);
 				 if (createImgViewResult.result != vk::Result::eSuccess)
 				 {
-					 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create ImageView for swapchain! Result code: %s.", vk::to_string(createImgViewResult.result).c_str());
+					 BRR_LogError("Could not create ImageView for swapchain! Result code: {}.", vk::to_string(createImgViewResult.result).c_str());
 					 exit(1);
 				 }
 				 image_resources_[i].m_image_view = createImgViewResult.value;
 			}
 		}
 
-		SDL_Log("Images Resources initialized.");
+		BRR_LogInfo("Images Resources initialized.");
 	}
 
 	void Swapchain::Init_RenderPass()
@@ -255,12 +257,12 @@ namespace brr::render
 		 auto createRenderPassResult = device_->Get_VkDevice().createRenderPass(render_pass_info);
 		 if (createRenderPassResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create RenderPass for swapchain! Result code: %s.", vk::to_string(createRenderPassResult.result).c_str());
+			 BRR_LogError("Could not create RenderPass for swapchain! Result code: {}.", vk::to_string(createRenderPassResult.result).c_str());
 			 exit(1);
 		 }
 		 render_pass_ = createRenderPassResult.value;
 
-		SDL_Log("Render Pass Created");
+		BRR_LogInfo("Render Pass Created");
 	}
 
 	void Swapchain::Init_Framebuffers()
@@ -278,11 +280,11 @@ namespace brr::render
 			 auto createFramebufferResult = device_->Get_VkDevice().createFramebuffer(framebuffer_info);
 			 if (createFramebufferResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Framebuffer for swapchain! Result code: %s.", vk::to_string(createFramebufferResult.result).c_str());
+				 BRR_LogError("Could not create Framebuffer for swapchain! Result code: {}.", vk::to_string(createFramebufferResult.result).c_str());
 				 exit(1);
 			 }
 			 image_resources_[i].m_framebuffer = createFramebufferResult.value;
-			SDL_Log("Created Framebuffer for swapchain image number %d", i);
+			BRR_LogInfo("Created Framebuffer for swapchain image number {}", i);
 		}
 	}
 
@@ -293,7 +295,7 @@ namespace brr::render
 			 auto createImgAvailableSemaphoreResult = device_->Get_VkDevice().createSemaphore(vk::SemaphoreCreateInfo{});
 			 if (createImgAvailableSemaphoreResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Image Available Semaphore for swapchain! Result code: %s.", vk::to_string(createImgAvailableSemaphoreResult.result).c_str());
+				 BRR_LogError("Could not create Image Available Semaphore for swapchain! Result code: {}.", vk::to_string(createImgAvailableSemaphoreResult.result).c_str());
 				 exit(1);
 			 }
 			 image_available_semaphores_[i] = createImgAvailableSemaphoreResult.value;
@@ -301,7 +303,7 @@ namespace brr::render
 			 auto createRenderFinishedSempahoreResult= device_->Get_VkDevice().createSemaphore(vk::SemaphoreCreateInfo{});
 			 if (createRenderFinishedSempahoreResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Render Finished Semaphore for swapchain! Result code: %s.", vk::to_string(createRenderFinishedSempahoreResult.result).c_str());
+				 BRR_LogError("Could not create Render Finished Semaphore for swapchain! Result code: {}.", vk::to_string(createRenderFinishedSempahoreResult.result).c_str());
 				 exit(1);
 			 }
 			 render_finished_semaphores_[i] = createRenderFinishedSempahoreResult.value;
@@ -309,13 +311,13 @@ namespace brr::render
 			 auto createInFlightFenceResult = device_->Get_VkDevice().createFence(vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled });
 			 if (createInFlightFenceResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create In Flight Fence for swapchain! Result code: %s.", vk::to_string(createInFlightFenceResult.result).c_str());
+				 BRR_LogError("Could not create In Flight Fence for swapchain! Result code: {}.", vk::to_string(createInFlightFenceResult.result).c_str());
 				 exit(1);
 			 }
 			 in_flight_fences_[i] = createInFlightFenceResult.value;
 		}
 
-		SDL_Log("Created Swapchain synchronization semaphores and fences");
+		BRR_LogInfo("Created Swapchain synchronization semaphores and fences");
 	}
 
 	void Swapchain::Recreate_Swapchain()
@@ -336,20 +338,20 @@ namespace brr::render
 			{
 				device_->Get_VkDevice().destroyFramebuffer(resource.m_framebuffer);
 				resource.m_framebuffer = VK_NULL_HANDLE;
-				SDL_Log("Framebuffer of Swapchain Image %d Destroyed.", i);
+				BRR_LogInfo("Framebuffer of Swapchain Image {} Destroyed.", i);
 			}
 			if (resource.m_image_view)
 			{
 				device_->Get_VkDevice().destroyImageView(resource.m_image_view);
 				resource.m_image_view = VK_NULL_HANDLE;
-				SDL_Log("ImageView of Swapchain Image %d Destroyed.", i);
+				BRR_LogInfo("ImageView of Swapchain Image {} Destroyed.", i);
 			}
 		}
 		if (swapchain_)
 		{
 			device_->Get_VkDevice().destroySwapchainKHR(swapchain_);
 			swapchain_ = VK_NULL_HANDLE;
-			SDL_Log("Swapchain Destroyed.");
+			BRR_LogInfo("Swapchain Destroyed.");
 		}
 	}
 }

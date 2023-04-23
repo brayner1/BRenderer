@@ -1,6 +1,8 @@
 #ifndef BRR_DESCRIPTORS_H
 #define BRR_DESCRIPTORS_H
 
+#include "Core/LogSystem.h"
+
 namespace brr::render
 {
     //--------------------------------------------//
@@ -197,7 +199,7 @@ namespace brr::render
     {
         if (!m_descriptorAlloc)
         {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't bind buffer with non-initialized DescriptorSetBuilder");
+            BRR_LogError("Can't bind buffer with non-initialized DescriptorSetBuilder");
             return *this;
         }
 
@@ -226,7 +228,7 @@ namespace brr::render
     {
         if (!m_descriptorAlloc)
         {
-            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't bind image with non-initialized DescriptorSetBuilder");
+            BRR_LogError("Can't bind image with non-initialized DescriptorSetBuilder");
             return *this;
         }
 

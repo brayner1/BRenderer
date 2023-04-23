@@ -1,33 +1,37 @@
 #include "WindowManager.h"
 
+#include "Core/LogSystem.h"
+
 namespace brr
 {
 	WindowManager::WindowManager(uint32_t width, uint32_t height)
 	{
 		if (SDL_Init(SDL_INIT_VIDEO) < 0)
 		{
-			std::cout << "Could not initialize SDL: " << SDL_GetError() << std::endl;
+			BRR_LogInfo("Could not initialize SDL: {}", SDL_GetError());
 			exit(1);
 		}
+		BRR_LogInfo("SDL Initialized.");
 
 		m_pMainWindow = std::make_unique<Window>();
 		m_pMainWindow->InitWindow();
 		m_pMainWindowID = m_pMainWindow->GetWindowID();
 		m_pMainWindowClosed = false;
 
-		m_pRenderer = new render::Renderer();
+		m_pRenderer.reset(new render::Renderer());
 		m_pRenderer->Init_VulkanRenderer(m_pMainWindow.get());
+
+		BRR_LogInfo("WindowManager initialized.");
 	}
 
 	WindowManager::~WindowManager()
 	{
-		//m_pRenderer->Reset();
-		//delete m_pRenderer;
-
 		m_pSecondaryWindows_Id_Index_Map.clear();
 		m_pSecondaryWindows.clear();
 
-		//m_pMainWindow.reset();
+		m_pMainWindow.reset();
+
+		m_pRenderer.reset();
 
 		SDL_Quit();
 	}

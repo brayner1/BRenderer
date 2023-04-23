@@ -34,7 +34,7 @@ namespace brr
 		std::unordered_map<WindowId, uint32_t> m_pSecondaryWindows_Id_Index_Map{};
 		std::vector<std::unique_ptr<Window>> m_pSecondaryWindows{};
 
-		render::Renderer* m_pRenderer;
+		std::unique_ptr<render::Renderer> m_pRenderer;
 	};
 }
 

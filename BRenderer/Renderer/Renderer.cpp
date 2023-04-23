@@ -1,14 +1,17 @@
-#include "Core/Window.h"
-#include "Core/PerspectiveCamera.h"
-#include "Renderer/VkInitializerHelper.h"
 #include "Renderer/Renderer.h"
+
+#include "Renderer/VkInitializerHelper.h"
 #include "Renderer/RenderDevice.h"
 #include "Renderer/Swapchain.h"
-#include "Geometry/Geometry.h"
 #include "Renderer/Shader.h"
+#include "Core/Window.h"
+#include "Core/PerspectiveCamera.h"
+#include "Core/LogSystem.h"
+#include "Geometry/Geometry.h"
 #include "Scene/Entity.h"
 #include "Scene/Components/Mesh3DComponent.h"
 #include "Scene/Components/Transform3DComponent.h"
+
 
 namespace brr::render
 {
@@ -29,7 +32,7 @@ namespace brr::render
 		glm::mat4 model_matrix;
 	};
 
-	std::unique_ptr<Renderer> Renderer::singleton = nullptr;
+	Renderer* Renderer::singleton = nullptr;
 
 	Renderer::~Renderer()
 	{
@@ -89,7 +92,7 @@ namespace brr::render
 
 		m_pUniform_buffers.reserve(FRAME_LAG);
 
-		SDL_Log("Creating Uniform Buffers");
+		BRR_LogInfo("Creating Uniform Buffers");
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
 			m_pUniform_buffers.emplace_back(render_device_->Get_VkDevice(), buffer_size,
@@ -97,7 +100,7 @@ namespace brr::render
 				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		}
 
-		SDL_Log("Uniform Buffers created.");
+		BRR_LogInfo("Uniform Buffers created.");
 	}
 
 	void Renderer::Init_DescriptorSets()
@@ -128,7 +131,7 @@ namespace brr::render
 
 		m_pDescriptorSets = {descriptor_sets.begin(), descriptor_sets.end()};
 
-		SDL_Log("Descriptor Sets created.");*/
+		BRR_LogInfo("Descriptor Sets created.");*/
 	}
 
 	void Renderer::Init_GraphicsPipeline(RendererWindow& window)
@@ -149,12 +152,12 @@ namespace brr::render
 		auto allocCmdBufferResult = render_device_->Get_VkDevice().allocateCommandBuffers(command_buffer_alloc_info);
 		if (allocCmdBufferResult.result != vk::Result::eSuccess)
 		{
-			SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate CommandBuffer! Result code: %s.", vk::to_string(allocCmdBufferResult.result).c_str());
+			BRR_LogError("Could not allocate CommandBuffer! Result code: {}.", vk::to_string(allocCmdBufferResult.result).c_str());
 			exit(1);
 		}
 		window.m_pCommandBuffers = allocCmdBufferResult.value;
 
-		SDL_Log("CommandBuffer Created.");
+		BRR_LogInfo("CommandBuffer Created.");
 
 		if (render_device_->IsDifferentPresentQueue())
 		{
@@ -167,13 +170,13 @@ namespace brr::render
 			auto allocPresentCmdBufferResult = render_device_->Get_VkDevice().allocateCommandBuffers(present_buffer_alloc_info);
 			if (allocPresentCmdBufferResult.result != vk::Result::eSuccess)
 			{
-				SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate presentation CommandBuffer! Result code: %s.", vk::to_string(allocPresentCmdBufferResult.result).c_str());
+				BRR_LogError("Could not allocate presentation CommandBuffer! Result code: {}.", vk::to_string(allocPresentCmdBufferResult.result).c_str());
 				exit(1);
 			}
 
 			window.m_pPresentCommandBuffer = allocPresentCmdBufferResult.value[0];
 
-			SDL_Log("Separate Present CommandBuffer Created.");
+			BRR_LogInfo("Separate Present CommandBuffer Created.");
 		}
 	}
 
@@ -236,7 +239,7 @@ namespace brr::render
 		//{
 		//	for (Mesh3DComponent::SurfaceData& surface : mesh.surfaces)
 		//	{
-		//		//SDL_Log("Rendering surface idx %d", idx);
+		//		//BRR_LogInfo("Rendering surface idx %d", idx);
 		//		/*surface.Bind(cmd_buffer);
 		//		surface.Draw(cmd_buffer);*/
 		//	}
@@ -318,12 +321,12 @@ namespace brr::render
 			 auto createBufferResult = render_device_->Get_VkDevice().createBuffer(buffer_create_info);
 			 if (createBufferResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not create Buffer! Result code: %s.", vk::to_string(createBufferResult.result).c_str());
+				 BRR_LogError("Could not create Buffer! Result code: {}.", vk::to_string(createBufferResult.result).c_str());
 				 exit(1);
 			 }
 			 buffer = createBufferResult.value;
 
-			SDL_Log("Buffer created.");
+			BRR_LogInfo("Buffer created.");
 		}
 
 		// Allocate Memory
@@ -339,12 +342,12 @@ namespace brr::render
 			 auto allocMemResult = render_device_->Get_VkDevice().allocateMemory(allocate_info);
 			 if (allocMemResult.result != vk::Result::eSuccess)
 			 {
-				 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate DeviceMemory for buffer! Result code: %s.", vk::to_string(allocMemResult.result).c_str());
+				 BRR_LogError("Could not allocate DeviceMemory for buffer! Result code: {}.", vk::to_string(allocMemResult.result).c_str());
 				 exit(1);
 			 }
 			 buffer_memory = allocMemResult.value;
 
-			SDL_Log("Buffer Memory Allocated.");
+			BRR_LogInfo("Buffer Memory Allocated.");
 		}
 
 		render_device_->Get_VkDevice().bindBufferMemory(buffer, buffer_memory, 0);
@@ -366,7 +369,7 @@ namespace brr::render
 		 auto allocCmdBuffersResult = render_device_->Get_VkDevice().allocateCommandBuffers(cmd_buffer_alloc_info);
 		 if (allocCmdBuffersResult.result != vk::Result::eSuccess)
 		 {
-			 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "ERROR: Could not allocate CommandBuffer! Result code: %s.", vk::to_string(allocCmdBuffersResult.result).c_str());
+			 BRR_LogError("ERROR: Could not allocate CommandBuffer! Result code: {}.", vk::to_string(allocCmdBuffersResult.result).c_str());
 			 exit(1);
 		 }
 		 vk::CommandBuffer cmd_buffer = allocCmdBuffersResult.value[0];
@@ -425,12 +428,17 @@ namespace brr::render
 
 		render_device_ = nullptr;
 
-		SDL_Log("Renderer Destroyed");
+		BRR_LogInfo("Renderer Destroyed");
 	}
 
     Renderer::Renderer()
     {
-		singleton.reset(this);
+		if (singleton)
+		{
+			BRR_LogError("Another Renderer was created. Renderer class should be unique.");
+			exit(1);
+		}
+		singleton = this;
     }
 
     uint32_t Renderer::FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties) const

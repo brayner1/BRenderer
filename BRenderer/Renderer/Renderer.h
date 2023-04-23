@@ -26,7 +26,7 @@ namespace brr{
 
 			static Renderer* GetRenderer()
 			{
-				return singleton.get();
+				return singleton;
 			}
 
 			void Window_Resized(Window* window);
@@ -91,7 +91,7 @@ namespace brr{
 			void Update_UniformBuffers(RendererWindow& window, Scene& scene);
 
 
-			static std::unique_ptr<Renderer> singleton;
+			static Renderer* singleton;
 
 			struct RendererWindow
 			{
