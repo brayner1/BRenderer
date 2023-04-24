@@ -6,6 +6,32 @@
 
 namespace brr
 {
+    LogStreamBuffer::LogStreamBuffer(LogLevel level, const char* filename_in, int line_in, const char* funcname_in)
+    :   log_level(level),
+        filename(filename_in),
+        line(line_in),
+        funcname(funcname_in)
+    {
+    }
+
+    LogStreamBuffer::~LogStreamBuffer()
+    {
+        Flush();
+    }
+
+    void LogStreamBuffer::Flush()
+    {
+#ifdef USE_SPDLOG
+        spdlog::log(
+            spdlog::source_loc{ filename, line, funcname },
+            static_cast<spdlog::level::level_enum>(log_level),
+            message.str()
+        );
+
+        message.clear();
+#endif
+    }
+
     LogSystem& LogSystem::Instance()
     {
         static LogSystem instance;

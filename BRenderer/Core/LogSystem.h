@@ -1,29 +1,10 @@
 #ifndef BRR_LOGSYSTEM_H
 #define BRR_LOGSYSTEM_H
 
-#ifdef USE_SPDLOG
-#include <spdlog/spdlog.h>
-
-#define BRR_LogTrace(...)       (SPDLOG_TRACE(__VA_ARGS__))
-#define BRR_LogDebug(...)       (SPDLOG_DEBUG(__VA_ARGS__))
-#define BRR_LogInfo(...)        (SPDLOG_INFO(__VA_ARGS__))
-#define BRR_LogWarn(...)        (SPDLOG_WARN(__VA_ARGS__))
-#define BRR_LogError(...)       (SPDLOG_ERROR(__VA_ARGS__))
-#define BRR_LogCritical(...)    (SPDLOG_CRITICAL(__VA_ARGS__))
-
-#else
-
-#define BRR_LogTrace(...)       void(0)
-#define BRR_LogDebug(...)       void(0)
-#define BRR_LogInfo(...)        void(0)
-#define BRR_LogWarn(...)        void(0)
-#define BRR_LogError(...)       void(0)
-#define BRR_LogCritical(...)    void(0)
-
-#endif
-
 namespace brr
 {
+    enum class LogLevel : int;
+
     struct Logger {};
 
     struct StdoutLogger : Logger {};
@@ -45,6 +26,30 @@ namespace brr
         std::string filename;
         uint8_t     change_hour;
         uint8_t     change_minute;
+    };
+
+    class LogStreamBuffer
+    {
+    public:
+        LogStreamBuffer(LogLevel level, const char* filename_in, int line_in, const char* funcname_in);
+
+        ~LogStreamBuffer();
+
+        void Flush();
+
+        template<typename T>
+        LogStreamBuffer& operator<< (T&& input)
+        {
+            message << input;
+            return *this;
+        }
+
+    private:
+        std::stringstream message;
+        LogLevel          log_level;
+        const char*       filename;
+        int               line;
+        const char*       funcname;
     };
 
     // TODO: Define interfaces here. Implement class on library-specific file?
@@ -102,13 +107,57 @@ namespace brr
          */
         static void SetPattern(const std::string& format_str);
 
-        void AddLogger(const Logger* logger);
-
     protected:
         LogSystem();
     };
 
     
 }
+
+#ifdef USE_SPDLOG
+#include <spdlog/spdlog.h>
+
+#define BRR_LogTrace(...)       (SPDLOG_TRACE(__VA_ARGS__))
+#define BRR_LogDebug(...)       (SPDLOG_DEBUG(__VA_ARGS__))
+#define BRR_LogInfo(...)        (SPDLOG_INFO(__VA_ARGS__))
+#define BRR_LogWarn(...)        (SPDLOG_WARN(__VA_ARGS__))
+#define BRR_LogError(...)       (SPDLOG_ERROR(__VA_ARGS__))
+#define BRR_LogCritical(...)    (SPDLOG_CRITICAL(__VA_ARGS__))
+
+enum class LogLevel : int {
+    Trace    = SPDLOG_LEVEL_TRACE,
+    Debug    = SPDLOG_LEVEL_DEBUG,
+    Info     = SPDLOG_LEVEL_INFO,
+    Warning  = SPDLOG_LEVEL_WARN,
+    Error    = SPDLOG_LEVEL_ERROR,
+    Critical = SPDLOG_LEVEL_CRITICAL
+};
+
+#else
+
+#define BRR_LogTrace(...)       void(0)
+#define BRR_LogDebug(...)       void(0)
+#define BRR_LogInfo(...)        void(0)
+#define BRR_LogWarn(...)        void(0)
+#define BRR_LogError(...)       void(0)
+#define BRR_LogCritical(...)    void(0)
+
+enum class LogLevel : int {
+    Trace    = 0,
+    Debug    = 1,
+    Info     = 2,
+    Warning  = 3,
+    Error    = 4,
+    Critical = 5
+};
+
+#endif
+
+#define BRR_TraceStrBuff()        (LogStreamBuffer(LogLevel::Trace,    __FILE__, __LINE__, __FUNCTION__))
+#define BRR_DebugStrBuff()        (LogStreamBuffer(LogLevel::Debug,    __FILE__, __LINE__, __FUNCTION__))
+#define BRR_InfoStrBuff()         (LogStreamBuffer(LogLevel::Info,     __FILE__, __LINE__, __FUNCTION__))
+#define BRR_WarnStrBuff()         (LogStreamBuffer(LogLevel::Warning,  __FILE__, __LINE__, __FUNCTION__))
+#define BRR_ErrorStrBuff()        (LogStreamBuffer(LogLevel::Error,    __FILE__, __LINE__, __FUNCTION__))
+#define BRR_CriticalStrBuff()     (LogStreamBuffer(LogLevel::Critical, __FILE__, __LINE__, __FUNCTION__))
 
 #endif
