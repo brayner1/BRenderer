@@ -18,6 +18,7 @@
 #include <optional>
 
 #define VULKAN_HPP_NO_EXCEPTIONS
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include "vulkan/vulkan.hpp"
 
 #include "SDL2/SDL.h"

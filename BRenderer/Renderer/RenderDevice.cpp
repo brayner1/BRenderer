@@ -3,6 +3,7 @@
 #include "Core/Window.h"
 #include "Core/LogSystem.h"
 
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace brr::render
 {
@@ -70,6 +71,19 @@ namespace brr::render
 
 	void RenderDevice::Init_VkInstance(Window* window)
 	{
+		// Dynamic load of the library
+	    {
+	        vk::DynamicLoader dl;
+	        PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+			if (vkGetInstanceProcAddr == nullptr)
+			{
+				BRR_LogError("Could not load 'vkGetInstanceProcAddr' function address. Can't create vkInstance.");
+				exit(1);
+			}
+	        VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+			BRR_LogInfo("Loaded 'vkGetInstanceProcAddr' function address. Proceeding to create vkInstance.");
+	    }
+
 		//TODO: Do validation layers
 		// Check for validation layers support
 #ifdef NDEBUG
@@ -132,6 +146,11 @@ namespace brr::render
 			 exit(1);
 		 }
 		 vulkan_instance_ = createInstanceResult.value;
+
+	    {
+	        VULKAN_HPP_DEFAULT_DISPATCHER.init(vulkan_instance_);
+			BRR_LogInfo("Loaded instance specific vulkan functions addresses.");
+	    }
 
 		 BRR_LogInfo("Instance Created");
 	}
@@ -231,13 +250,17 @@ namespace brr::render
 			.setEnabledLayerCount(0)
 			.setPEnabledExtensionNames(device_extensions);
 
-		 auto createDeviceResult = phys_device_.createDevice(device_create_info);
-		 if (createDeviceResult.result != vk::Result::eSuccess)
-		 {
-			 BRR_LogError("Could not create Vulkan Device! Result code: {}.", vk::to_string(createDeviceResult.result).c_str());
-			 exit(1);
-		 }
-		 device_ = createDeviceResult.value;
+        auto createDeviceResult = phys_device_.createDevice(device_create_info);
+        if (createDeviceResult.result != vk::Result::eSuccess)
+        {
+            BRR_LogError("Could not create Vulkan Device! Result code: {}.", vk::to_string(createDeviceResult.result).c_str());
+            exit(1);
+        }
+        device_ = createDeviceResult.value;
+	    {
+	        VULKAN_HPP_DEFAULT_DISPATCHER.init(device_);
+			BRR_LogInfo("Loaded Device specific Vulkan functions addresses.");
+	    }
 
 		graphics_queue_ = device_.getQueue(graphics_family_idx, 0);
 

@@ -143,9 +143,9 @@ target_precompile_headers(BRenderer PRIVATE
 
 target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )
 
-target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Bin;${VULKAN_PATH}/Lib")
+target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Lib")
 
-target_link_libraries(BRenderer PUBLIC "vulkan-1" "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
 
 if (TARGET spdlog)
     message("SpdLog Found!")
