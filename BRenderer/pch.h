@@ -13,6 +13,7 @@
 #include <iostream>
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <memory>
 #include <utility>
 #include <optional>

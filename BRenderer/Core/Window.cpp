@@ -6,20 +6,17 @@
 
 namespace brr
 {
-	uint32_t Window::InitWindow()
+	Window::Window(const std::string& window_name, glm::uvec2 window_size)
 	{
-		constexpr uint32_t SCREEN_WIDTH = 600;
-		constexpr uint32_t SCREEN_HEIGHT = 600;
-
 		const uint32_t window_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
-		m_pWindow = SDL_CreateWindow("Vulkan Test",
+		m_pWindow = SDL_CreateWindow(window_name.c_str(),
 			SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-			SCREEN_WIDTH, SCREEN_HEIGHT,
+			window_size.x, window_size.y,
 			window_flags);
 
 		if (!m_pWindow)
 		{
-			BRR_LogError("Failed to open {} x {} window: {}", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_GetError());
+			BRR_LogError("Failed to open {} x {} window: {}", window_size.x, window_size.y, SDL_GetError());
 			exit(1);
 		}
 
@@ -43,14 +40,13 @@ namespace brr
 			glm::radians(45.f),
 			extent.x / (float)extent.y,
 			0.1f, 100.f)));
-
-		return m_pWindowID;
 	}
 
 	void Window::CloseWindow()
 	{
 		if (m_pWindow)
 		{
+			m_pWindowRenderer.reset();
 			SDL_DestroyWindow(m_pWindow);
 			m_pWindow = nullptr;
 			m_pWindowID = 0;
@@ -63,7 +59,12 @@ namespace brr
 		BRR_LogInfo("Window Closed");
 	}
 
-	void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)
+    void Window::InitWindowRenderer(render::RenderDevice* render_device)
+    {
+		m_pWindowRenderer = std::make_unique<render::Renderer>(this, render_device);
+    }
+
+    void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)
 	{
 		switch ((SDL_WindowEventID)pWindowEvent.event)
 		{
@@ -72,7 +73,7 @@ namespace brr
 		case SDL_WINDOWEVENT_EXPOSED: break;
 		case SDL_WINDOWEVENT_MOVED: break;
 		case SDL_WINDOWEVENT_RESIZED:
-			render::Renderer::GetRenderer()->Window_Resized(this);
+			m_pWindowRenderer->Window_Resized();
 			break;
 		case SDL_WINDOWEVENT_SIZE_CHANGED: break;
 		case SDL_WINDOWEVENT_MINIMIZED: break;
@@ -94,6 +95,12 @@ namespace brr
 		default:;
 		}
 	}
+
+    void Window::RenderWindow()
+    {
+		vk::CommandBuffer cmd_buff = m_pWindowRenderer->BeginRenderWindow();
+		m_pWindowRenderer->EndRenderWindow(cmd_buff);
+    }
 
 	void Window::GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const
 	{
@@ -118,13 +125,12 @@ namespace brr
 		}
 
 		LogStreamBuffer aLogMsg = BRR_InfoStrBuff();
-		aLogMsg << "Required Extensions\n";
+		aLogMsg << "Required Extensions:\n";
 		for (const char* extension : extensions)
 		{
 			aLogMsg << "\tExtension name: " << extension << "\n";
 		}
 		aLogMsg.Flush();
-		//BRR_LogInfo(aLogMsg.str());
 	}
 
 	glm::ivec2 Window::GetWindowExtent() const

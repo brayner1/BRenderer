@@ -3,13 +3,14 @@
 
 namespace brr::render
 {
-	class Shader
+    class RenderDevice;
+
+    class Shader
 	{
+		friend class RenderDevice;
 	public:
 
 		~Shader();
-
-		static Shader Create_Shader(std::string vertex_file_name, std::string frag_file_name);
 
 		void DestroyShaderModules();
 
@@ -23,6 +24,8 @@ namespace brr::render
 		Shader();
 
 		Shader(Shader&& other) noexcept;
+
+		RenderDevice* m_pDevice;
 
 		bool m_isValid = false;
 		vk::ShaderModule vert_shader_module_ {};

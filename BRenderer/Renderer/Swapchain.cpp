@@ -21,7 +21,7 @@ namespace brr::render
 	{
 		if (device_->Get_VkDevice().waitForFences(in_flight_fences_[current_buffer_], true, UINT64_MAX) != vk::Result::eSuccess)
 		{
-			BRR_LogInfo("Error waiting for In Flight Fence");
+			BRR_LogError("Error waiting for In Flight Fence");
 			exit(1);
 		}
 
@@ -68,7 +68,7 @@ namespace brr::render
 		}
 		else if (result != vk::Result::eSuccess)
 		{
-			BRR_LogInfo("Presentation Failed.");
+			BRR_LogError("Presentation Failed.");
 			exit(1);
 		}
 

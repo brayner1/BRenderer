@@ -1,5 +1,8 @@
 #ifndef BRR_RENDERDEVICE_H
 #define BRR_RENDERDEVICE_H
+#include "Descriptors.h"
+#include "Shader.h"
+#include "Swapchain.h"
 #include "VkInitializerHelper.h"
 
 namespace brr::render
@@ -13,18 +16,18 @@ namespace brr::render
 
 		/* Shader */
 
-		void CreateShaderFromFilename(std::string file_name);
+		Shader CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name);
 
 		/* Synchronization */
 
 		void WaitIdle();
 
-		/* Vulkan Objects (Instance, Device, Pools and Queues) */
+		/* Vulkan Objects (Instance, Device, CommandPools and Queues) */
 
 		FORCEINLINE [[nodiscard]] vk::Instance Get_Instance() const { return vulkan_instance_; }
 
 		FORCEINLINE [[nodiscard]] vk::PhysicalDevice Get_PhysicalDevice() const { return phys_device_; }
-		FORCEINLINE [[nodiscard]] vk::Device Get_VkDevice() const { return device_; }
+		FORCEINLINE [[nodiscard]] vk::Device Get_VkDevice() const { return m_pDevice; }
 
 		FORCEINLINE [[nodiscard]] vk::CommandPool GetGraphicsCommandPool() const { return command_pool_; }
 		FORCEINLINE [[nodiscard]] vk::CommandPool GetPresentCommandPool() const { return present_command_pool_; }
@@ -38,6 +41,23 @@ namespace brr::render
 
 		FORCEINLINE [[nodiscard]] bool IsDifferentPresentQueue() const { return different_present_queue_; }
 		FORCEINLINE [[nodiscard]] bool IsDifferentTransferQueue() const { return different_transfer_queue_; }
+
+		/***************
+		 * Descriptors *
+		 ***************/
+
+		[[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
+		[[nodiscard]] DescriptorSetBuilder<Swapchain::FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
+
+		/***********
+		 * Buffers *
+		 ***********/
+
+		void Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
+			vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory);
+
+		void Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
+			vk::DeviceSize src_buffer_offset = 0, vk::DeviceSize dst_buffer_offset = 0);
 
 	private:
 
@@ -54,7 +74,7 @@ namespace brr::render
 		// Physical and Logical Devices
 
 		vk::PhysicalDevice phys_device_ {};
-		vk::Device device_ {};
+		vk::Device m_pDevice {};
 
 		// Command Pools
 
@@ -70,6 +90,9 @@ namespace brr::render
 		vk::Queue transfer_queue_{};
 		bool different_present_queue_ = false;
 		bool different_transfer_queue_ = false;
+
+		DescriptorAllocator* m_pDescriptorAllocator = nullptr;
+		DescriptorLayoutCache* m_pDescriptorLayoutCache = nullptr;
 
 	};
 

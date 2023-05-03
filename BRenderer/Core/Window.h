@@ -8,10 +8,13 @@ namespace brr
 	class Window
 	{
 	public:
+
+		Window(const std::string& window_name, glm::uvec2 window_size);
+
 		~Window();
 
 		// Initialize and open the window with the current properties.
-		uint32_t InitWindow();
+		void InitWindowRenderer(render::RenderDevice* render_device);
 
 		// Close the window if it is open. If it is already closed, then do nothing.
 		void CloseWindow();
@@ -19,13 +22,21 @@ namespace brr
 		// Process a window event
 		void ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent);
 
-		void GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const;
-		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
-		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance);
+		// Window API
 
 		[[nodiscard]] WindowId GetWindowID() const { return m_pWindowID; }
 		[[nodiscard]] SDL_Window* GetSDLWindowHandle() const { return m_pWindow; }
 		[[nodiscard]] bool NeedToClose() const { return m_pNeedToClose; }
+
+		void RenderWindow();
+
+		// Vulkan
+
+		void GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const;
+		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
+		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance);
+
+		
 
 		Scene* GetScene() const { return scene.get(); }
 
@@ -35,6 +46,8 @@ namespace brr
 		SDL_Window* m_pWindow = nullptr;
 
 		vk::SurfaceKHR window_surface_ {};
+
+		std::unique_ptr<render::Renderer> m_pWindowRenderer;
 
 		std::unique_ptr<Scene> scene;
 	};

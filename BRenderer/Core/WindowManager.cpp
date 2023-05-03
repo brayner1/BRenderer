@@ -13,13 +13,13 @@ namespace brr
 		}
 		BRR_LogInfo("SDL Initialized.");
 
-		m_pMainWindow = std::make_unique<Window>();
-		m_pMainWindow->InitWindow();
+		m_pMainWindow = std::make_unique<Window>("Vulkan Test", glm::uvec2{600, 600});
 		m_pMainWindowID = m_pMainWindow->GetWindowID();
 		m_pMainWindowClosed = false;
 
-		m_pRenderer.reset(new render::Renderer());
-		m_pRenderer->Init_VulkanRenderer(m_pMainWindow.get());
+		m_pDevice = std::make_unique<render::RenderDevice>(m_pMainWindow.get());
+
+		m_pMainWindow->InitWindowRenderer(m_pDevice.get());
 
 		BRR_LogInfo("WindowManager initialized.");
 	}
@@ -31,7 +31,7 @@ namespace brr
 
 		m_pMainWindow.reset();
 
-		m_pRenderer.reset();
+		m_pDevice.reset();
 
 		SDL_Quit();
 	}
@@ -39,7 +39,9 @@ namespace brr
 	void WindowManager::Update()
 	{
 		if (!m_pMainWindowClosed)
-			m_pRenderer->Draw(m_pMainWindow.get());
+		{
+			m_pMainWindow->RenderWindow();
+		}
 	}
 
 	void WindowManager::CloseWindow(WindowId pWindowID)
@@ -47,7 +49,7 @@ namespace brr
 		// If closing main window, close the application
 		if (pWindowID == m_pMainWindowID)
 		{
-			m_pRenderer->Destroy_Window(m_pMainWindow.get());
+			//m_pRenderer->Destroy_Window(m_pMainWindow.get());
 			m_pMainWindow->CloseWindow();
 			m_pMainWindowClosed = true;
 			return;
@@ -58,7 +60,6 @@ namespace brr
 			return;
 
 		const WindowId window_index = it->second;
-		m_pRenderer->Destroy_Window(m_pSecondaryWindows[window_index].get());
 		m_pSecondaryWindows[window_index]->CloseWindow();
 
 		m_pSecondaryWindows_Id_Index_Map.erase(pWindowID);

@@ -116,6 +116,8 @@ namespace brr::render
     class DescriptorLayoutBuilder
     {
 	public:
+        DescriptorLayoutBuilder() = delete;
+
         static DescriptorLayoutBuilder MakeDescriptorLayoutBuilder(DescriptorLayoutCache* layoutCache);
 
         DescriptorLayoutBuilder& SetBinding(uint32_t binding,
@@ -128,7 +130,9 @@ namespace brr::render
         template <uint32_t N_Sets>
         friend class DescriptorSetBuilder;
 
-        DescriptorLayoutBuilder() = default;
+        DescriptorLayoutBuilder(DescriptorLayoutCache* layout_cache)
+        : m_layoutCache(layout_cache)
+        {}
 
         DescriptorLayoutBindings m_descriptor_layout_bindings {};
 
@@ -142,6 +146,7 @@ namespace brr::render
     template <uint32_t N_Sets>
     class DescriptorSetBuilder {
     public:
+        DescriptorSetBuilder() = delete;
 
         static DescriptorSetBuilder MakeDescriptorSetBuilder(const DescriptorLayout& layout, DescriptorAllocator* descriptor_allocator);
         static DescriptorSetBuilder MakeDescriptorSetBuilder(DescriptorLayoutBuilder& layout_builder, DescriptorAllocator* descriptor_allocator);
@@ -155,13 +160,15 @@ namespace brr::render
         bool BuildDescriptorSet(std::array<vk::DescriptorSet, N_Sets>& sets);
 
     private:
-        DescriptorSetBuilder() = default;
+        DescriptorSetBuilder(const DescriptorLayout& layout, DescriptorAllocator* descriptor_allocator)
+        : m_descriptor_layout(layout), m_descriptorAlloc(descriptor_allocator)
+        {}
 
         std::array<std::vector<vk::WriteDescriptorSet>, N_Sets> m_descriptorWrites;
 
 
-        DescriptorLayout            m_descriptor_layout     = {};
-        DescriptorAllocator*        m_descriptorAlloc       = nullptr;
+        DescriptorLayout            m_descriptor_layout;
+        DescriptorAllocator*        m_descriptorAlloc;
     };
 
     template <uint32_t N_Sets>
@@ -171,10 +178,8 @@ namespace brr::render
         DescriptorAllocator* descriptor_allocator
     )
     {
-        DescriptorSetBuilder set_builder;
+        DescriptorSetBuilder set_builder {layout, descriptor_allocator};
 
-        set_builder.m_descriptor_layout         = layout;
-        set_builder.m_descriptorAlloc           = descriptor_allocator;
         return set_builder;
     }
 
@@ -184,10 +189,8 @@ namespace brr::render
         DescriptorAllocator* descriptor_allocator
     )
     {
-        DescriptorSetBuilder set_builder;
+        DescriptorSetBuilder set_builder { layout_builder.BuildDescriptorLayout(), descriptor_allocator };
 
-        set_builder.m_descriptor_layout         = layout_builder.BuildDescriptorLayout();
-        set_builder.m_descriptorAlloc           = descriptor_allocator;
         return set_builder;
     }
 

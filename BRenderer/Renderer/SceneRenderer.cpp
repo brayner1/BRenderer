@@ -7,24 +7,22 @@
 
 namespace brr::render
 {
-    SceneRenderer::SceneRenderer(entt::registry& registry)
-    : m_render_device(Renderer::GetRenderer()->GetDevice())
+    SceneRenderer::SceneRenderer(RenderDevice* device, entt::registry& registry)
+    : m_render_device(device)
     {
 		assert(m_render_device && "Can't create SceneRenderer without RenderDevice.");
 		BRR_LogInfo("Creating SceneRenderer");
         registry.on_construct<Mesh3DComponent>().connect<&SceneRenderer::OnAddedMesh3D>(this);
 
-		Renderer* renderer = Renderer::GetRenderer();
-
 		for (size_t idx = 0; idx < FRAME_LAG; idx++)
 		{
 			m_camera_uniform_info.m_uniform_buffers[idx] = 
-				DeviceBuffer(m_render_device->Get_VkDevice(), sizeof(UniformBufferObject),
+				DeviceBuffer(*m_render_device, sizeof(UniformBufferObject),
 				vk::BufferUsageFlagBits::eUniformBuffer,
 				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		}
 
-		DescriptorLayoutBuilder layoutBuilder = renderer->GetDescriptorLayoutBuilder();
+		DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
 		layoutBuilder
 			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
@@ -36,18 +34,17 @@ namespace brr::render
 		}
 
 		DescriptorLayout layout = layoutBuilder.BuildDescriptorLayout();
-		auto setBuilder = renderer->GetDescriptorSetBuilder(layout);
+		auto setBuilder = m_render_device->GetDescriptorSetBuilder(layout);
 		setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
 
 		setBuilder.BuildDescriptorSet(m_camera_uniform_info.m_descriptor_sets);
     }
 
-    void SceneRenderer::UpdateRenderData(entt::registry& scene_registry, uint32_t buffer_index, glm::mat4& projection_view)
+    void SceneRenderer::UpdateRenderData(entt::registry& scene_registry, uint32_t buffer_index, const glm::mat4& projection_view)
     {
 		assert(m_render_device && "RenderDevice must be initialized on construction.");
 		auto render_group = scene_registry.group<Transform3DComponent, Mesh3DComponent>();
 
-		Renderer* renderer = Renderer::GetRenderer();
 		render_group.each([&](auto entity, Transform3DComponent& transform, Mesh3DComponent& mesh)
 		{
 			for (Mesh3DComponent::SurfaceData& surface : mesh)
@@ -77,7 +74,7 @@ namespace brr::render
 					{
 						Init_UniformBuffers(render_data);
 
-						DescriptorLayoutBuilder layoutBuilder = renderer->GetDescriptorLayoutBuilder();
+						DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
 						layoutBuilder
 							.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
@@ -89,7 +86,7 @@ namespace brr::render
                            model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
                         }
 
-                        auto setBuilder = renderer->GetDescriptorSetBuilder(render_data.m_descriptor_layout);
+                        auto setBuilder = m_render_device->GetDescriptorSetBuilder(render_data.m_descriptor_layout);
 					    setBuilder.BindBuffer(0, model_descriptor_buffer_infos);
 
                         setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
@@ -170,15 +167,12 @@ namespace brr::render
     void SceneRenderer::CreateVertexBuffer(Mesh3DComponent::SurfaceData& surface_data, RenderData& render_data)
     {
 		assert(!surface_data.m_vertices.empty() && "Vertices data can't be empty.");
-		render::Renderer* render = render::Renderer::GetRenderer();
-		render::RenderDevice* render_device = render->GetDevice();
-		vk::Device vkDevice = render_device->Get_VkDevice();
 
 		vk::DeviceSize buffer_size = sizeof(Vertex3_PosColor) * surface_data.m_vertices.size();
 
 		BRR_LogInfo("Creating Staging Buffer.");
 
-		render::DeviceBuffer staging_buffer{ vkDevice,
+		render::DeviceBuffer staging_buffer{ *m_render_device,
 			buffer_size,
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent };
@@ -191,7 +185,7 @@ namespace brr::render
 
 		BRR_LogInfo("Creating Vertex Buffer.");
 
-		render_data.m_vertex_buffer = DeviceBuffer(vkDevice, buffer_size,
+		render_data.m_vertex_buffer = DeviceBuffer(*m_render_device, buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
@@ -199,7 +193,7 @@ namespace brr::render
 
 		BRR_LogInfo("Copying Staging Buffer into Vertex Buffer.");
 
-		render->Copy_Buffer(staging_buffer.GetBuffer(), render_data.m_vertex_buffer.GetBuffer(), buffer_size);
+		m_render_device->Copy_Buffer_Immediate(staging_buffer.GetBuffer(), render_data.m_vertex_buffer.GetBuffer(), buffer_size);
 
 		BRR_LogInfo("Destroying Staging Buffer.");
     }
@@ -209,15 +203,11 @@ namespace brr::render
 		if (surface_data.m_indices.empty())
 			return;
 
-		render::Renderer* render = render::Renderer::GetRenderer();
-		render::RenderDevice* render_device = render->GetDevice();
-		vk::Device vkDevice = render_device->Get_VkDevice();
-
 		vk::DeviceSize buffer_size = sizeof(uint32_t) * surface_data.m_indices.size();
 
 		BRR_LogInfo("Creating Staging Buffer.");
 
-		render::DeviceBuffer staging_buffer{ vkDevice,
+		render::DeviceBuffer staging_buffer{ *m_render_device,
 			buffer_size,
 			vk::BufferUsageFlagBits::eTransferSrc,
 			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent };
@@ -229,7 +219,7 @@ namespace brr::render
 
 		BRR_LogInfo("Creating Index Buffer.");
 
-		render_data.m_index_buffer = DeviceBuffer(vkDevice, buffer_size,
+		render_data.m_index_buffer = DeviceBuffer(*m_render_device, buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
@@ -237,7 +227,7 @@ namespace brr::render
 
 		BRR_LogInfo("Copying Staging Buffer into Index Buffer.");
 
-		render->Copy_Buffer(staging_buffer.GetBuffer(), render_data.m_index_buffer.GetBuffer(), buffer_size);
+		m_render_device->Copy_Buffer_Immediate(staging_buffer.GetBuffer(), render_data.m_index_buffer.GetBuffer(), buffer_size);
 
 		BRR_LogInfo("Destroying Staging Buffer.");
     }
@@ -249,9 +239,9 @@ namespace brr::render
 		BRR_LogInfo("Creating Uniform Buffers");
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
-			render_data.m_uniform_buffers[i].Reset(m_render_device->Get_VkDevice(), buffer_size,
-				vk::BufferUsageFlagBits::eUniformBuffer,
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			render_data.m_uniform_buffers[i].Reset(*m_render_device, buffer_size,
+                                                   vk::BufferUsageFlagBits::eUniformBuffer,
+                                                   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		}
 
 		BRR_LogInfo("Uniform Buffers created.");

@@ -51,7 +51,6 @@ set(BRenderer_SOURCE_FILES
 "Core/PerspectiveCamera.cpp"
 
 "Geometry/Geometry.cpp"
-"Geometry/Mesh2D.cpp"
 
 "Scene/Components.cpp"
 "Scene/Entity.cpp"
@@ -88,7 +87,6 @@ set(BRenderer_HEADER_FILES
 "Core/PerspectiveCamera.h"
 
 "Geometry/Geometry.h"
-"Geometry/Mesh2D.h"
 
 "Scene/Components.h"
 "Scene/Entity.h"

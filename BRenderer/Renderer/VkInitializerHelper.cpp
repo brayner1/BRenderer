@@ -252,4 +252,19 @@ namespace brr::render::VkHelpers
 		}
 		return found;
 	}
+
+    uint32_t FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties,
+        const vk::PhysicalDeviceMemoryProperties& phys_device_mem_properties)
+    {
+		for (uint32_t i = 0; i < phys_device_mem_properties.memoryTypeCount; i++)
+		{
+			if ((type_filter & (1 << i)) &&
+				(phys_device_mem_properties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find valid memory type.");
+    }
 }

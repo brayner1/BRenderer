@@ -11,9 +11,9 @@ namespace brr::render
     {
     public:
 
-        SceneRenderer(entt::registry& registry);
+        SceneRenderer(RenderDevice* device, entt::registry& registry);
 
-        void UpdateRenderData(entt::registry& scene_registry, uint32_t buffer_index, glm::mat4& projection_view);
+        void UpdateRenderData(entt::registry& scene_registry, uint32_t buffer_index, const glm::mat4& projection_view);
 
         void Render(vk::CommandBuffer cmd_buffer, uint32_t buffer_index, const DevicePipeline& render_pipeline);
 

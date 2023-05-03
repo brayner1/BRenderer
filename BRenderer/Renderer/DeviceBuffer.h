@@ -5,19 +5,21 @@ namespace brr
 {
 	namespace render
 	{
-		class DeviceBuffer
+        class RenderDevice;
+
+        class DeviceBuffer
 		{
 		public:
 
 			DeviceBuffer();
-			DeviceBuffer(vk::Device device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+			DeviceBuffer(RenderDevice& device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
 			DeviceBuffer(DeviceBuffer&& device_buffer) noexcept;
 
 			DeviceBuffer& operator=(DeviceBuffer&& device_buffer) noexcept;
 
 			~DeviceBuffer();
 
-			void Reset(vk::Device device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+			void Reset(RenderDevice& device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
 
 			void Map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 			void Unmap();
@@ -41,7 +43,7 @@ namespace brr
 
 			void DestroyBuffer();
 
-			vk::Device device_ = VK_NULL_HANDLE;
+			RenderDevice* device_ = nullptr;
 
 			vk::Buffer buffer_ = VK_NULL_HANDLE;
 			vk::DeviceMemory buffer_memory_ = VK_NULL_HANDLE;

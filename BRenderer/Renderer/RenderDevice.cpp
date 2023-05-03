@@ -2,6 +2,7 @@
 
 #include "Core/Window.h"
 #include "Core/LogSystem.h"
+#include "Files/FilesUtils.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -16,58 +17,201 @@ namespace brr::render
 		Init_Queues_Indices(surface);
 		Init_Device();
 		Init_CommandPool();
+
+		m_pDescriptorLayoutCache = new DescriptorLayoutCache(m_pDevice);
+		m_pDescriptorAllocator = new DescriptorAllocator(m_pDevice);
 	}
 
-	void RenderDevice::CreateShaderFromFilename(std::string file_name)
+	vk::ShaderModule Create_ShaderModule(RenderDevice* device, std::vector<char>& code)
 	{
-		//Shader shader{};
-		//// Load Vertex Shader
-		//{
-		//	std::filesystem::path file_path{ path + ".vert" };
-		//	if (!file_path.has_filename())
-		//	{
-		//		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "'%s' is not a valid file path.");
-		//		return Shader{};
-		//	}
+		vk::ShaderModuleCreateInfo shader_module_info{};
+		shader_module_info
+			.setCodeSize(code.size())
+			.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
 
-		//	std::vector<char> vertex_shader_code = files::ReadFile(path);
-
-		//	vk::ShaderModule vertex_shader_module = Create_ShaderModule(vertex_shader_code);
-
-		//	shader.m_pPipelineStageInfos.push_back(vk::PipelineShaderStageCreateInfo()
-		//		.setStage(vk::ShaderStageFlagBits::eVertex)
-		//		.setModule(vertex_shader_module)
-		//		.setPName("main"));
-		//}
-
-		//// Load Fragment Shader
-		//{
-		//	std::filesystem::path file_path{ path + ".frag" };
-		//	if (!file_path.has_filename())
-		//	{
-		//		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "'%s' is not a valid file path.");
-		//		return Shader{};
-		//	}
-
-		//	std::vector<char> fragment_shader_code = files::ReadFile(path);
-
-		//	vk::ShaderModule fragment_shader_module = Create_ShaderModule(fragment_shader_code);
-
-		//	shader.m_pPipelineStageInfos.push_back(vk::PipelineShaderStageCreateInfo()
-		//		.setStage(vk::ShaderStageFlagBits::eFragment)
-		//		.setModule(fragment_shader_module)
-		//		.setPName("main"));
-		//}
-
-		//shader.m_isValid = true;
-
-		//return shader;
+		auto createShaderModuleResult = device->Get_VkDevice().createShaderModule(shader_module_info);
+		if (createShaderModuleResult.result != vk::Result::eSuccess)
+		{
+			BRR_LogError("Could not create ShaderModule! Result code: {}.", vk::to_string(createShaderModuleResult.result).c_str());
+			exit(1);
+		}
+		return createShaderModuleResult.value;
 	}
 
-	void RenderDevice::WaitIdle()
+    Shader RenderDevice::CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name)
+    {
+		Shader shader{};
+		vk::ShaderModule vertex_shader_module;
+		vk::ShaderModule fragment_shader_module;
+		// Load Vertex Shader
+		{
+			std::filesystem::path file_path{ vertex_file_name + ".spv" };
+			if (!file_path.has_filename())
+			{
+				BRR_LogInfo("'{}' is not a valid file path.", file_path.string());
+				return Shader{};
+			}
+
+			std::vector<char> vertex_shader_code = files::ReadFile(file_path.string());
+
+			vertex_shader_module = Create_ShaderModule(this, vertex_shader_code);
+
+			shader.pipeline_stage_infos_.push_back(vk::PipelineShaderStageCreateInfo()
+				.setStage(vk::ShaderStageFlagBits::eVertex)
+				.setModule(vertex_shader_module)
+				.setPName("main"));
+		}
+
+		// Load Fragment Shader
+		{
+			std::filesystem::path file_path{ frag_file_name + ".spv" };
+			if (!file_path.has_filename())
+			{
+				BRR_LogError("'{}' is not a valid file path.", file_path.string());
+				return Shader{};
+			}
+
+			std::vector<char> fragment_shader_code = files::ReadFile(file_path.string());
+
+			fragment_shader_module = Create_ShaderModule(this, fragment_shader_code);
+
+			shader.pipeline_stage_infos_.push_back(vk::PipelineShaderStageCreateInfo()
+				.setStage(vk::ShaderStageFlagBits::eFragment)
+				.setModule(fragment_shader_module)
+				.setPName("main"));
+		}
+
+		shader.m_isValid = true;
+		shader.m_pDevice = this;
+		shader.vert_shader_module_ = vertex_shader_module;
+		shader.frag_shader_module_ = fragment_shader_module;
+
+		shader.vertex_input_binding_description_ = Vertex3_PosColor::GetBindingDescription();
+		shader.vertex_input_attribute_descriptions_ = Vertex3_PosColor::GetAttributeDescriptions();
+
+		return std::move(shader);
+    }
+
+    void RenderDevice::WaitIdle()
 	{
-		device_.waitIdle();
+		m_pDevice.waitIdle();
 	}
+
+    DescriptorLayoutBuilder RenderDevice::GetDescriptorLayoutBuilder() const
+    {
+		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
+    }
+
+    DescriptorSetBuilder<Swapchain::FRAME_LAG> RenderDevice::GetDescriptorSetBuilder(
+        const DescriptorLayout& layout) const
+    {
+		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator);
+    }
+
+    void RenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
+                                     vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory)
+    {
+		// Create Buffer
+		{
+			vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+			std::vector<uint32_t> indices{
+				GetQueueFamilyIndices().m_graphicsFamily.value(),
+				GetQueueFamilyIndices().m_transferFamily.value()
+			};
+
+			vk::BufferCreateInfo buffer_create_info;
+			buffer_create_info
+				.setUsage(usage)
+				.setSharingMode(sharing_mode)
+				.setSize(buffer_size);
+			if (sharing_mode == vk::SharingMode::eConcurrent)
+			{
+
+				buffer_create_info.setQueueFamilyIndices(indices);
+			}
+
+			auto createBufferResult = m_pDevice.createBuffer(buffer_create_info);
+			if (createBufferResult.result != vk::Result::eSuccess)
+			{
+				BRR_LogError("Could not create Buffer! Result code: {}.", vk::to_string(createBufferResult.result).c_str());
+				exit(1);
+			}
+			buffer = createBufferResult.value;
+
+			BRR_LogInfo("Buffer created.");
+		}
+
+		// Allocate Memory
+		{
+			vk::MemoryRequirements memory_requirements = m_pDevice.getBufferMemoryRequirements(buffer);
+
+			vk::MemoryAllocateInfo allocate_info{};
+			allocate_info
+				.setAllocationSize(memory_requirements.size)
+				.setMemoryTypeIndex(VkHelpers::FindMemoryType(memory_requirements.memoryTypeBits,
+                                                              properties, phys_device_.getMemoryProperties()));
+
+			auto allocMemResult = m_pDevice.allocateMemory(allocate_info);
+			if (allocMemResult.result != vk::Result::eSuccess)
+			{
+				BRR_LogError("Could not allocate DeviceMemory for buffer! Result code: {}.", vk::to_string(allocMemResult.result).c_str());
+				exit(1);
+			}
+			buffer_memory = allocMemResult.value;
+
+			BRR_LogInfo("Buffer Memory Allocated.");
+		}
+
+		m_pDevice.bindBufferMemory(buffer, buffer_memory, 0);
+
+		return;
+    }
+
+    void RenderDevice::Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
+        vk::DeviceSize src_buffer_offset, vk::DeviceSize dst_buffer_offset)
+    {
+		const vk::CommandPool transfer_cmd_pool = (IsDifferentTransferQueue()) ? GetTransferCommandPool() : GetGraphicsCommandPool();
+
+		vk::CommandBufferAllocateInfo cmd_buffer_alloc_info{};
+		cmd_buffer_alloc_info
+			.setLevel(vk::CommandBufferLevel::ePrimary)
+			.setCommandPool(transfer_cmd_pool)
+			.setCommandBufferCount(1);
+
+		auto allocCmdBuffersResult = m_pDevice.allocateCommandBuffers(cmd_buffer_alloc_info);
+		if (allocCmdBuffersResult.result != vk::Result::eSuccess)
+		{
+			BRR_LogError("ERROR: Could not allocate CommandBuffer! Result code: {}.", vk::to_string(allocCmdBuffersResult.result).c_str());
+			exit(1);
+		}
+		vk::CommandBuffer cmd_buffer = allocCmdBuffersResult.value[0];
+
+		vk::CommandBufferBeginInfo cmd_begin_info{};
+		cmd_begin_info
+			.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+		cmd_buffer.begin(cmd_begin_info);
+
+		vk::BufferCopy copy_region{};
+		copy_region
+			.setSrcOffset(0)
+			.setDstOffset(0)
+			.setSize(size);
+
+		cmd_buffer.copyBuffer(src_buffer, dst_buffer, copy_region);
+
+		cmd_buffer.end();
+
+		vk::SubmitInfo submit_info;
+		submit_info
+			.setCommandBufferCount(1)
+			.setCommandBuffers(cmd_buffer);
+
+		GetTransferQueue().submit(submit_info);
+		GetTransferQueue().waitIdle();
+
+		m_pDevice.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
+    }
 
 	void RenderDevice::Init_VkInstance(Window* window)
 	{
@@ -263,17 +407,17 @@ namespace brr::render
             BRR_LogError("Could not create Vulkan Device! Result code: {}.", vk::to_string(createDeviceResult.result).c_str());
             exit(1);
         }
-        device_ = createDeviceResult.value;
+		m_pDevice = createDeviceResult.value;
 	    {
-	        VULKAN_HPP_DEFAULT_DISPATCHER.init(device_);
+	        VULKAN_HPP_DEFAULT_DISPATCHER.init(m_pDevice);
 			BRR_LogInfo("Loaded Device specific Vulkan functions addresses.");
 	    }
 
-		graphics_queue_ = device_.getQueue(graphics_family_idx, 0);
+		graphics_queue_ = m_pDevice.getQueue(graphics_family_idx, 0);
 
-		presentation_queue_ = (different_present_queue_) ? device_.getQueue(presentation_family_idx, 0) : graphics_queue_;
+		presentation_queue_ = (different_present_queue_) ? m_pDevice.getQueue(presentation_family_idx, 0) : graphics_queue_;
 
-		transfer_queue_ = (different_transfer_queue_) ? device_.getQueue(transfer_family_idx, 0) : graphics_queue_;
+		transfer_queue_ = (different_transfer_queue_) ? m_pDevice.getQueue(transfer_family_idx, 0) : graphics_queue_;
 
 		BRR_LogInfo("Device Created");
 	}
@@ -285,7 +429,7 @@ namespace brr::render
 			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 			.setQueueFamilyIndex(queue_family_indices_.m_graphicsFamily.value());
 
-		 auto createCmdPoolResult = device_.createCommandPool(command_pool_info);
+		 auto createCmdPoolResult = m_pDevice.createCommandPool(command_pool_info);
 		 if (createCmdPoolResult.result != vk::Result::eSuccess)
 		 {
 			 BRR_LogError("Could not create CommandPool! Result code: {}.", vk::to_string(createCmdPoolResult.result).c_str());
@@ -302,7 +446,7 @@ namespace brr::render
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 				.setQueueFamilyIndex(queue_family_indices_.m_presentFamily.value());
 
-			 auto createPresentCmdPoolResult = device_.createCommandPool(present_pool_info);
+			 auto createPresentCmdPoolResult = m_pDevice.createCommandPool(present_pool_info);
 			 if (createPresentCmdPoolResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create present CommandPool! Result code: {}.", vk::to_string(createPresentCmdPoolResult.result).c_str());
@@ -320,7 +464,7 @@ namespace brr::render
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 				.setQueueFamilyIndex(queue_family_indices_.m_transferFamily.value());
 
-			 auto createTransferCommandPoolResult = device_.createCommandPool(transfer_pool_info);
+			 auto createTransferCommandPoolResult = m_pDevice.createCommandPool(transfer_pool_info);
 			 if (createTransferCommandPoolResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create transfer CommandPool! Result code: {}.", vk::to_string(createTransferCommandPoolResult.result).c_str());

@@ -39,6 +39,9 @@ namespace brr::render::VkHelpers
 									  const std::vector<vk::LayerProperties>& layers, 
 									  std::vector<const char*>& accepted_layers);
 
+
+	uint32_t FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties, const vk::PhysicalDeviceMemoryProperties& phys_device_mem_properties);
+
 }
 
 #endif

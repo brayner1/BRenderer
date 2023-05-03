@@ -259,9 +259,8 @@ namespace brr::render
 	//! MakeDescriptorLayoutBuilder
 	DescriptorLayoutBuilder DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(DescriptorLayoutCache* layoutCache)
 	{
-		DescriptorLayoutBuilder builder;
+		DescriptorLayoutBuilder builder { layoutCache };
 
-		builder.m_layoutCache = layoutCache;
 		return builder;
 	}
 
