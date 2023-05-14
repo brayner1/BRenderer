@@ -1,6 +1,10 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
-#include "Renderer/Renderer.h"
+#include "Renderer/RenderDevice.h"
+#include "Renderer/DeviceBuffer.h"
+#include "Renderer/RenderDefs.h"
+#include "Renderer/Descriptors.h"
+#include "Renderer/DevicePipeline.h"
 
 #include "Scene/Components/Mesh3DComponent.h"
 

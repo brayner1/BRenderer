@@ -1,6 +1,8 @@
 #ifndef BRR_SWAPCHAIN_H
 #define BRR_SWAPCHAIN_H
 
+#include "Renderer/RenderDefs.h"
+
 namespace brr
 {
 	class Window;
@@ -14,7 +16,6 @@ namespace brr::render
 	class Swapchain
 	{
 	public:
-		static constexpr int FRAME_LAG = 2;
 
 		Swapchain(RenderDevice* device, Window* window);
 		~Swapchain();

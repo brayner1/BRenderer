@@ -2,6 +2,7 @@
 #define BRR_COMPONENTS_H
 
 #include "Geometry/Geometry.h"
+#include "Components/NodeComponent.h"
 #include "Components/Transform3DComponent.h"
 #include "Components/Mesh3DComponent.h"
 #include "Components/MaterialComponent.h"

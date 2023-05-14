@@ -1,4 +1,4 @@
-#include "Renderer/Renderer.h"
+#include "Renderer/WindowRenderer.h"
 
 #include "Renderer/VkInitializerHelper.h"
 #include "Renderer/RenderDevice.h"
@@ -18,7 +18,7 @@ namespace brr::render
 		glm::mat4 model_matrix;
 	};
 
-    Renderer::Renderer(Window* window, RenderDevice* device)
+    WindowRenderer::WindowRenderer(Window* window, RenderDevice* device)
     : m_pOwnerWindow(window),
       render_device_(device)
     {
@@ -34,19 +34,19 @@ namespace brr::render
 		Init_CommandBuffers();
     }
 
-	Renderer::~Renderer()
+	WindowRenderer::~WindowRenderer()
 	{
 		if (render_device_)
 			render_device_->WaitIdle();
 		Reset();
 	}
 
-	void Renderer::Window_Resized()
+	void WindowRenderer::Window_Resized()
 	{
 		Recreate_Swapchain();
 	}
 
-	void Renderer::Init_DescriptorLayouts()
+	void WindowRenderer::Init_DescriptorLayouts()
 	{
 		DescriptorLayoutBuilder layoutBuilder = render_device_->GetDescriptorLayoutBuilder();
 		layoutBuilder
@@ -56,14 +56,14 @@ namespace brr::render
 		m_pDescriptorSetLayout = descriptor_layout.m_descriptor_set_layout;
 	}
 
-	void Renderer::Init_GraphicsPipeline()
+	void WindowRenderer::Init_GraphicsPipeline()
 	{
 		Shader shader = render_device_->CreateShaderFromFiles("vert", "frag");
 
 		m_graphics_pipeline.Init_GraphicsPipeline(render_device_->Get_VkDevice(), {2, m_pDescriptorSetLayout }, shader, swapchain_.get());
 	}
 
-	void Renderer::Init_CommandBuffers()
+	void WindowRenderer::Init_CommandBuffers()
 	{
 		vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
 		command_buffer_alloc_info
@@ -102,7 +102,7 @@ namespace brr::render
 		}
 	}
 
-	void Renderer::BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer,
+	void WindowRenderer::BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer,
                                                  uint32_t image_index) const
     {
 		vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
@@ -126,14 +126,14 @@ namespace brr::render
 		cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
 	}
 
-	void Renderer::EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const
+	void WindowRenderer::EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const
 	{
 		cmd_buffer.endRenderPass();
 
 		cmd_buffer.end();
 	}
 
-	void Renderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index)
+	void WindowRenderer::Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index)
 	{
 		BeginRenderPass_CommandBuffer(cmd_buffer, present_cmd_buffer, image_index);
 
@@ -142,7 +142,7 @@ namespace brr::render
 		EndRenderPass_CommandBuffer(cmd_buffer);
 	}
 
-	vk::CommandBuffer Renderer::BeginRenderWindow()
+	vk::CommandBuffer WindowRenderer::BeginRenderWindow()
 	{
 		vk::Result result = swapchain_->AcquireNextImage(current_image_idx);
 
@@ -179,19 +179,19 @@ namespace brr::render
 		return current_cmd_buffer;
 	}
 
-    void Renderer::EndRenderWindow(vk::CommandBuffer cmd_buffer)
+    void WindowRenderer::EndRenderWindow(vk::CommandBuffer cmd_buffer)
     {
 		swapchain_->SubmitCommandBuffer(cmd_buffer, current_image_idx);
     }
 
-	void Renderer::Recreate_Swapchain()
+	void WindowRenderer::Recreate_Swapchain()
 	{
 		render_device_->WaitIdle();
 
 		swapchain_->Recreate_Swapchain();
 	}
 
-	void Renderer::Reset()
+	void WindowRenderer::Reset()
 	{
 		// Destroy Windows Swapchain and its Resources
 		{
@@ -203,6 +203,6 @@ namespace brr::render
 
 		render_device_ = nullptr;
 
-		BRR_LogInfo("Renderer Destroyed");
+		BRR_LogInfo("WindowRenderer Destroyed");
 	}
 }

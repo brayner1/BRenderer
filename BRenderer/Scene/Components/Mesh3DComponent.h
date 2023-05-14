@@ -1,7 +1,6 @@
 #ifndef BRR_MESH3DCOMPONENT_H
 #define BRR_MESH3DCOMPONENT_H
 #include "Geometry/Geometry.h"
-#include "Renderer/DeviceBuffer.h"
 
 namespace brr
 {

@@ -1,9 +1,9 @@
 #ifndef BRR_RENDERDEVICE_H
 #define BRR_RENDERDEVICE_H
-#include "Descriptors.h"
-#include "Shader.h"
-#include "Swapchain.h"
-#include "VkInitializerHelper.h"
+#include "Renderer/RenderDefs.h"
+#include "Renderer/Descriptors.h"
+#include "Renderer/Shader.h"
+#include "Renderer/VkInitializerHelper.h"
 
 namespace brr::render
 {
@@ -47,7 +47,7 @@ namespace brr::render
 		 ***************/
 
 		[[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
-		[[nodiscard]] DescriptorSetBuilder<Swapchain::FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
+		[[nodiscard]] DescriptorSetBuilder<FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
 
 		/***********
 		 * Buffers *

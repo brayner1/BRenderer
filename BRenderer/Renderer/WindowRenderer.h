@@ -2,27 +2,26 @@
 #define BRR_RENDERER_H
 #include "Renderer/DevicePipeline.h"
 #include "Renderer/Swapchain.h"
-#include "Renderer/RenderDevice.h"
 #include "Renderer/Descriptors.h"
 
 namespace brr{
     class WindowManager;
     class Scene;
-	static constexpr int FRAME_LAG = 2;
 
 	class Window;
 	class PerspectiveCamera;
 	namespace render
 	{
+		class RenderDevice;
         class SceneRenderer;
         class Shader;
 
-        class Renderer
+        class WindowRenderer
 		{
 		public:
-			Renderer (Window* window, RenderDevice* device);
+			WindowRenderer (Window* window, RenderDevice* device);
 
-			~Renderer();
+			~WindowRenderer();
 
 			void Window_Resized();
 

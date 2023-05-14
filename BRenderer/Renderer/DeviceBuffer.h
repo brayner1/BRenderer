@@ -1,12 +1,12 @@
 #ifndef BRR_BUFFER_H
 #define BRR_BUFFER_H
 
+#include "Renderer/RenderDevice.h"
+
 namespace brr
 {
 	namespace render
 	{
-        class RenderDevice;
-
         class DeviceBuffer
 		{
 		public:

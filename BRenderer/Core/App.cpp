@@ -1,6 +1,6 @@
 #include "Core/App.h"
-#include "Core/Window.h"
 #include "Core/LogSystem.h"
+#include "Scene/Scene.h"
 #include "Scene/Entity.h"
 #include "Scene/Components/Mesh3DComponent.h"
 

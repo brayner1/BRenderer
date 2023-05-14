@@ -47,7 +47,7 @@ namespace brr
 
 		vk::SurfaceKHR window_surface_ {};
 
-		std::unique_ptr<render::Renderer> m_pWindowRenderer;
+		std::unique_ptr<render::WindowRenderer> m_pWindowRenderer;
 
 		std::unique_ptr<Scene> scene;
 	};

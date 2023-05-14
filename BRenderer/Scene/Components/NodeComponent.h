@@ -14,7 +14,7 @@ namespace brr
 		Entity mEntity;
 
 	private:
-		friend class Transform3DComponent;
+		friend struct Transform3DComponent;
 
 		void SetParent(NodeComponent* parent);
 		void RemoveChild(NodeComponent* child);

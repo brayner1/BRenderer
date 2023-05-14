@@ -1,7 +1,6 @@
 #include "Renderer/Shader.h"
-#include "Renderer/Renderer.h"
-#include "Geometry/Geometry.h"
-#include "Files/FilesUtils.h"
+
+#include "Renderer/RenderDevice.h"
 #include "Core/LogSystem.h"
 
 

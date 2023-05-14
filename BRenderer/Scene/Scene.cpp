@@ -2,7 +2,6 @@
 
 #include "Scene/Components.h"
 #include "Scene/Entity.h"
-#include "Scene/Components/NodeComponent.h"
 #include "Core/LogSystem.h"
 
 
@@ -13,7 +12,7 @@ namespace brr
 
 	Scene::Scene(PerspectiveCamera* camera) : m_camera_(camera)
 	{
-		m_registry_.group<Transform3DComponent, Mesh3DComponent>();
+		auto pre_created_group = m_registry_.group<Transform3DComponent, Mesh3DComponent>();
 	}
 
 	Scene::~Scene()

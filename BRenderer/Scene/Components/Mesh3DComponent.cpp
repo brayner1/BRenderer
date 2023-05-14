@@ -1,7 +1,5 @@
 #include "Scene/Components/Mesh3DComponent.h"
 
-#include "Renderer/Renderer.h"
-
 namespace brr
 {
     Mesh3DComponent::SurfaceData::SurfaceData()
@@ -51,31 +49,5 @@ namespace brr
     Mesh3DComponent::Mesh3DComponent(std::vector<SurfaceData>&& surfaces)
     : m_surfaces(surfaces)
     {}
-
-    //void Mesh3DComponent::SurfaceData::Bind(vk::CommandBuffer command_buffer) const
-    //{
-    //	assert(m_vertex_buffer.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
-    //	command_buffer.bindVertexBuffers(0, m_vertex_buffer.GetBuffer(), { 0 });
-
-    //	if (m_index_buffer.IsValid())
-    //	{
-    //		command_buffer.bindIndexBuffer(m_index_buffer.GetBuffer(), 0, vk::IndexType::eUint32);
-    //	}
-
-    //	//command_buffer.bindDescriptorSets(1, );
-    //}
-
-    //void Mesh3DComponent::SurfaceData::Draw(vk::CommandBuffer command_buffer) const
-    //{
-    //	assert(m_vertex_buffer.IsValid() && "Vertex buffer must be valid to Draw to a command buffer.");
-    //	if (m_index_buffer.IsValid())
-    //	{
-    //		command_buffer.drawIndexed(m_indices.size(), 1, 0, 0, 0);
-    //	}
-    //	else
-    //	{
-    //		command_buffer.draw(m_vertices.size(), 1, 0, 0);
-    //	}
-    //}
 
 }

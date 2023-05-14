@@ -7,8 +7,7 @@
 namespace brr{
 	namespace render
 	{
-		class Renderer;
-		class SceneRenderer;
+		class WindowRenderer;
 	}
 	class Entity;
 	class Scene
@@ -25,7 +24,7 @@ namespace brr{
 	private:
 		
 		friend class Entity;
-		friend class render::Renderer;
+		friend class render::WindowRenderer;
 
 		entt::registry m_registry_ {};
 

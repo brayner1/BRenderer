@@ -1,4 +1,5 @@
 #include "Renderer/RenderDevice.h"
+#include "Renderer/RenderDefs.h"
 
 #include "Core/Window.h"
 #include "Core/LogSystem.h"
@@ -102,7 +103,7 @@ namespace brr::render
 		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
     }
 
-    DescriptorSetBuilder<Swapchain::FRAME_LAG> RenderDevice::GetDescriptorSetBuilder(
+    DescriptorSetBuilder<FRAME_LAG> RenderDevice::GetDescriptorSetBuilder(
         const DescriptorLayout& layout) const
     {
 		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator);

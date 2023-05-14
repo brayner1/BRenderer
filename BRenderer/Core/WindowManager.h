@@ -1,7 +1,6 @@
 #ifndef BRR_WINDOWMANAGER_H
 #define BRR_WINDOWMANAGER_H
 #include "Window.h"
-#include "Renderer/Renderer.h"
 
 namespace brr
 {

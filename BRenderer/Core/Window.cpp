@@ -1,7 +1,7 @@
 #include "Core/Window.h"
 
 #include "Core/LogSystem.h"
-#include "Renderer/Renderer.h"
+#include "Renderer/WindowRenderer.h"
 
 
 namespace brr
@@ -61,7 +61,7 @@ namespace brr
 
     void Window::InitWindowRenderer(render::RenderDevice* render_device)
     {
-		m_pWindowRenderer = std::make_unique<render::Renderer>(this, render_device);
+		m_pWindowRenderer = std::make_unique<render::WindowRenderer>(this, render_device);
     }
 
     void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)

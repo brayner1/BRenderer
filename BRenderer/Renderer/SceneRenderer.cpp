@@ -1,6 +1,6 @@
 #include "Renderer/SceneRenderer.h"
+#include "Renderer/RenderDevice.h"
 
-#include "Scene/Scene.h"
 #include "Scene/Components/Mesh3DComponent.h"
 #include "Scene/Components/Transform3DComponent.h"
 #include "Core/LogSystem.h"

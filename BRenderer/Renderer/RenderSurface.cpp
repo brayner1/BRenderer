@@ -1,6 +1,5 @@
 #include "Renderer/RenderSurface.h"
 
-#include "Renderer/Renderer.h"
 #include "Core/LogSystem.h"
 
 namespace brr::render

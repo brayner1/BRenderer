@@ -1,7 +1,5 @@
 #include "Renderer/Descriptors.h"
 
-#include "Core/LogSystem.h"
-
 vk::DescriptorPool CreatePool(vk::Device device, const brr::render::DescriptorAllocator::PoolSizes& poolSizes, int count, vk::DescriptorPoolCreateFlags flags)
 {
 	std::vector<vk::DescriptorPoolSize> sizes;
