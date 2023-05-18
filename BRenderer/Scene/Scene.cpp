@@ -12,7 +12,6 @@ namespace brr
 
 	Scene::Scene(PerspectiveCamera* camera) : m_camera_(camera)
 	{
-		auto pre_created_group = m_registry_.group<Transform3DComponent, Mesh3DComponent>();
 	}
 
 	Scene::~Scene()
@@ -20,13 +19,17 @@ namespace brr
 		m_registry_.clear();
 	}
 
-	Entity Scene::AddEntity(Entity parent)
+	Entity Scene::Add3DEntity(Entity parent)
 	{
-		BRR_LogInfo("Adding new Entity");
+		BRR_LogInfo("Adding new 3D Entity");
 		entt::entity new_entity = m_registry_.create();
 
-		NodeComponent& node = m_registry_.emplace<NodeComponent>(new_entity);
-		Transform3DComponent& transform = m_registry_.emplace<Transform3DComponent>(new_entity, &node);
+		Entity new_entity_struct(new_entity, this);
+
+		NodeComponent& node = new_entity_struct.AddComponent<NodeComponent>();
+
+		Transform3DComponent& transform = new_entity_struct.AddComponent<Transform3DComponent>();
+
 		if (parent)
 		{
 			assert(m_registry_.valid(parent.entity_) && "Parent Entity must be valid.");
@@ -35,5 +38,4 @@ namespace brr
 
 		return Entity{new_entity, this};
 	}
-
 }

@@ -1,25 +1,39 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
+#include "Geometry/Geometry.h"
 #include "Renderer/RenderDevice.h"
 #include "Renderer/DeviceBuffer.h"
 #include "Renderer/RenderDefs.h"
 #include "Renderer/Descriptors.h"
 #include "Renderer/DevicePipeline.h"
 
+#include "Scene/Scene.h"
 #include "Scene/Components/Mesh3DComponent.h"
+#include "Scene/Components/NodeComponent.h"
 
 namespace brr::render
 {
+    enum class SurfaceId : uint64_t
+    {
+        NULL_ID = -1
+    };
 
     class SceneRenderer
     {
     public:
 
-        SceneRenderer(RenderDevice* device, entt::registry& registry);
+        SceneRenderer(RenderDevice* device, Scene* scene);
 
-        void UpdateRenderData(entt::registry& scene_registry, uint32_t buffer_index, const glm::mat4& projection_view);
+        SurfaceId CreateNewSurface(Mesh3DComponent::SurfaceData& surface, const Entity& owner_entity);
+        void UpdateSurfaceVertexBuffer(SurfaceId surface_id, std::vector<Vertex3_PosColor>& vertex_buffer, uint32_t buffer_offset = 0);
+        void UpdateSurfaceIndexBuffer(SurfaceId surface_id, std::vector<uint32_t>& index_buffer, uint32_t buffer_offset = 0);
+        //TODO: Add RemoveSurface function. It should add the render data to a delete-list in the current buffer, and delete it only when this buffer is rendering again (means the resources are not used anymore).
 
-        void Render(vk::CommandBuffer cmd_buffer, uint32_t buffer_index, const DevicePipeline& render_pipeline);
+        void UpdateDirtyInstances(uint32_t buffer_index);
+
+        void Render3D(vk::CommandBuffer cmd_buffer, uint32_t buffer_index, const DevicePipeline& render_pipeline);
+
+        struct MeshDirty {};
 
     private:
 
@@ -35,8 +49,15 @@ namespace brr::render
 
         struct RenderData
         {
+            RenderData (NodeComponent* owner_node) : m_owner_node(owner_node)
+            {}
+
+            NodeComponent* m_owner_node;
+
             DeviceBuffer m_vertex_buffer{};
             DeviceBuffer m_index_buffer{};
+            bool m_vertices_dirty = true;
+            bool m_indices_dirty  = true;
 
             size_t num_vertices = 0, num_indices = 0;
 
@@ -46,14 +67,18 @@ namespace brr::render
             std::array<vk::DescriptorSet, FRAME_LAG>  m_descriptor_sets{};
         };
 
-        enum class SurfaceId : uint64_t {};
+        void SetupCameraUniforms();
 
-        void OnAddedMesh3D(entt::registry& registry, entt::entity entity);
+        void CreateVertexBuffer(std::vector<Vertex3_PosColor>& vertex_buffer, RenderData& render_data);
+        void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
+        void UpdateBufferData(DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset);
 
-        void CreateVertexBuffer(Mesh3DComponent::SurfaceData& surface_data, RenderData& render_data);
-        void CreateIndexBuffer(Mesh3DComponent::SurfaceData& surface_data, RenderData& render_data);
+        DeviceBuffer CreateStagingBuffer(vk::DeviceSize buffer_size, void* buffer_data);
 
         void Init_UniformBuffers(RenderData& render_data);
+
+        Scene* m_scene;
+        RenderDevice* m_render_device = nullptr;
 
         struct CameraUniformInfo
         {
@@ -61,9 +86,8 @@ namespace brr::render
             std::array<vk::DescriptorSet, FRAME_LAG> m_descriptor_sets;
         } m_camera_uniform_info;
 
-        RenderDevice* m_render_device = nullptr;
-
-        entt::basic_registry<SurfaceId> m_render_registry;
+        std::unordered_map<SurfaceId, uint32_t> m_surfId_idx_map;
+        std::vector<RenderData> m_render_data;
     };
 
 }

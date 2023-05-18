@@ -10,20 +10,17 @@ namespace brr::render
     class DevicePipeline
     {
     public:
-        DevicePipeline() = default;
-        DevicePipeline(vk::Device device, 
+        DevicePipeline(RenderDevice* device, 
                        std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
                        const Shader& shader, 
                        Swapchain* swapchain);
 
         DevicePipeline(DevicePipeline&& other) noexcept;
 
-        ~DevicePipeline();
+        DevicePipeline& operator=(DevicePipeline&& other) noexcept;
 
-        bool Init_GraphicsPipeline(vk::Device device, 
-                                   std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
-                                   const Shader& shader, 
-                                   Swapchain* swapchain);
+
+        ~DevicePipeline();
 
         [[nodiscard]] constexpr vk::Pipeline GetPipeline() const{ return m_pipeline; }
         [[nodiscard]] constexpr vk::PipelineLayout GetPipelineLayout() const { return m_pipeline_layout; }
@@ -35,7 +32,13 @@ namespace brr::render
         FORCEINLINE [[nodiscard]] bool operator!() const noexcept { return !m_pipeline; }
 
     private:
-        vk::Device m_device;
+
+        bool Init_GraphicsPipeline(
+            std::vector<vk::DescriptorSetLayout> descriptors_layouts,
+            const Shader& shader,
+            Swapchain* swapchain);
+
+        RenderDevice* m_device;
 
         vk::PipelineLayout m_pipeline_layout;
         vk::Pipeline       m_pipeline;

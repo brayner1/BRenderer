@@ -17,49 +17,31 @@ namespace brr::render
 		Init_Synchronization();
 	}
 
-	vk::Result Swapchain::AcquireNextImage(uint32_t& out_image_index)
+	vk::Result Swapchain::AcquireNextImage(vk::Semaphore& image_available_semaphore)
 	{
-		if (device_->Get_VkDevice().waitForFences(in_flight_fences_[current_buffer_], true, UINT64_MAX) != vk::Result::eSuccess)
+		if (device_->Get_VkDevice().waitForFences(in_flight_fences_[m_current_buffer_idx], true, UINT64_MAX) != vk::Result::eSuccess)
 		{
 			BRR_LogError("Error waiting for In Flight Fence");
 			exit(1);
 		}
 
-		vk::Result result = device_->Get_VkDevice().acquireNextImageKHR(swapchain_, UINT64_MAX,
-				image_available_semaphores_[current_buffer_], VK_NULL_HANDLE, &out_image_index);
+		device_->Get_VkDevice().resetFences(in_flight_fences_[m_current_buffer_idx]);
 
-		// Leave the error treatment to the caller
-		/*if (result == vk::Result::eErrorOutOfDateKHR)
-		{
-			Recreate_Swapchain();
-		}
-		else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
-		{
-			throw std::runtime_error("Failed to acquire Swapchain image!");
-		}*/
+		vk::Result result = device_->Get_VkDevice().acquireNextImageKHR(swapchain_, UINT64_MAX,
+				image_available_semaphores_[m_current_buffer_idx], VK_NULL_HANDLE, &m_current_image_idx);
+
+		image_available_semaphore = image_available_semaphores_[m_current_buffer_idx];
 
 		return result;
 	}
 
-	vk::Result Swapchain::SubmitCommandBuffer(vk::CommandBuffer command_buffer, uint32_t image_index)
+	vk::Result Swapchain::PresentCurrentImage(vk::Semaphore wait_semaphore)
 	{
-		vk::PipelineStageFlags wait_stage{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
-		vk::SubmitInfo submit_info{};
-		submit_info
-			.setCommandBuffers(command_buffer)
-			.setWaitSemaphores(image_available_semaphores_[current_buffer_])
-			.setWaitDstStageMask(wait_stage)
-			.setSignalSemaphores(render_finished_semaphores_[current_buffer_]);
-
-		device_->Get_VkDevice().resetFences(in_flight_fences_[current_buffer_]);
-
-		device_->GetGraphicsQueue().submit(submit_info, in_flight_fences_[current_buffer_]);
-
 		vk::PresentInfoKHR present_info{};
 		present_info
-			.setWaitSemaphores(render_finished_semaphores_[current_buffer_])
+			.setWaitSemaphores(wait_semaphore)
 			.setSwapchains(swapchain_)
-			.setImageIndices(image_index);
+			.setImageIndices(m_current_image_idx);
 
 		vk::Result result = device_->GetPresentQueue().presentKHR(present_info);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
@@ -72,7 +54,7 @@ namespace brr::render
 			exit(1);
 		}
 
-		current_buffer_ = (current_buffer_ + 1) % FRAME_LAG;
+		m_current_buffer_idx = (m_current_buffer_idx + 1) % FRAME_LAG;
 
 		return result;
 	}
@@ -85,7 +67,6 @@ namespace brr::render
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
 			device_->Get_VkDevice().destroySemaphore(image_available_semaphores_[i]);
-			device_->Get_VkDevice().destroySemaphore(render_finished_semaphores_[i]);
 			device_->Get_VkDevice().destroyFence(in_flight_fences_[i]);
 		}
 	}
@@ -299,14 +280,6 @@ namespace brr::render
 				 exit(1);
 			 }
 			 image_available_semaphores_[i] = createImgAvailableSemaphoreResult.value;
-
-			 auto createRenderFinishedSempahoreResult= device_->Get_VkDevice().createSemaphore(vk::SemaphoreCreateInfo{});
-			 if (createRenderFinishedSempahoreResult.result != vk::Result::eSuccess)
-			 {
-				 BRR_LogError("Could not create Render Finished Semaphore for swapchain! Result code: {}.", vk::to_string(createRenderFinishedSempahoreResult.result).c_str());
-				 exit(1);
-			 }
-			 render_finished_semaphores_[i] = createRenderFinishedSempahoreResult.value;
 
 			 auto createInFlightFenceResult = device_->Get_VkDevice().createFence(vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled });
 			 if (createInFlightFenceResult.result != vk::Result::eSuccess)

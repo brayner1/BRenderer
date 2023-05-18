@@ -1,5 +1,6 @@
 #ifndef BRR_WINDOW_H
 #define BRR_WINDOW_H
+#include "Renderer/RenderDevice.h"
 #include "Scene/Scene.h"
 
 namespace brr

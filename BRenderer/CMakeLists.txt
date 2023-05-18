@@ -56,6 +56,7 @@ set(BRenderer_SOURCE_FILES
 "Scene/Entity.cpp"
 "Scene/Scene.cpp"
 
+"Scene/Components/EntityComponent.cpp"
 "Scene/Components/MaterialComponent.cpp"
 "Scene/Components/Mesh3DComponent.cpp"
 "Scene/Components/NodeComponent.cpp"
@@ -75,7 +76,7 @@ set(BRenderer_SOURCE_FILES
 "Renderer/VkInitializerHelper.cpp" 
 
 "Files/FilesUtils.cpp" 
-)
+ )
 
 set(BRenderer_HEADER_FILES
 "BRenderer.h" 
@@ -92,6 +93,7 @@ set(BRenderer_HEADER_FILES
 "Scene/Entity.h"
 "Scene/Scene.h"
 
+"Scene/Components/EntityComponent.h"
 "Scene/Components/MaterialComponent.h"
 "Scene/Components/Mesh3DComponent.h"
 "Scene/Components/NodeComponent.h"
@@ -107,13 +109,12 @@ set(BRenderer_HEADER_FILES
 "Renderer/WindowRenderer.h"
 "Renderer/RenderSurface.h"
 "Renderer/SceneRenderer.h"
-
 "Renderer/Shader.h"
 "Renderer/Swapchain.h"
 "Renderer/VkInitializerHelper.h" 
 
 "Files/FilesUtils.h"
-) 
+ ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Core REGULAR_EXPRESSION "Core/.*")

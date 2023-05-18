@@ -1,5 +1,6 @@
 #include "Renderer/DevicePipeline.h"
 
+#include "RenderDevice.h"
 #include "Renderer/Shader.h"
 #include "Renderer/Swapchain.h"
 
@@ -7,12 +8,13 @@
 
 namespace brr::render
 {
-    DevicePipeline::DevicePipeline(vk::Device device, 
+    DevicePipeline::DevicePipeline(RenderDevice* device,
 		                           std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
 		                           const Shader& shader, 
 		                           Swapchain* swapchain)
+	: m_device(device)
     {
-        if (!Init_GraphicsPipeline(device, descriptors_layouts, shader, swapchain))
+        if (!Init_GraphicsPipeline(descriptors_layouts, shader, swapchain))
         {
 			m_pipeline = VK_NULL_HANDLE;
 			m_pipeline_layout = VK_NULL_HANDLE;
@@ -26,6 +28,23 @@ namespace brr::render
 
 		m_pipeline_layout = other.m_pipeline_layout;
 		other.m_pipeline_layout = VK_NULL_HANDLE;
+
+		m_device = other.m_device;
+		other.m_device = VK_NULL_HANDLE;
+    }
+
+    DevicePipeline& DevicePipeline::operator=(DevicePipeline&& other) noexcept
+    {
+		m_pipeline = other.m_pipeline;
+		other.m_pipeline = VK_NULL_HANDLE;
+
+		m_pipeline_layout = other.m_pipeline_layout;
+		other.m_pipeline_layout = VK_NULL_HANDLE;
+
+		m_device = other.m_device;
+		other.m_device = VK_NULL_HANDLE;
+
+		return *this;
     }
 
     DevicePipeline::~DevicePipeline()
@@ -33,12 +52,11 @@ namespace brr::render
 		DestroyPipeline();
     }
 
-    bool DevicePipeline::Init_GraphicsPipeline(vk::Device device,
-                                               std::vector<vk::DescriptorSetLayout> descriptors_layouts,
-                                               const Shader& shader,
-                                               Swapchain* swapchain)
+    bool DevicePipeline::Init_GraphicsPipeline(
+        std::vector<vk::DescriptorSetLayout> descriptors_layouts,
+        const Shader& shader,
+        Swapchain* swapchain)
     {
-		m_device = device;
 		vk::PipelineVertexInputStateCreateInfo vertex_input_info = shader.GetPipelineVertexInputState();
 
 		vk::PipelineInputAssemblyStateCreateInfo input_assembly_info{};
@@ -117,7 +135,7 @@ namespace brr::render
 		pipeline_layout_info
 			.setSetLayouts(descriptors_layouts);
 
-		auto createPipelineLayoutResult = m_device.createPipelineLayout(pipeline_layout_info);
+		auto createPipelineLayoutResult = m_device->Get_VkDevice().createPipelineLayout(pipeline_layout_info);
 		if (createPipelineLayoutResult.result != vk::Result::eSuccess)
 		{
 			BRR_LogError("Not able to create PipelineLayout. Result code: {}.", vk::to_string(createPipelineLayoutResult.result).c_str());
@@ -141,7 +159,7 @@ namespace brr::render
 			.setBasePipelineHandle(VK_NULL_HANDLE)
 			.setBasePipelineIndex(-1);
 
-		auto createGraphicsPipelineResult = m_device.createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
+		auto createGraphicsPipelineResult = m_device->Get_VkDevice().createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
 		if (createGraphicsPipelineResult.result != vk::Result::eSuccess)
 		{
 			BRR_LogError("Could not create GraphicsPipeline! Result code: {}.", vk::to_string(createGraphicsPipelineResult.result).c_str());
@@ -161,9 +179,9 @@ namespace brr::render
 		{
 			return;
 		}
-		m_device.destroyPipeline(m_pipeline);
+		m_device->Get_VkDevice().destroyPipeline(m_pipeline);
 		m_pipeline = VK_NULL_HANDLE;
-		m_device.destroyPipelineLayout(m_pipeline_layout);
+		m_device->Get_VkDevice().destroyPipelineLayout(m_pipeline_layout);
 		m_pipeline_layout = VK_NULL_HANDLE;
 		BRR_LogInfo("Destroyed Pipeline and PipelineLayout");
     }

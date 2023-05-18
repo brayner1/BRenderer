@@ -1,6 +1,8 @@
 #ifndef BRR_MESH3DCOMPONENT_H
 #define BRR_MESH3DCOMPONENT_H
-#include "Geometry/Geometry.h"
+
+#include <Scene/Components/EntityComponent.h>
+#include <Geometry/Geometry.h>
 
 namespace brr
 {
@@ -9,16 +11,16 @@ namespace brr
         class SceneRenderer;
     }
 
-	class Mesh3DComponent
+	class Mesh3DComponent : public EntityComponent
 	{
     public:
 		struct SurfaceData
 		{
-            inline static uint64_t currentSurfaceID = 0;
-
 			SurfaceData();
 
 			SurfaceData(const SurfaceData& surface);
+
+			SurfaceData(SurfaceData&& surface) noexcept;
 
 			SurfaceData(std::vector<Vertex3_PosColor>&& vertices);
 			SurfaceData(std::vector<Vertex3_PosColor> vertices);
@@ -26,33 +28,36 @@ namespace brr
 			SurfaceData(std::vector<Vertex3_PosColor>&& vertices, std::vector<uint32_t>&& indices);
 			SurfaceData(std::vector<Vertex3_PosColor> vertices, std::vector<uint32_t> indices);
 
-			[[nodiscard]] bool NeedUpdate() const { return m_need_update; }
-			void SetUpdated() { m_need_update = false; }
+			const std::vector<Vertex3_PosColor>& GetVertices() const { return m_vertices; }
+			const std::vector<uint32_t>& GetIndices() const { return m_indices; }
 
-			[[nodiscard]] uint64_t GetSurfaceID() const { return m_surfaceId; }
+			void SetRenderSurfaceID(uint64_t surface_id) { m_surfaceId = surface_id; }
+			uint64_t GetRenderSurfaceID() const { return m_surfaceId; }
+
+			[[nodiscard]] bool isDirty() const { return m_isDirty; }
+
+			void SetIsDirty(bool isDirty) { m_isDirty = isDirty; }
 
 		private:
-			friend class brr::render::SceneRenderer;
 
 			std::vector<Vertex3_PosColor> m_vertices{};
 			std::vector<uint32_t>		  m_indices{};
 
-			uint64_t m_surfaceId;
-
-			bool m_need_update = false;
+			uint64_t m_surfaceId = -1;
+			bool m_isDirty = true;
 		};
 
-        explicit Mesh3DComponent(std::vector<SurfaceData>&& surfaces);
+		uint32_t AddSurface(const std::vector<Vertex3_PosColor>& vertices, const std::vector<uint32_t>& indices);
+		uint32_t AddSurface(SurfaceData&& surface);
 
-		std::vector<SurfaceData>::iterator GetSurfacesBegin() { return m_surfaces.begin(); }
-		std::vector<SurfaceData>::iterator GetSurfacesEnd() { return m_surfaces.end(); }
-
-		std::vector<SurfaceData>::iterator begin() { return GetSurfacesBegin(); }
-		std::vector<SurfaceData>::iterator end() { return GetSurfacesEnd(); }
+        [[nodiscard]] constexpr size_t GetSurfaceCount() const { return m_surfaces.size(); }
 
 
     private:
+		friend class brr::render::SceneRenderer;
+
 		std::vector<SurfaceData> m_surfaces{};
+		std::set<uint32_t> m_dirty_surfaces{};
 	};
 }
 

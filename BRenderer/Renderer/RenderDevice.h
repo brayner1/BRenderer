@@ -20,18 +20,16 @@ namespace brr::render
 
 		/* Synchronization */
 
-		void WaitIdle();
+		void WaitIdle() const;
 
 		/* Vulkan Objects (Instance, Device, CommandPools and Queues) */
 
 		FORCEINLINE [[nodiscard]] vk::Instance Get_Instance() const { return vulkan_instance_; }
 
 		FORCEINLINE [[nodiscard]] vk::PhysicalDevice Get_PhysicalDevice() const { return phys_device_; }
-		FORCEINLINE [[nodiscard]] vk::Device Get_VkDevice() const { return m_pDevice; }
+		FORCEINLINE [[nodiscard]] vk::Device Get_VkDevice() const { return m_device; }
 
-		FORCEINLINE [[nodiscard]] vk::CommandPool GetGraphicsCommandPool() const { return command_pool_; }
-		FORCEINLINE [[nodiscard]] vk::CommandPool GetPresentCommandPool() const { return present_command_pool_; }
-		FORCEINLINE [[nodiscard]] vk::CommandPool GetTransferCommandPool() const { return transfer_command_pool_; }
+		
 
 		FORCEINLINE [[nodiscard]] VkHelpers::QueueFamilyIndices GetQueueFamilyIndices() const { return queue_family_indices_; }
 
@@ -41,6 +39,20 @@ namespace brr::render
 
 		FORCEINLINE [[nodiscard]] bool IsDifferentPresentQueue() const { return different_present_queue_; }
 		FORCEINLINE [[nodiscard]] bool IsDifferentTransferQueue() const { return different_transfer_queue_; }
+
+		/*******************
+		 * Command Buffers *
+		 *******************/
+
+		enum class CommandBufferLevel : uint8_t
+		{
+		    Primary = vk::CommandBufferLevel::ePrimary,
+			Secondary = vk::CommandBufferLevel::eSecondary
+		};
+
+		[[nodiscard]] vk::Result AllocateGraphicsCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers) const;
+		[[nodiscard]] vk::Result AllocatePresentCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers) const;
+		[[nodiscard]] vk::Result AllocateTransferCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers) const;
 
 		/***************
 		 * Descriptors *
@@ -74,11 +86,11 @@ namespace brr::render
 		// Physical and Logical Devices
 
 		vk::PhysicalDevice phys_device_ {};
-		vk::Device m_pDevice {};
+		vk::Device m_device {};
 
 		// Command Pools
 
-		vk::CommandPool command_pool_ {};
+		vk::CommandPool graphics_command_pool_ {};
 		vk::CommandPool present_command_pool_ {};
 		vk::CommandPool transfer_command_pool_ {};
 

@@ -1,13 +1,14 @@
 #ifndef BRR_SCENE_H
 #define BRR_SCENE_H
-#include "Renderer/SceneRenderer.h"
 
-#include "Core/PerspectiveCamera.h"
+#include <Core/PerspectiveCamera.h>
 
-namespace brr{
-	namespace render
+namespace brr
+{
+    namespace render
 	{
-		class WindowRenderer;
+        class SceneRenderer;
+        class WindowRenderer;
 	}
 	class Entity;
 	class Scene
@@ -17,14 +18,14 @@ namespace brr{
 		Scene(PerspectiveCamera* camera);
 		~Scene();
 
-		Entity AddEntity(Entity parent);
+		Entity Add3DEntity(Entity parent);
 
 		PerspectiveCamera* GetMainCamera() const { return m_camera_.get(); }
 
 	private:
 		
 		friend class Entity;
-		friend class render::WindowRenderer;
+		friend class render::SceneRenderer;
 
 		entt::registry m_registry_ {};
 

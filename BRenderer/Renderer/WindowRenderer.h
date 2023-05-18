@@ -34,7 +34,7 @@ namespace brr{
 
 			vk::Pipeline CreateGraphicsPipeline(const Shader& shader);
 
-			[[nodiscard]] const DevicePipeline& GetGraphicsPipeline() const { return m_graphics_pipeline; }
+			[[nodiscard]] const DevicePipeline* GetGraphicsPipeline() const { return m_graphics_pipeline.get(); }
 
 			void Reset();
 
@@ -50,8 +50,10 @@ namespace brr{
 			// Initialize CommandBuffers, as well as define the basic synchronization primitives.
 			void Init_CommandBuffers();
 
-			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index) const;
-			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer, vk::CommandBuffer present_cmd_buffer, uint32_t image_index);
+			void Init_Synchronization();
+
+			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const;
+			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer);
 			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const;
 
 			void Recreate_Swapchain();
@@ -61,32 +63,26 @@ namespace brr{
 				glm::mat4 projection_view{ 1.f };
 			};
 
+			// Window
+			Window* m_pOwnerWindow{};
+
 			// Descriptor Sets
-			// TODO: Each window must have its own Descriptor Sets and Uniform Buffers? (If they use the same pipeline, I think not)
-			// TODO: (Actually I think yes, because the pipeline defines only the layout, not the sets that we will use. Each resource may have its own combination of sets/buffers)
 			vk::DescriptorSetLayout m_pDescriptorSetLayout {};
 
 			// DevicePipeline
 
-			DevicePipeline m_graphics_pipeline {};
-
-			// Commands
-
-			vk::CommandPool m_pCommandPool {};
-			vk::CommandPool m_pPresentCommandPool {};
-			vk::CommandPool m_pTransferCommandPool {};
-
-			// Window
-			Window* m_pOwnerWindow {};
+			std::unique_ptr<DevicePipeline> m_graphics_pipeline {};
 
 			// Swapchain
 			std::unique_ptr<Swapchain> swapchain_{};
 
-			uint32_t current_image_idx{};
+			//uint32_t current_image_idx{};
 
 			// Command Buffers
-			std::vector<vk::CommandBuffer> m_pCommandBuffers{};
-			vk::CommandBuffer m_pPresentCommandBuffer{};
+			std::vector<vk::CommandBuffer> m_pCommandBuffers {};
+
+			vk::Semaphore m_current_image_available_semaphore {};
+			vk::Semaphore render_finished_semaphores_[FRAME_LAG];
 
 			std::unique_ptr<SceneRenderer> scene_renderer;
 

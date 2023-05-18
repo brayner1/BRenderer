@@ -20,8 +20,8 @@ namespace brr::render
 		Swapchain(RenderDevice* device, Window* window);
 		~Swapchain();
 
-		vk::Result AcquireNextImage(uint32_t& out_image_index);
-		vk::Result SubmitCommandBuffer(vk::CommandBuffer command_buffer, uint32_t image_index);
+		vk::Result AcquireNextImage(vk::Semaphore& image_available_semaphore);
+		vk::Result PresentCurrentImage(vk::Semaphore wait_semaphore);
 
 		void Recreate_Swapchain();
 		void Cleanup_Swapchain();
@@ -36,11 +36,12 @@ namespace brr::render
 
 		FORCEINLINE [[nodiscard]] vk::RenderPass GetRender_Pass() const { return render_pass_; }
 
-		FORCEINLINE [[nodiscard]] uint32_t GetCurrentBuffer() const { return current_buffer_; }
+		FORCEINLINE [[nodiscard]] uint32_t GetCurrentBufferIndex() const { return m_current_buffer_idx; }
+		FORCEINLINE [[nodiscard]] uint32_t GetCurrentImageIndex() const { return m_current_image_idx; }
 
 		FORCEINLINE [[nodiscard]] vk::Framebuffer GetFramebuffer(uint32_t image_index) const { return image_resources_[image_index].m_framebuffer; }
 
-
+		FORCEINLINE [[nodiscard]] vk::Fence GetCurrentInFlightFence() const { return in_flight_fences_[m_current_buffer_idx]; }
 
 	private:
 
@@ -49,8 +50,6 @@ namespace brr::render
 		void Init_RenderPass();
 		void Init_Framebuffers();
 		void Init_Synchronization();
-
-		
 
 		Window* window_ = nullptr;
 
@@ -81,9 +80,11 @@ namespace brr::render
 		// Synchronization
 
 		vk::Semaphore image_available_semaphores_[FRAME_LAG];
-		vk::Semaphore render_finished_semaphores_[FRAME_LAG];
+		//vk::Semaphore render_finished_semaphores_[FRAME_LAG];
 		vk::Fence in_flight_fences_[FRAME_LAG];
-		uint32_t current_buffer_ = 0;
+
+	    uint32_t m_current_buffer_idx = 0;
+		uint32_t m_current_image_idx = 0;
 	};
 
 }

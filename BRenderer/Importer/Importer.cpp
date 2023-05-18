@@ -32,7 +32,7 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 	//	NodeInfo node_info = nodes.front();
 	//	nodes.pop_front();
 
-	//	brr::Entity entity = scene.AddEntity({});
+	//	brr::Entity entity = scene.Add3DEntity({});
 
 	//	brr::Transform3DComponent& node_transform = entity.GetComponent<brr::Transform3DComponent>();
 
@@ -45,7 +45,7 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 	//	{
 	//		if (node->mNumMeshes > 0)
 	//		{
-	//			//brr::Entity mesh_entity = scene.AddEntity();
+	//			//brr::Entity mesh_entity = scene.Add3DEntity();
 	//			brr::Mesh3DComponent& mesh_component = entity.AddComponent<brr::Mesh3DComponent>();
 
 	//			mesh_component.m_surfaces.resize(node->mNumMeshes);

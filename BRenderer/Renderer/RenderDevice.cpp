@@ -4,6 +4,7 @@
 #include "Core/Window.h"
 #include "Core/LogSystem.h"
 #include "Files/FilesUtils.h"
+#include "Geometry/Geometry.h"
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -19,8 +20,8 @@ namespace brr::render
 		Init_Device();
 		Init_CommandPool();
 
-		m_pDescriptorLayoutCache = new DescriptorLayoutCache(m_pDevice);
-		m_pDescriptorAllocator = new DescriptorAllocator(m_pDevice);
+		m_pDescriptorLayoutCache = new DescriptorLayoutCache(m_device);
+		m_pDescriptorAllocator = new DescriptorAllocator(m_device);
 	}
 
 	vk::ShaderModule Create_ShaderModule(RenderDevice* device, std::vector<char>& code)
@@ -93,10 +94,47 @@ namespace brr::render
 		return std::move(shader);
     }
 
-    void RenderDevice::WaitIdle()
-	{
-		m_pDevice.waitIdle();
+    void RenderDevice::WaitIdle() const
+    {
+		m_device.waitIdle();
 	}
+
+	static vk::Result allocateCommandBuffer(vk::Device device, vk::CommandPool cmd_pool, vk::CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers)
+	{
+        vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
+        command_buffer_alloc_info
+            .setCommandPool(cmd_pool)
+            .setLevel(vk::CommandBufferLevel(level))
+            .setCommandBufferCount(cmd_buffer_count);
+
+		auto allocCmdBufferResult = device.allocateCommandBuffers(command_buffer_alloc_info);
+		if (allocCmdBufferResult.result == vk::Result::eSuccess)
+		{
+			out_command_buffers = allocCmdBufferResult.value;
+		}
+		return allocCmdBufferResult.result;
+	}
+
+    vk::Result RenderDevice::AllocateGraphicsCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
+                                                           std::vector<vk::CommandBuffer>& out_command_buffers) const
+    {
+        return allocateCommandBuffer(m_device, graphics_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
+                                     out_command_buffers);
+    }
+
+    vk::Result RenderDevice::AllocatePresentCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
+                                                          std::vector<vk::CommandBuffer>& out_command_buffers) const
+    {
+        return allocateCommandBuffer(m_device, present_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
+                                     out_command_buffers);
+    }
+
+    vk::Result RenderDevice::AllocateTransferCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
+                                                           std::vector<vk::CommandBuffer>& out_command_buffers) const
+    {
+        return allocateCommandBuffer(m_device, transfer_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
+                                     out_command_buffers);
+    }
 
     DescriptorLayoutBuilder RenderDevice::GetDescriptorLayoutBuilder() const
     {
@@ -131,7 +169,7 @@ namespace brr::render
 				buffer_create_info.setQueueFamilyIndices(indices);
 			}
 
-			auto createBufferResult = m_pDevice.createBuffer(buffer_create_info);
+			auto createBufferResult = m_device.createBuffer(buffer_create_info);
 			if (createBufferResult.result != vk::Result::eSuccess)
 			{
 				BRR_LogError("Could not create Buffer! Result code: {}.", vk::to_string(createBufferResult.result).c_str());
@@ -144,7 +182,7 @@ namespace brr::render
 
 		// Allocate Memory
 		{
-			vk::MemoryRequirements memory_requirements = m_pDevice.getBufferMemoryRequirements(buffer);
+			vk::MemoryRequirements memory_requirements = m_device.getBufferMemoryRequirements(buffer);
 
 			vk::MemoryAllocateInfo allocate_info{};
 			allocate_info
@@ -152,7 +190,7 @@ namespace brr::render
 				.setMemoryTypeIndex(VkHelpers::FindMemoryType(memory_requirements.memoryTypeBits,
                                                               properties, phys_device_.getMemoryProperties()));
 
-			auto allocMemResult = m_pDevice.allocateMemory(allocate_info);
+			auto allocMemResult = m_device.allocateMemory(allocate_info);
 			if (allocMemResult.result != vk::Result::eSuccess)
 			{
 				BRR_LogError("Could not allocate DeviceMemory for buffer! Result code: {}.", vk::to_string(allocMemResult.result).c_str());
@@ -163,7 +201,7 @@ namespace brr::render
 			BRR_LogInfo("Buffer Memory Allocated.");
 		}
 
-		m_pDevice.bindBufferMemory(buffer, buffer_memory, 0);
+		m_device.bindBufferMemory(buffer, buffer_memory, 0);
 
 		return;
     }
@@ -171,7 +209,7 @@ namespace brr::render
     void RenderDevice::Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
         vk::DeviceSize src_buffer_offset, vk::DeviceSize dst_buffer_offset)
     {
-		const vk::CommandPool transfer_cmd_pool = (IsDifferentTransferQueue()) ? GetTransferCommandPool() : GetGraphicsCommandPool();
+		const vk::CommandPool transfer_cmd_pool = (IsDifferentTransferQueue()) ? transfer_command_pool_ : graphics_command_pool_;
 
 		vk::CommandBufferAllocateInfo cmd_buffer_alloc_info{};
 		cmd_buffer_alloc_info
@@ -179,7 +217,7 @@ namespace brr::render
 			.setCommandPool(transfer_cmd_pool)
 			.setCommandBufferCount(1);
 
-		auto allocCmdBuffersResult = m_pDevice.allocateCommandBuffers(cmd_buffer_alloc_info);
+		auto allocCmdBuffersResult = m_device.allocateCommandBuffers(cmd_buffer_alloc_info);
 		if (allocCmdBuffersResult.result != vk::Result::eSuccess)
 		{
 			BRR_LogError("ERROR: Could not allocate CommandBuffer! Result code: {}.", vk::to_string(allocCmdBuffersResult.result).c_str());
@@ -195,8 +233,8 @@ namespace brr::render
 
 		vk::BufferCopy copy_region{};
 		copy_region
-			.setSrcOffset(0)
-			.setDstOffset(0)
+			.setSrcOffset(src_buffer_offset)
+			.setDstOffset(dst_buffer_offset)
 			.setSize(size);
 
 		cmd_buffer.copyBuffer(src_buffer, dst_buffer, copy_region);
@@ -208,10 +246,14 @@ namespace brr::render
 			.setCommandBufferCount(1)
 			.setCommandBuffers(cmd_buffer);
 
+		// For now, waiting the device to finish everything before copying data to a potentially used buffer.
+		// TODO: Do correct synchronization (add copies to a setup command buffer)
+		WaitIdle(); 
+
 		GetTransferQueue().submit(submit_info);
 		GetTransferQueue().waitIdle();
 
-		m_pDevice.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
+		m_device.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
     }
 
 	void RenderDevice::Init_VkInstance(Window* window)
@@ -408,17 +450,17 @@ namespace brr::render
             BRR_LogError("Could not create Vulkan Device! Result code: {}.", vk::to_string(createDeviceResult.result).c_str());
             exit(1);
         }
-		m_pDevice = createDeviceResult.value;
+		m_device = createDeviceResult.value;
 	    {
-	        VULKAN_HPP_DEFAULT_DISPATCHER.init(m_pDevice);
+	        VULKAN_HPP_DEFAULT_DISPATCHER.init(m_device);
 			BRR_LogInfo("Loaded Device specific Vulkan functions addresses.");
 	    }
 
-		graphics_queue_ = m_pDevice.getQueue(graphics_family_idx, 0);
+		graphics_queue_ = m_device.getQueue(graphics_family_idx, 0);
 
-		presentation_queue_ = (different_present_queue_) ? m_pDevice.getQueue(presentation_family_idx, 0) : graphics_queue_;
+		presentation_queue_ = (different_present_queue_) ? m_device.getQueue(presentation_family_idx, 0) : graphics_queue_;
 
-		transfer_queue_ = (different_transfer_queue_) ? m_pDevice.getQueue(transfer_family_idx, 0) : graphics_queue_;
+		transfer_queue_ = (different_transfer_queue_) ? m_device.getQueue(transfer_family_idx, 0) : graphics_queue_;
 
 		BRR_LogInfo("Device Created");
 	}
@@ -430,13 +472,13 @@ namespace brr::render
 			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 			.setQueueFamilyIndex(queue_family_indices_.m_graphicsFamily.value());
 
-		 auto createCmdPoolResult = m_pDevice.createCommandPool(command_pool_info);
+		 auto createCmdPoolResult = m_device.createCommandPool(command_pool_info);
 		 if (createCmdPoolResult.result != vk::Result::eSuccess)
 		 {
 			 BRR_LogError("Could not create CommandPool! Result code: {}.", vk::to_string(createCmdPoolResult.result).c_str());
 			 exit(1);
 		 }
-		 command_pool_ = createCmdPoolResult.value;
+		 graphics_command_pool_ = createCmdPoolResult.value;
 
 		 BRR_LogInfo("CommandPool created.");
 
@@ -447,7 +489,7 @@ namespace brr::render
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 				.setQueueFamilyIndex(queue_family_indices_.m_presentFamily.value());
 
-			 auto createPresentCmdPoolResult = m_pDevice.createCommandPool(present_pool_info);
+			 auto createPresentCmdPoolResult = m_device.createCommandPool(present_pool_info);
 			 if (createPresentCmdPoolResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create present CommandPool! Result code: {}.", vk::to_string(createPresentCmdPoolResult.result).c_str());
@@ -465,7 +507,7 @@ namespace brr::render
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 				.setQueueFamilyIndex(queue_family_indices_.m_transferFamily.value());
 
-			 auto createTransferCommandPoolResult = m_pDevice.createCommandPool(transfer_pool_info);
+			 auto createTransferCommandPoolResult = m_device.createCommandPool(transfer_pool_info);
 			 if (createTransferCommandPoolResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create transfer CommandPool! Result code: {}.", vk::to_string(createTransferCommandPoolResult.result).c_str());

@@ -1,15 +1,14 @@
 #ifndef BRR_TRANSFORM3DCOMPONENT_H
 #define BRR_TRANSFORM3DCOMPONENT_H
+#include <Scene/Components/EntityComponent.h>
 
 namespace brr
 {
 	struct NodeComponent;
 
-	struct alignas(64) Transform3DComponent
+	struct alignas(64) Transform3DComponent : public EntityComponent
 	{
-        explicit Transform3DComponent (NodeComponent* my_node);
-
-		Transform3DComponent(NodeComponent* my_node, NodeComponent* parent_node);
+        explicit Transform3DComponent ();
 
 		enum DirtyFlags
 		{
@@ -49,14 +48,13 @@ namespace brr
 	private:
 		void PropagateTransformChange();
 
-		//glm::mat4 mLocal_transform_{ 1.f };
 		glm::fquat m_rotation_ {1.0, 0.0, 0.0, 0.0};
 		glm::vec3 m_scale_	{1.0f};
 		glm::vec3 m_position_ {0.0f};
-		glm::mat4 m_global_transform_{ 1.f };
 
-		NodeComponent* m_node_;
 		uint8_t m_dirty_{ GLOBAL_DIRTY };
+
+		alignas(16) glm::mat4 m_global_transform_{ 1.f }; // align matrix with 16 so it occupies exactly the second cache line.
 	};
 
 }

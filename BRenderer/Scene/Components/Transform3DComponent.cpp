@@ -8,17 +8,8 @@ namespace brr
 	/// Transform3DComponent ///
 	////////////////////////////
 
-    Transform3DComponent::Transform3DComponent(NodeComponent* my_node)
-    : m_node_(my_node)
-    {
-		assert(my_node != nullptr && "Can't initialize Transform3DComponent with NULL node.");
-    }
-
-    Transform3DComponent::Transform3DComponent(NodeComponent* my_node, NodeComponent* parent_node)
-    : Transform3DComponent(my_node)
-    {
-		m_node_->SetParent(parent_node);
-    }
+    Transform3DComponent::Transform3DComponent()
+    {}
 
     void Transform3DComponent::SetTransform(const glm::mat4& transform)
 	{
@@ -141,9 +132,9 @@ namespace brr
 		if (m_dirty_ & GLOBAL_DIRTY)
 		{
 			m_global_transform_ = GetTransform();
-			if (NodeComponent* parent = m_node_->GetParentNode())
+			if (NodeComponent* parent = GetNodeComponent()->GetParentNode())
 			{
-				Transform3DComponent& parent_transform = parent->mEntity.GetComponent<Transform3DComponent>();
+				Transform3DComponent& parent_transform = parent->GetEntity().GetComponent<Transform3DComponent>();
 				m_global_transform_ = parent_transform.GetGlobalTransform() * m_global_transform_;
 			}
 			m_dirty_ &= ~GLOBAL_DIRTY;
@@ -153,14 +144,14 @@ namespace brr
 
 	void Transform3DComponent::SetParent(Transform3DComponent* parent)
 	{
-		m_node_->SetParent(parent->m_node_);
+		GetNodeComponent()->SetParent(parent->GetNodeComponent());
 		PropagateTransformChange();
 	}
 
 	void Transform3DComponent::RemoveChild(Transform3DComponent* child)
 	{
 		assert((child != nullptr) && "You can't remove null child.");
-		m_node_->RemoveChild(child->m_node_);
+		GetNodeComponent()->RemoveChild(child->GetNodeComponent());
 		child->PropagateTransformChange();
 	}
 
@@ -168,9 +159,9 @@ namespace brr
 	{
 		m_dirty_ |= DirtyFlags::GLOBAL_DIRTY;
 
-		for (NodeComponent* child : m_node_->mChildren_)
+		for (NodeComponent* child : GetNodeComponent()->mChildren_)
 		{
-			Transform3DComponent& child_transform = child->mEntity.GetComponent<Transform3DComponent>();
+			Transform3DComponent& child_transform = child->GetEntity().GetComponent<Transform3DComponent>();
 			child_transform.PropagateTransformChange();
 		}
 	}
