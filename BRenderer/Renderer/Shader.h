@@ -3,11 +3,11 @@
 
 namespace brr::render
 {
-    class RenderDevice;
+    class VulkanRenderDevice;
 
     class Shader
 	{
-		friend class RenderDevice;
+		friend class VulkanRenderDevice;
 	public:
 
 		~Shader();
@@ -25,7 +25,7 @@ namespace brr::render
 
 		Shader(Shader&& other) noexcept;
 
-		RenderDevice* m_pDevice;
+		VulkanRenderDevice* m_pDevice;
 
 		bool m_isValid = false;
 		vk::ShaderModule vert_shader_module_ {};

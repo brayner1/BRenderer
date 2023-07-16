@@ -1,5 +1,5 @@
 #include "Renderer/SceneRenderer.h"
-#include "Renderer/RenderDevice.h"
+#include "Renderer/VulkanRenderDevice.h"
 
 #include "Scene/Components/Mesh3DComponent.h"
 #include "Scene/Components/Transform3DComponent.h"
@@ -14,11 +14,11 @@ namespace brr::render
 		return static_cast<SurfaceId>(current_surface_id++);
 	}
 
-    SceneRenderer::SceneRenderer(RenderDevice* device, Scene* scene)
+    SceneRenderer::SceneRenderer(Scene* scene)
     : m_scene(scene),
-      m_render_device(device)
+      m_render_device(VKRD::GetSingleton())
     {
-		assert(m_render_device && "Can't create SceneRenderer without RenderDevice.");
+		assert(m_render_device && "Can't create SceneRenderer without VulkanRenderDevice.");
 		BRR_LogInfo("Creating SceneRenderer");
 
 		auto dirty_meshes_group = m_scene->m_registry_.group<Mesh3DComponent, MeshDirty>();
@@ -68,7 +68,7 @@ namespace brr::render
 
     void SceneRenderer::UpdateDirtyInstances(uint32_t buffer_index)
     {
-		assert(m_render_device && "RenderDevice must be initialized on construction.");
+		assert(m_render_device && "VulkanRenderDevice must be initialized on construction.");
 
 		bool updated_render_data = false;
 
@@ -194,7 +194,7 @@ namespace brr::render
 		for (size_t idx = 0; idx < FRAME_LAG; idx++)
 		{
 			m_camera_uniform_info.m_uniform_buffers[idx] =
-				DeviceBuffer(*m_render_device, sizeof(UniformBufferObject),
+				DeviceBuffer(sizeof(UniformBufferObject),
 					vk::BufferUsageFlagBits::eUniformBuffer,
 					vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		}
@@ -229,7 +229,7 @@ namespace brr::render
 
 		BRR_LogInfo("Creating Vertex Buffer.");
 
-		render_data.m_vertex_buffer = DeviceBuffer(*m_render_device, buffer_size,
+		render_data.m_vertex_buffer = DeviceBuffer(buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
 			vk::MemoryPropertyFlagBits::eDeviceLocal);
 
@@ -255,9 +255,10 @@ namespace brr::render
 
 		BRR_LogInfo("Creating Index Buffer.");
 
-		render_data.m_index_buffer = DeviceBuffer(*m_render_device, buffer_size,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+        render_data.m_index_buffer = DeviceBuffer(buffer_size,
+                                                  vk::BufferUsageFlagBits::eTransferDst |
+                                                  vk::BufferUsageFlagBits::eIndexBuffer,
+                                                  vk::MemoryPropertyFlagBits::eDeviceLocal);
 
 		render_data.num_indices = index_buffer.size();
 
@@ -280,10 +281,11 @@ namespace brr::render
     {
 		BRR_LogInfo("Creating Staging Buffer.");
 
-		render::DeviceBuffer staging_buffer{ *m_render_device,
-			buffer_size,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent };
+        DeviceBuffer staging_buffer{
+            buffer_size,
+            vk::BufferUsageFlagBits::eTransferSrc,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+        };
 
 		staging_buffer.Map();
 		staging_buffer.WriteToBuffer(buffer_data);
@@ -298,8 +300,7 @@ namespace brr::render
 		BRR_LogInfo("Creating Uniform Buffers");
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
-			render_data.m_uniform_buffers[i].Reset(*m_render_device, buffer_size,
-                                                   vk::BufferUsageFlagBits::eUniformBuffer,
+			render_data.m_uniform_buffers[i].Reset(buffer_size, vk::BufferUsageFlagBits::eUniformBuffer,
                                                    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		}
 

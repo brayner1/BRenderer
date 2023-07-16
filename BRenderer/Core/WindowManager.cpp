@@ -17,9 +17,9 @@ namespace brr
 		m_pMainWindowID = m_pMainWindow->GetWindowID();
 		m_pMainWindowClosed = false;
 
-		m_pDevice = std::make_unique<render::RenderDevice>(m_pMainWindow.get());
+		render::VKRD::CreateRenderDevice(m_pMainWindow.get());
 
-		m_pMainWindow->InitWindowRenderer(m_pDevice.get());
+		m_pMainWindow->InitWindowRenderer();
 
 		BRR_LogInfo("WindowManager initialized.");
 	}
@@ -30,8 +30,6 @@ namespace brr
 		m_pSecondaryWindows.clear();
 
 		m_pMainWindow.reset();
-
-		m_pDevice.reset();
 
 		SDL_Quit();
 	}

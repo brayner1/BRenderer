@@ -1,4 +1,4 @@
-#include "Renderer/RenderDevice.h"
+#include "Renderer/VulkanRenderDevice.h"
 #include "Renderer/RenderDefs.h"
 
 #include "Core/Window.h"
@@ -10,8 +10,21 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace brr::render
 {
+	std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_ {};
 
-	RenderDevice::RenderDevice(Window* main_window)
+	void VulkanRenderDevice::CreateRenderDevice(Window* window)
+	{
+		assert(!device_ && "VulkanRenderDevice is already created");
+		device_.reset(new VulkanRenderDevice(window));
+	}
+
+    VulkanRenderDevice* VulkanRenderDevice::GetSingleton()
+	{
+		assert(device_ && "Can't get non-initialized VulkanRenderDevice.");
+	    return device_.get();
+	}
+
+    VulkanRenderDevice::VulkanRenderDevice(Window* main_window)
 	{
 		Init_VkInstance(main_window);
 		vk::SurfaceKHR surface = main_window->GetVulkanSurface(vulkan_instance_);
@@ -24,7 +37,7 @@ namespace brr::render
 		m_pDescriptorAllocator = new DescriptorAllocator(m_device);
 	}
 
-	vk::ShaderModule Create_ShaderModule(RenderDevice* device, std::vector<char>& code)
+	vk::ShaderModule Create_ShaderModule(VulkanRenderDevice* device, std::vector<char>& code)
 	{
 		vk::ShaderModuleCreateInfo shader_module_info{};
 		shader_module_info
@@ -40,7 +53,7 @@ namespace brr::render
 		return createShaderModuleResult.value;
 	}
 
-    Shader RenderDevice::CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name)
+    Shader VulkanRenderDevice::CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name)
     {
 		Shader shader{};
 		vk::ShaderModule vertex_shader_module;
@@ -94,7 +107,7 @@ namespace brr::render
 		return std::move(shader);
     }
 
-    void RenderDevice::WaitIdle() const
+    void VulkanRenderDevice::WaitIdle() const
     {
 		m_device.waitIdle();
 	}
@@ -115,39 +128,39 @@ namespace brr::render
 		return allocCmdBufferResult.result;
 	}
 
-    vk::Result RenderDevice::AllocateGraphicsCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
+    vk::Result VulkanRenderDevice::AllocateGraphicsCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
                                                            std::vector<vk::CommandBuffer>& out_command_buffers) const
     {
         return allocateCommandBuffer(m_device, graphics_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
                                      out_command_buffers);
     }
 
-    vk::Result RenderDevice::AllocatePresentCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
+    vk::Result VulkanRenderDevice::AllocatePresentCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
                                                           std::vector<vk::CommandBuffer>& out_command_buffers) const
     {
         return allocateCommandBuffer(m_device, present_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
                                      out_command_buffers);
     }
 
-    vk::Result RenderDevice::AllocateTransferCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
+    vk::Result VulkanRenderDevice::AllocateTransferCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
                                                            std::vector<vk::CommandBuffer>& out_command_buffers) const
     {
         return allocateCommandBuffer(m_device, transfer_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
                                      out_command_buffers);
     }
 
-    DescriptorLayoutBuilder RenderDevice::GetDescriptorLayoutBuilder() const
+    DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
     {
 		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
     }
 
-    DescriptorSetBuilder<FRAME_LAG> RenderDevice::GetDescriptorSetBuilder(
+    DescriptorSetBuilder<FRAME_LAG> VulkanRenderDevice::GetDescriptorSetBuilder(
         const DescriptorLayout& layout) const
     {
 		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator);
     }
 
-    void RenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
+    void VulkanRenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
                                      vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory)
     {
 		// Create Buffer
@@ -206,7 +219,7 @@ namespace brr::render
 		return;
     }
 
-    void RenderDevice::Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
+    void VulkanRenderDevice::Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
         vk::DeviceSize src_buffer_offset, vk::DeviceSize dst_buffer_offset)
     {
 		const vk::CommandPool transfer_cmd_pool = (IsDifferentTransferQueue()) ? transfer_command_pool_ : graphics_command_pool_;
@@ -256,7 +269,7 @@ namespace brr::render
 		m_device.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
     }
 
-	void RenderDevice::Init_VkInstance(Window* window)
+	void VulkanRenderDevice::Init_VkInstance(Window* window)
 	{
 		// Dynamic load of the library
 	    {
@@ -353,7 +366,7 @@ namespace brr::render
 		 BRR_LogInfo("Instance Created");
 	}
 
-	void RenderDevice::Init_PhysDevice(vk::SurfaceKHR surface)
+	void VulkanRenderDevice::Init_PhysDevice(vk::SurfaceKHR surface)
 	{
 		auto enumPhysDevicesResult = vulkan_instance_.enumeratePhysicalDevices();
 		std::vector<vk::PhysicalDevice> devices = enumPhysDevicesResult.value;
@@ -390,7 +403,7 @@ namespace brr::render
 		BRR_LogInfo("Selected physical device: {}", phys_device_.getProperties().deviceName);
 	}
 
-	void RenderDevice::Init_Queues_Indices(vk::SurfaceKHR surface)
+	void VulkanRenderDevice::Init_Queues_Indices(vk::SurfaceKHR surface)
 	{
 		// Check for queue families
 		queue_family_indices_ = VkHelpers::Find_QueueFamilies(phys_device_, surface);
@@ -408,7 +421,7 @@ namespace brr::render
 		}
 	}
 
-	void RenderDevice::Init_Device()
+	void VulkanRenderDevice::Init_Device()
 	{
 		if (!queue_family_indices_.m_graphicsFamily.has_value())
 		{
@@ -485,7 +498,7 @@ namespace brr::render
 		BRR_LogInfo("Device Created");
 	}
 
-	void RenderDevice::Init_CommandPool()
+	void VulkanRenderDevice::Init_CommandPool()
 	{
 		vk::CommandPoolCreateInfo command_pool_info{};
 		command_pool_info

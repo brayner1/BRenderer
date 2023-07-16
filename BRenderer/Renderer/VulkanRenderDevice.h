@@ -7,14 +7,15 @@
 
 namespace brr::render
 {
-
-	class RenderDevice
+	class VulkanRenderDevice
 	{
 	public:
 
-		RenderDevice(Window* main_window);
+		static void CreateRenderDevice(Window* window);
 
-		/* Shader */
+        static VulkanRenderDevice* GetSingleton();
+
+        /* Shader */
 
 		Shader CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name);
 
@@ -73,11 +74,15 @@ namespace brr::render
 
 	private:
 
+		VulkanRenderDevice(Window* main_window);
+
 		void Init_VkInstance(Window* window);
 		void Init_PhysDevice(vk::SurfaceKHR surface);
 		void Init_Queues_Indices(vk::SurfaceKHR surface);
 		void Init_Device();
 		void Init_CommandPool();
+
+		static std::unique_ptr<VulkanRenderDevice> device_;
 
 		// Vulkan Instance
 
@@ -108,6 +113,7 @@ namespace brr::render
 
 	};
 
+#define VKRD VulkanRenderDevice
 }
 
 #endif

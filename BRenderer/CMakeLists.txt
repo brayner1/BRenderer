@@ -67,9 +67,9 @@ set(BRenderer_SOURCE_FILES
 "Renderer/Descriptors.cpp"
 "Renderer/DeviceBuffer.cpp"
 "Renderer/DevicePipeline.cpp"
-"Renderer/RenderDevice.cpp"
+"Renderer/VulkanRenderDevice.cpp"
 "Renderer/WindowRenderer.cpp" 
-"Renderer/RenderSurface.cpp"
+
 "Renderer/SceneRenderer.cpp"
 "Renderer/Shader.cpp" 
 "Renderer/Swapchain.cpp"
@@ -105,9 +105,9 @@ set(BRenderer_HEADER_FILES
 "Renderer/DeviceBuffer.h"
 "Renderer/DevicePipeline.h"
 "Renderer/RenderDefs.h"
-"Renderer/RenderDevice.h"
+"Renderer/VulkanRenderDevice.h"
 "Renderer/WindowRenderer.h"
-"Renderer/RenderSurface.h"
+
 "Renderer/SceneRenderer.h"
 "Renderer/Shader.h"
 "Renderer/Swapchain.h"

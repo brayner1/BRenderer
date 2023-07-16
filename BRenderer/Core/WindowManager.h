@@ -32,8 +32,6 @@ namespace brr
 		//TODO: Here for posterior support for multiple windows
 		std::unordered_map<WindowId, uint32_t> m_pSecondaryWindows_Id_Index_Map{};
 		std::vector<std::unique_ptr<Window>> m_pSecondaryWindows{};
-
-		std::unique_ptr<render::RenderDevice> m_pDevice {};
 	};
 }
 

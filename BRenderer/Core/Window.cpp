@@ -59,9 +59,9 @@ namespace brr
 		BRR_LogInfo("Window Closed");
 	}
 
-    void Window::InitWindowRenderer(render::RenderDevice* render_device)
+    void Window::InitWindowRenderer()
     {
-		m_pWindowRenderer = std::make_unique<render::WindowRenderer>(this, render_device);
+		m_pWindowRenderer = std::make_unique<render::WindowRenderer>(this);
     }
 
     void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)

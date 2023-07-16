@@ -1,14 +1,14 @@
 #include "Renderer/Swapchain.h"
 
 #include "Renderer/VkInitializerHelper.h"
-#include "Renderer/RenderDevice.h"
+#include "Renderer/VulkanRenderDevice.h"
 #include "Core/Window.h"
 #include "Core/LogSystem.h"
 
 
 namespace brr::render
 {
-	Swapchain::Swapchain(RenderDevice* device, Window* window) : device_(device), window_(window)
+	Swapchain::Swapchain(Window* window) : device_(VKRD::GetSingleton()), window_(window)
 	{
 		Init_Swapchain(window);
 		Init_SwapchainResources();
@@ -219,14 +219,22 @@ namespace brr::render
 			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 			.setColorAttachments(color_attachment_ref);
 
-		vk::SubpassDependency subpass_dependency{};
-		subpass_dependency
+		vk::SubpassDependency subpass_dependency[2];
+		subpass_dependency[0]
 			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
 			.setDstSubpass(0)
 			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 			.setSrcAccessMask(vk::AccessFlagBits::eNone)
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead)
+			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite/* | vk::AccessFlagBits::eColorAttachmentRead*/)
+			.setDependencyFlags(vk::DependencyFlags());
+		subpass_dependency[1]
+			.setSrcSubpass(0)
+			.setDstSubpass(VK_SUBPASS_EXTERNAL)
+			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite/* | vk::AccessFlagBits::eColorAttachmentRead*/)
+			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+			.setDstAccessMask(vk::AccessFlagBits::eNone)
 			.setDependencyFlags(vk::DependencyFlags());
 
 		vk::RenderPassCreateInfo render_pass_info{};

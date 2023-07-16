@@ -1,6 +1,6 @@
 #include "Renderer/DevicePipeline.h"
 
-#include "RenderDevice.h"
+#include "VulkanRenderDevice.h"
 #include "Renderer/Shader.h"
 #include "Renderer/Swapchain.h"
 
@@ -8,11 +8,10 @@
 
 namespace brr::render
 {
-    DevicePipeline::DevicePipeline(RenderDevice* device,
-		                           std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
+    DevicePipeline::DevicePipeline(std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
 		                           const Shader& shader, 
 		                           Swapchain* swapchain)
-	: m_device(device)
+	: m_device(VKRD::GetSingleton())
     {
         if (!Init_GraphicsPipeline(descriptors_layouts, shader, swapchain))
         {

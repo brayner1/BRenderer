@@ -1,7 +1,7 @@
 #ifndef BRR_BUFFER_H
 #define BRR_BUFFER_H
 
-#include "Renderer/RenderDevice.h"
+#include "Renderer/VulkanRenderDevice.h"
 
 namespace brr
 {
@@ -12,14 +12,14 @@ namespace brr
 		public:
 
 			DeviceBuffer();
-			DeviceBuffer(RenderDevice& device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+			DeviceBuffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
 			DeviceBuffer(DeviceBuffer&& device_buffer) noexcept;
 
 			DeviceBuffer& operator=(DeviceBuffer&& device_buffer) noexcept;
 
 			~DeviceBuffer();
 
-			void Reset(RenderDevice& device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+			void Reset(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
 
 			void Map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 			void Unmap();
@@ -45,7 +45,7 @@ namespace brr
 
 			void DestroyBuffer();
 
-			RenderDevice* device_ = nullptr;
+			VulkanRenderDevice* device_ = nullptr;
 
 			vk::Buffer buffer_ = VK_NULL_HANDLE;
 			vk::DeviceMemory buffer_memory_ = VK_NULL_HANDLE;

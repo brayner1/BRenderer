@@ -1,6 +1,6 @@
 #ifndef BRR_WINDOW_H
 #define BRR_WINDOW_H
-#include "Renderer/RenderDevice.h"
+#include "Renderer/VulkanRenderDevice.h"
 #include "Scene/Scene.h"
 
 namespace brr
@@ -15,7 +15,7 @@ namespace brr
 		~Window();
 
 		// Initialize and open the window with the current properties.
-		void InitWindowRenderer(render::RenderDevice* render_device);
+		void InitWindowRenderer();
 
 		// Close the window if it is open. If it is already closed, then do nothing.
 		void CloseWindow();

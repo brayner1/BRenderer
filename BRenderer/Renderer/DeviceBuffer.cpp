@@ -9,9 +9,9 @@ namespace brr
 	{
 		DeviceBuffer::DeviceBuffer() = default;
 
-		DeviceBuffer::DeviceBuffer(RenderDevice& device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
+		DeviceBuffer::DeviceBuffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
 		                           vk::MemoryPropertyFlags properties) :
-		device_(&device), buffer_size_(buffer_size), usage_(usage), properties_(properties)
+		device_(VKRD::GetSingleton()), buffer_size_(buffer_size), usage_(usage), properties_(properties)
 		{
 			BRR_LogInfo("Creating Buffer. New buffer: [ size: {}, usage: {}, properties: {} ]", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
 			device_->Create_Buffer(buffer_size_, usage_, properties_, buffer_, buffer_memory_);
@@ -56,7 +56,7 @@ namespace brr
 			}
 		}
 
-		void DeviceBuffer::Reset(RenderDevice& device, vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
+		void DeviceBuffer::Reset(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
                                  vk::MemoryPropertyFlags properties)
 		{
 			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {}, usage: {}, properties: {} ]", buffer_size, vk::to_string(usage).c_str(), vk::to_string(properties).c_str());
@@ -65,7 +65,7 @@ namespace brr
 				DestroyBuffer();
 			}
 
-			device_ = &device;
+			device_ = VKRD::GetSingleton();
 			buffer_size_ = buffer_size;
 			usage_ = usage;
 			properties_ = properties;

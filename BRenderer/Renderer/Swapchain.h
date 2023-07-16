@@ -11,13 +11,13 @@ namespace brr
 namespace brr::render
 {
 
-	class RenderDevice;
+	class VulkanRenderDevice;
 
 	class Swapchain
 	{
 	public:
 
-		Swapchain(RenderDevice* device, Window* window);
+		Swapchain(Window* window);
 		~Swapchain();
 
 		vk::Result AcquireNextImage(vk::Semaphore& image_available_semaphore);
@@ -55,7 +55,7 @@ namespace brr::render
 
 		// Device
 
-		RenderDevice* device_ = nullptr;
+		VulkanRenderDevice* device_ = nullptr;
 
 		// Swapchain
 

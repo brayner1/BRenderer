@@ -3,15 +3,14 @@
 
 namespace brr::render
 {
-    class RenderDevice;
+    class VulkanRenderDevice;
     class Shader;
     class Swapchain;
 
     class DevicePipeline
     {
     public:
-        DevicePipeline(RenderDevice* device, 
-                       std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
+        DevicePipeline(std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
                        const Shader& shader, 
                        Swapchain* swapchain);
 
@@ -38,7 +37,7 @@ namespace brr::render
             const Shader& shader,
             Swapchain* swapchain);
 
-        RenderDevice* m_device;
+        VulkanRenderDevice* m_device;
 
         vk::PipelineLayout m_pipeline_layout;
         vk::Pipeline       m_pipeline;

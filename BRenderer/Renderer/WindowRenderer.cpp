@@ -2,7 +2,7 @@
 
 #include "Renderer/SceneRenderer.h"
 #include "Renderer/VkInitializerHelper.h"
-#include "Renderer/RenderDevice.h"
+#include "Renderer/VulkanRenderDevice.h"
 #include "Renderer/Swapchain.h"
 #include "Renderer/Shader.h"
 #include "Core/Window.h"
@@ -19,12 +19,12 @@ namespace brr::render
 		glm::mat4 model_matrix;
 	};
 
-    WindowRenderer::WindowRenderer(Window* window, RenderDevice* device)
+    WindowRenderer::WindowRenderer(Window* window)
     : m_pOwnerWindow(window),
-      render_device_(device)
+      render_device_(VKRD::GetSingleton())
     {
-		swapchain_ = std::make_unique<Swapchain>(render_device_, m_pOwnerWindow);
-		scene_renderer = std::make_unique<SceneRenderer>(render_device_, m_pOwnerWindow->GetScene());
+		swapchain_ = std::make_unique<Swapchain>(m_pOwnerWindow);
+		scene_renderer = std::make_unique<SceneRenderer>(m_pOwnerWindow->GetScene());
 
 		// Create DescriptorPool and the DescriptorSets
 		Init_DescriptorLayouts();
@@ -63,14 +63,13 @@ namespace brr::render
 	{
 		Shader shader = render_device_->CreateShaderFromFiles("vert", "frag");
 
-		m_graphics_pipeline = std::make_unique<DevicePipeline>(render_device_,
-                                                               std::vector{2, m_pDescriptorSetLayout}, shader,
+		m_graphics_pipeline = std::make_unique<DevicePipeline>(std::vector{2, m_pDescriptorSetLayout}, shader,
                                                                swapchain_.get());
 	}
 
 	void WindowRenderer::Init_CommandBuffers()
 	{
-		vk::Result alloc_result = render_device_->AllocateGraphicsCommandBuffer(RenderDevice::CommandBufferLevel::Primary, 2, m_pCommandBuffers);
+		vk::Result alloc_result = render_device_->AllocateGraphicsCommandBuffer(VulkanRenderDevice::CommandBufferLevel::Primary, 2, m_pCommandBuffers);
 		if (alloc_result != vk::Result::eSuccess)
 		{
 			BRR_LogError("Could not allocate Graphics CommandBuffer! Result code: {}.", vk::to_string(alloc_result).c_str());
@@ -170,10 +169,31 @@ namespace brr::render
 			.setWaitDstStageMask(wait_stage)
 			.setSignalSemaphores(current_render_finished_semaphore);
 
+		vk::CommandBufferSubmitInfo cmd_buffer_submit_info {cmd_buffer};
+
+		vk::SemaphoreSubmitInfo image_available_semaphore_info {};
+		image_available_semaphore_info
+			.setDeviceIndex(0)
+			.setSemaphore(m_current_image_available_semaphore)
+			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		vk::SemaphoreSubmitInfo render_finished_semaphore_info {};
+		render_finished_semaphore_info
+			.setDeviceIndex(0)
+			.setSemaphore(current_render_finished_semaphore)
+			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		vk::SubmitInfo2 submit_info2 {};
+		submit_info2
+			.setCommandBufferInfos(cmd_buffer_submit_info)
+            .setWaitSemaphoreInfos(image_available_semaphore_info)
+            .setSignalSemaphoreInfos(render_finished_semaphore_info);
+
 
 		vk::Fence in_flight_fence = swapchain_->GetCurrentInFlightFence();
 
 		render_device_->GetGraphicsQueue().submit(submit_info, in_flight_fence);
+		//render_device_->GetGraphicsQueue().submit2(submit_info2, in_flight_fence);
 
 		swapchain_->PresentCurrentImage(current_render_finished_semaphore);
     }

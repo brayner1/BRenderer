@@ -1,7 +1,7 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
 #include "Geometry/Geometry.h"
-#include "Renderer/RenderDevice.h"
+#include "Renderer/VulkanRenderDevice.h"
 #include "Renderer/DeviceBuffer.h"
 #include "Renderer/RenderDefs.h"
 #include "Renderer/Descriptors.h"
@@ -22,7 +22,7 @@ namespace brr::render
     {
     public:
 
-        SceneRenderer(RenderDevice* device, Scene* scene);
+        SceneRenderer(Scene* scene);
 
         SurfaceId CreateNewSurface(Mesh3DComponent::SurfaceData& surface, const Entity& owner_entity);
         void UpdateSurfaceVertexBuffer(SurfaceId surface_id, std::vector<Vertex3_PosColor>& vertex_buffer, uint32_t buffer_offset = 0);
@@ -78,7 +78,7 @@ namespace brr::render
         void Init_UniformBuffers(RenderData& render_data);
 
         Scene* m_scene;
-        RenderDevice* m_render_device = nullptr;
+        VulkanRenderDevice* m_render_device = nullptr;
 
         struct CameraUniformInfo
         {

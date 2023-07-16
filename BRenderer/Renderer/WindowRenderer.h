@@ -12,14 +12,14 @@ namespace brr{
 	class PerspectiveCamera;
 	namespace render
 	{
-		class RenderDevice;
+		class VulkanRenderDevice;
         class SceneRenderer;
         class Shader;
 
         class WindowRenderer
 		{
 		public:
-			WindowRenderer (Window* window, RenderDevice* device);
+			WindowRenderer (Window* window);
 
 			~WindowRenderer();
 
@@ -86,7 +86,7 @@ namespace brr{
 
 			std::unique_ptr<SceneRenderer> scene_renderer;
 
-			RenderDevice* render_device_ {};
+			VulkanRenderDevice* render_device_ {};
 		};
 	}
 }
