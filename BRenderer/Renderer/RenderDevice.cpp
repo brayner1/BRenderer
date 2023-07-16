@@ -295,6 +295,15 @@ namespace brr::render
 				BRR_LogError("Could not find any of the required validation layers.");
 				/*exit(1);*/
 			}
+
+			{
+				LogStreamBuffer log_msg = BRR_InfoStrBuff();
+				log_msg << "Available Layers:";
+				for (vk::LayerProperties& layer : layers)
+				{
+					log_msg << "\n\tLayer name: " << layer.layerName;
+				}
+			}
 		}
 
 		// Gather required extensions
@@ -309,12 +318,11 @@ namespace brr::render
 
 		    {
 		        LogStreamBuffer log_msg = BRR_InfoStrBuff();
-				log_msg << "Available Extensions:";
+				log_msg << "Available Instance Extensions:";
 			    for (vk::ExtensionProperties& extension : extension_properties)
 			    {
 			        log_msg << "\n\tExtension name: " << extension.extensionName;
 			    }
-				//BRR_LogInfo(log_msg.str());
 		    }
 		}
 
@@ -366,6 +374,18 @@ namespace brr::render
 	    }
 
 		phys_device_ = VkHelpers::Select_PhysDevice(devices, surface);
+		std::string device_name = phys_device_.getProperties().deviceName;
+
+		auto device_extensions = phys_device_.enumerateDeviceExtensionProperties();
+		if (device_extensions.result == vk::Result::eSuccess)
+		{
+			LogStreamBuffer log_msg = BRR_InfoStrBuff();
+			log_msg << "Available Device Extensions (" << device_name << "):";
+		    for (vk::ExtensionProperties& extension : device_extensions.value)
+		    {
+				log_msg << "\n\tExtension name: " << extension.extensionName;
+		    }
+		}
 
 		BRR_LogInfo("Selected physical device: {}", phys_device_.getProperties().deviceName);
 	}

@@ -31,7 +31,7 @@ namespace brr
             static_cast<spdlog::level::level_enum>(log_level),
             message.str()
         );
-
+        message.str({});
         message.clear();
 #endif
     }
@@ -54,6 +54,5 @@ namespace brr
 
     LogSystem::LogSystem()
     {
-        
     }
 }
