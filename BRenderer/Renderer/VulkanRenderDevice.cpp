@@ -1,4 +1,7 @@
 #include "Renderer/VulkanRenderDevice.h"
+
+#include <vulkan/vulkan.hpp>
+
 #include "Renderer/RenderDefs.h"
 
 #include "Core/Window.h"
@@ -14,15 +17,42 @@ namespace brr::render
 
 	void VulkanRenderDevice::CreateRenderDevice(Window* window)
 	{
-		assert(!device_ && "VulkanRenderDevice is already created");
+		assert(!device_ && "VulkanRenderDevice is already created. You can only create one.");
 		device_.reset(new VulkanRenderDevice(window));
 	}
 
     VulkanRenderDevice* VulkanRenderDevice::GetSingleton()
 	{
-		assert(device_ && "Can't get non-initialized VulkanRenderDevice.");
+		assert(device_ && "Can't get non-initialized VulkanRenderDevice. Run `VKRD::CreateRenderDevice(Window* window)` before this function.");
 	    return device_.get();
 	}
+
+    VulkanRenderDevice::~VulkanRenderDevice()
+    {
+		vmaDestroyAllocator(m_vma_allocator);
+
+		m_pDescriptorLayoutCache.reset();
+		m_pDescriptorAllocator.reset();
+
+		if (graphics_command_pool_)
+		{
+			m_device.destroyCommandPool(graphics_command_pool_);
+			graphics_command_pool_ = VK_NULL_HANDLE;
+		}
+		if (present_command_pool_)
+		{
+			m_device.destroyCommandPool(present_command_pool_);
+			present_command_pool_ = VK_NULL_HANDLE;
+		}
+		if (transfer_command_pool_)
+		{
+			m_device.destroyCommandPool(transfer_command_pool_);
+			transfer_command_pool_ = VK_NULL_HANDLE;
+		}
+
+		m_device.destroy();
+		std::cout << "Vulkan Renderer Destroyed";
+    }
 
     VulkanRenderDevice::VulkanRenderDevice(Window* main_window)
 	{
@@ -31,10 +61,11 @@ namespace brr::render
 		Init_PhysDevice(surface);
 		Init_Queues_Indices(surface);
 		Init_Device();
+		Init_Allocator();
 		Init_CommandPool();
 
-		m_pDescriptorLayoutCache = new DescriptorLayoutCache(m_device);
-		m_pDescriptorAllocator = new DescriptorAllocator(m_device);
+		m_pDescriptorLayoutCache.reset(new DescriptorLayoutCache(m_device));
+		m_pDescriptorAllocator.reset(new DescriptorAllocator(m_device));
 	}
 
 	vk::ShaderModule Create_ShaderModule(VulkanRenderDevice* device, std::vector<char>& code)
@@ -151,17 +182,19 @@ namespace brr::render
 
     DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
     {
-		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
+		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache.get());
     }
 
     DescriptorSetBuilder<FRAME_LAG> VulkanRenderDevice::GetDescriptorSetBuilder(
         const DescriptorLayout& layout) const
     {
-		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator);
+		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator.get());
     }
 
-    void VulkanRenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
-                                     vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory)
+    void VulkanRenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage,
+                                           VmaMemoryUsage memory_usage, vk::Buffer& buffer,
+                                           VmaAllocation& buffer_allocation, 
+		                                   VmaAllocationCreateFlags buffer_allocation_flags)
     {
 		// Create Buffer
 		{
@@ -173,7 +206,7 @@ namespace brr::render
 
 			vk::BufferCreateInfo buffer_create_info;
 			buffer_create_info
-				.setUsage(usage)
+				.setUsage(buffer_usage)
 				.setSharingMode(sharing_mode)
 				.setSize(buffer_size);
 			if (sharing_mode == vk::SharingMode::eConcurrent)
@@ -182,19 +215,28 @@ namespace brr::render
 				buffer_create_info.setQueueFamilyIndices(indices);
 			}
 
-			auto createBufferResult = m_device.createBuffer(buffer_create_info);
+			VmaAllocationCreateInfo allocInfo = {};
+			allocInfo.usage = memory_usage;
+			allocInfo.flags = buffer_allocation_flags;
+
+			VkBuffer new_buffer;
+			VmaAllocation allocation;
+			vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &allocInfo, &new_buffer, &allocation, nullptr);
+
+			/*auto createBufferResult = m_device.createBuffer(buffer_create_info);
 			if (createBufferResult.result != vk::Result::eSuccess)
 			{
 				BRR_LogError("Could not create Buffer! Result code: {}.", vk::to_string(createBufferResult.result).c_str());
 				exit(1);
-			}
-			buffer = createBufferResult.value;
+			}*/
+			buffer = new_buffer;
+			buffer_allocation = allocation;
 
 			BRR_LogInfo("Buffer created.");
 		}
 
 		// Allocate Memory
-		{
+		/*{
 			vk::MemoryRequirements memory_requirements = m_device.getBufferMemoryRequirements(buffer);
 
 			vk::MemoryAllocateInfo allocate_info{};
@@ -214,7 +256,7 @@ namespace brr::render
 			BRR_LogInfo("Buffer Memory Allocated.");
 		}
 
-		m_device.bindBufferMemory(buffer, buffer_memory, 0);
+		m_device.bindBufferMemory(buffer, buffer_memory, 0);*/
 
 		return;
     }
@@ -496,6 +538,49 @@ namespace brr::render
 		transfer_queue_ = (different_transfer_queue_) ? m_device.getQueue(transfer_family_idx, 0) : graphics_queue_;
 
 		BRR_LogInfo("Device Created");
+	}
+
+	void VulkanRenderDevice::Init_Allocator()
+	{
+		VmaVulkanFunctions vulkan_functions{};
+		// Initialize function pointers
+		{
+			vulkan_functions.vkGetInstanceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr;
+			vulkan_functions.vkGetDeviceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr;
+			vulkan_functions.vkGetPhysicalDeviceProperties = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceProperties;
+			vulkan_functions.vkGetPhysicalDeviceMemoryProperties = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceMemoryProperties;
+			vulkan_functions.vkAllocateMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateMemory;
+			vulkan_functions.vkFreeMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkFreeMemory;
+			vulkan_functions.vkMapMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkMapMemory;
+			vulkan_functions.vkUnmapMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkUnmapMemory;
+			vulkan_functions.vkFlushMappedMemoryRanges = VULKAN_HPP_DEFAULT_DISPATCHER.vkFlushMappedMemoryRanges;
+			vulkan_functions.vkInvalidateMappedMemoryRanges = VULKAN_HPP_DEFAULT_DISPATCHER.vkInvalidateMappedMemoryRanges;
+			vulkan_functions.vkBindBufferMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindBufferMemory;
+			vulkan_functions.vkBindImageMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindImageMemory;
+			vulkan_functions.vkGetBufferMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetBufferMemoryRequirements;
+			vulkan_functions.vkGetImageMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetImageMemoryRequirements;
+			vulkan_functions.vkCreateBuffer = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateBuffer;
+			vulkan_functions.vkDestroyBuffer = VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyBuffer;
+			vulkan_functions.vkCreateImage = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateImage;
+			vulkan_functions.vkDestroyImage = VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyImage;
+			vulkan_functions.vkCmdCopyBuffer = VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyBuffer;
+			vulkan_functions.vkGetBufferMemoryRequirements2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetBufferMemoryRequirements2;
+			vulkan_functions.vkGetImageMemoryRequirements2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetImageMemoryRequirements2;
+			vulkan_functions.vkBindBufferMemory2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindBufferMemory2;
+			vulkan_functions.vkBindImageMemory2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindImageMemory2;
+			vulkan_functions.vkGetPhysicalDeviceMemoryProperties2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceMemoryProperties2;
+			vulkan_functions.vkGetDeviceBufferMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceBufferMemoryRequirements;
+			vulkan_functions.vkGetDeviceImageMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceImageMemoryRequirements;
+		}
+
+		VmaAllocatorCreateInfo vma_alloc_create_info {};
+		vma_alloc_create_info.device = m_device;
+		vma_alloc_create_info.instance = vulkan_instance_;
+		vma_alloc_create_info.physicalDevice = phys_device_;
+		vma_alloc_create_info.vulkanApiVersion = VK_API_VERSION_1_3;
+		vma_alloc_create_info.pVulkanFunctions = &vulkan_functions;
+
+		vmaCreateAllocator(&vma_alloc_create_info, &m_vma_allocator);
 	}
 
 	void VulkanRenderDevice::Init_CommandPool()

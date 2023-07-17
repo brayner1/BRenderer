@@ -7,19 +7,31 @@ namespace brr
 {
 	namespace render
 	{
+
+		enum class MemoryUsage
+		{
+			// Buffer memory can be mapped and accessed in the CPU.
+			// It's recommended that the reads/writes will be made in sequential order.
+			// Random access to the buffer will be very slow.
+		    CPU_ACCESS_SEQUENTIAL,
+			// Buffer memory can be mapped and accessed in the CPU.
+			// It uses a cached memory and can be read/written in random order.
+			CPU_ACCESS_CACHED
+		};
+
         class DeviceBuffer
 		{
 		public:
 
 			DeviceBuffer();
-			DeviceBuffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+			DeviceBuffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
 			DeviceBuffer(DeviceBuffer&& device_buffer) noexcept;
 
 			DeviceBuffer& operator=(DeviceBuffer&& device_buffer) noexcept;
 
 			~DeviceBuffer();
 
-			void Reset(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties);
+			void Reset(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
 
 			void Map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 			void Unmap();
@@ -38,8 +50,8 @@ namespace brr
 
 			[[nodiscard]] vk::DeviceSize GetBufferSize() const { return buffer_size_; }
 
-			[[nodiscard]] bool IsValid() const { return device_ && buffer_; }
-            explicit [[nodiscard]] operator bool() const { return IsValid(); }
+			[[nodiscard]] bool IsInitialized() const { return device_ && buffer_; }
+            explicit [[nodiscard]] operator bool() const { return IsInitialized(); }
 
 		private:
 
@@ -48,13 +60,13 @@ namespace brr
 			VulkanRenderDevice* device_ = nullptr;
 
 			vk::Buffer buffer_ = VK_NULL_HANDLE;
-			vk::DeviceMemory buffer_memory_ = VK_NULL_HANDLE;
+			VmaAllocation buffer_allocation_ = VK_NULL_HANDLE;
 
 			void* mapped_ = nullptr;
 
 			vk::DeviceSize buffer_size_ {};
-			vk::BufferUsageFlags usage_ {};
-			vk::MemoryPropertyFlags properties_ {};
+			vk::BufferUsageFlags buffer_usage_ {};
+			VmaMemoryUsage memory_usage_ {};
 		};
 	}
 }

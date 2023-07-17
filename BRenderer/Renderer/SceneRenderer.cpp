@@ -174,10 +174,10 @@ namespace brr::render
 		{
 			cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 1, render_data.m_descriptor_sets[buffer_index], {});
 
-			assert(render_data.m_vertex_buffer.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
+			assert(render_data.m_vertex_buffer.IsInitialized() && "Vertex buffer must be valid to bind to a command buffer.");
 			cmd_buffer.bindVertexBuffers(0, render_data.m_vertex_buffer.GetBuffer(), { 0 });
 
-			if (render_data.m_index_buffer.IsValid())
+			if (render_data.m_index_buffer.IsInitialized())
 			{
 				cmd_buffer.bindIndexBuffer(render_data.m_index_buffer.GetBuffer(), 0, vk::IndexType::eUint32);
 				cmd_buffer.drawIndexed(render_data.num_indices, 1, 0, 0, 0);
@@ -196,7 +196,8 @@ namespace brr::render
 			m_camera_uniform_info.m_uniform_buffers[idx] =
 				DeviceBuffer(sizeof(UniformBufferObject),
 					vk::BufferUsageFlagBits::eUniformBuffer,
-					vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+					VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
+					VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
 
 		DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
@@ -231,7 +232,7 @@ namespace brr::render
 
 		render_data.m_vertex_buffer = DeviceBuffer(buffer_size,
 			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+			VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_HOST);
 
 		render_data.num_vertices = vertex_buffer.size();
 
@@ -258,7 +259,7 @@ namespace brr::render
         render_data.m_index_buffer = DeviceBuffer(buffer_size,
                                                   vk::BufferUsageFlagBits::eTransferDst |
                                                   vk::BufferUsageFlagBits::eIndexBuffer,
-                                                  vk::MemoryPropertyFlagBits::eDeviceLocal);
+                                                  VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
 
 		render_data.num_indices = index_buffer.size();
 
@@ -284,7 +285,8 @@ namespace brr::render
         DeviceBuffer staging_buffer{
             buffer_size,
             vk::BufferUsageFlagBits::eTransferSrc,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+            VMA_MEMORY_USAGE_AUTO,
+			VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
         };
 
 		staging_buffer.Map();
@@ -301,7 +303,8 @@ namespace brr::render
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
 			render_data.m_uniform_buffers[i].Reset(buffer_size, vk::BufferUsageFlagBits::eUniformBuffer,
-                                                   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+                                                   VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
+				                                   VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
 
 		BRR_LogInfo("Uniform Buffers created.");

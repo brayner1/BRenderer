@@ -90,6 +90,8 @@ namespace brr::render
         DescriptorLayoutCache() = default;
         explicit DescriptorLayoutCache(vk::Device device);
 
+        ~DescriptorLayoutCache();
+
         vk::DescriptorSetLayout CreateDescriptorLayout(DescriptorLayoutBindings layout_bindings);
 
         void Cleanup();

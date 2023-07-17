@@ -74,9 +74,10 @@ set(BRenderer_SOURCE_FILES
 "Renderer/Shader.cpp" 
 "Renderer/Swapchain.cpp"
 "Renderer/VkInitializerHelper.cpp" 
+"Renderer/Vulkan/VmaBuild.cpp"
 
 "Files/FilesUtils.cpp" 
- )
+)
 
 set(BRenderer_HEADER_FILES
 "BRenderer.h" 
@@ -145,13 +146,18 @@ target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CUR
 
 target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Lib")
 
-target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE spdlog::spdlog VulkanMemoryAllocator)
 
 if (TARGET spdlog)
     message("SpdLog Found!")
     target_compile_definitions(BRenderer PRIVATE USE_SPDLOG)
 else()
     message("SpdLog if not working")
+endif()
+
+if (TARGET VulkanMemoryAllocator)
+    message("VMA Found!")
+    target_compile_definitions(BRenderer PRIVATE USE_VMA)
 endif()
 
 # Set MSVC working directory to the target executable directory.

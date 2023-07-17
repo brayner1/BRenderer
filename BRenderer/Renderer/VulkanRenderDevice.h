@@ -5,6 +5,9 @@
 #include "Renderer/Shader.h"
 #include "Renderer/VkInitializerHelper.h"
 
+#include <vk_mem_alloc.h>
+#include <vulkan/vulkan.hpp>
+
 namespace brr::render
 {
 	class VulkanRenderDevice
@@ -14,6 +17,8 @@ namespace brr::render
 		static void CreateRenderDevice(Window* window);
 
         static VulkanRenderDevice* GetSingleton();
+
+		~VulkanRenderDevice();
 
         /* Shader */
 
@@ -47,8 +52,8 @@ namespace brr::render
 
 		enum class CommandBufferLevel : uint8_t
 		{
-		    Primary = vk::CommandBufferLevel::ePrimary,
-			Secondary = vk::CommandBufferLevel::eSecondary
+		    Primary = (uint8_t)vk::CommandBufferLevel::ePrimary,
+			Secondary = (uint8_t)vk::CommandBufferLevel::eSecondary
 		};
 
 		[[nodiscard]] vk::Result AllocateGraphicsCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers) const;
@@ -62,12 +67,19 @@ namespace brr::render
 		[[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
 		[[nodiscard]] DescriptorSetBuilder<FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
 
+		/**********
+		 * Memory *
+		 **********/
+
+		[[nodiscard]] VmaAllocator GetAllocator() const { return m_vma_allocator; }
+
 		/***********
 		 * Buffers *
 		 ***********/
 
-		void Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
-			vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory);
+        void Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage,
+                           VmaMemoryUsage memory_usage, vk::Buffer& buffer, VmaAllocation& buffer_allocation,
+                           VmaAllocationCreateFlags buffer_allocation_flags);
 
 		void Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
 			vk::DeviceSize src_buffer_offset = 0, vk::DeviceSize dst_buffer_offset = 0);
@@ -80,6 +92,7 @@ namespace brr::render
 		void Init_PhysDevice(vk::SurfaceKHR surface);
 		void Init_Queues_Indices(vk::SurfaceKHR surface);
 		void Init_Device();
+		void Init_Allocator();
 		void Init_CommandPool();
 
 		static std::unique_ptr<VulkanRenderDevice> device_;
@@ -92,6 +105,9 @@ namespace brr::render
 
 		vk::PhysicalDevice phys_device_ {};
 		vk::Device m_device {};
+
+		// Allocator
+		VmaAllocator m_vma_allocator {};
 
 		// Command Pools
 
@@ -108,8 +124,8 @@ namespace brr::render
 		bool different_present_queue_ = false;
 		bool different_transfer_queue_ = false;
 
-		DescriptorAllocator* m_pDescriptorAllocator = nullptr;
-		DescriptorLayoutCache* m_pDescriptorLayoutCache = nullptr;
+		std::unique_ptr<DescriptorAllocator> m_pDescriptorAllocator = nullptr;
+		std::unique_ptr<DescriptorLayoutCache> m_pDescriptorLayoutCache = nullptr;
 
 	};
 
