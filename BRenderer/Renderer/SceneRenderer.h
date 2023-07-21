@@ -6,6 +6,7 @@
 #include "Renderer/RenderDefs.h"
 #include "Renderer/Descriptors.h"
 #include "Renderer/DevicePipeline.h"
+#include "Renderer/Allocators/StagingAllocator.h"
 
 #include "Scene/Scene.h"
 #include "Scene/Components/Mesh3DComponent.h"
@@ -29,9 +30,11 @@ namespace brr::render
         void UpdateSurfaceIndexBuffer(SurfaceId surface_id, std::vector<uint32_t>& index_buffer, uint32_t buffer_offset = 0);
         //TODO: Add RemoveSurface function. It should add the render data to a delete-list in the current buffer, and delete it only when this buffer is rendering again (means the resources are not used anymore).
 
-        void UpdateDirtyInstances(uint32_t buffer_index);
+        void BeginRender(uint32_t buffer_index, size_t current_frame, vk::CommandBuffer graphics_command_buffer, vk::CommandBuffer transfer_command_buffer);
 
-        void Render3D(vk::CommandBuffer cmd_buffer, uint32_t buffer_index, const DevicePipeline& render_pipeline);
+        void UpdateDirtyInstances();
+
+        void Render3D(const DevicePipeline& render_pipeline);
 
         struct MeshDirty {};
 
@@ -73,12 +76,20 @@ namespace brr::render
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
         void UpdateBufferData(DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset);
 
-        DeviceBuffer CreateStagingBuffer(vk::DeviceSize buffer_size, void* buffer_data);
+        StagingBufferHandle CreateStagingBuffer(size_t buffer_size, void* buffer_data);
 
         void Init_UniformBuffers(RenderData& render_data);
 
         Scene* m_scene;
         VulkanRenderDevice* m_render_device = nullptr;
+
+        StagingAllocator m_staging_allocator;
+
+        uint32_t m_current_buffer = 0;
+        size_t m_current_frame = 0;
+
+        vk::CommandBuffer m_current_graphics_cmd_buffer = VK_NULL_HANDLE;
+        vk::CommandBuffer m_current_transfer_cmd_buffer = VK_NULL_HANDLE;
 
         struct CameraUniformInfo
         {

@@ -25,8 +25,8 @@ namespace brr{
 
 			void Window_Resized();
 
-			vk::CommandBuffer BeginRenderWindow();
-			void EndRenderWindow(vk::CommandBuffer cmd_buffer);
+            void BeginRenderWindow();
+			void EndRenderWindow();
 
 			/*
 			 * Pipelines
@@ -52,9 +52,11 @@ namespace brr{
 
 			void Init_Synchronization();
 
-			void BeginRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const;
-			void Record_CommandBuffer(vk::CommandBuffer cmd_buffer);
-			void EndRenderPass_CommandBuffer(vk::CommandBuffer cmd_buffer) const;
+			void BeginCommandBuffer(vk::CommandBuffer cmd_buffer) const;
+			void BeginRenderPass(vk::CommandBuffer cmd_buffer) const;
+			void Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer, vk::CommandBuffer transfer_cmd_buffer);
+			void EndRenderPass(vk::CommandBuffer cmd_buffer) const;
+			void EndCommandBuffer(vk::CommandBuffer cmd_buffer) const;
 
 			void Recreate_Swapchain();
 
@@ -75,14 +77,18 @@ namespace brr{
 
 			// Swapchain
 			std::unique_ptr<Swapchain> swapchain_{};
+			size_t m_frame_count = 0;
 
 			//uint32_t current_image_idx{};
 
 			// Command Buffers
-			std::vector<vk::CommandBuffer> m_pCommandBuffers {};
+			std::array<vk::CommandBuffer, FRAME_LAG> m_pGraphicsCommandBuffers;
+			std::array<vk::CommandBuffer, FRAME_LAG> m_pTransferCommandBuffers;
 
-			vk::Semaphore m_current_image_available_semaphore {};
+
+            vk::Semaphore m_current_image_available_semaphore {};
 			vk::Semaphore render_finished_semaphores_[FRAME_LAG];
+			vk::Semaphore transfer_finished_semaphores_[FRAME_LAG];
 
 			std::unique_ptr<SceneRenderer> scene_renderer;
 

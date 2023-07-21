@@ -56,9 +56,26 @@ namespace brr::render
 			Secondary = (uint8_t)vk::CommandBufferLevel::eSecondary
 		};
 
-		[[nodiscard]] vk::Result AllocateGraphicsCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers) const;
-		[[nodiscard]] vk::Result AllocatePresentCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers) const;
-		[[nodiscard]] vk::Result AllocateTransferCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers) const;
+		[[nodiscard]] vk::Result AllocateGraphicsCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers) const;
+		[[nodiscard]] vk::Result AllocatePresentCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers) const;
+		[[nodiscard]] vk::Result AllocateTransferCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers) const;
+
+		[[nodiscard]] vk::Result SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                              uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+                                                              vk::PipelineStageFlags* wait_dst_stages, uint32_t signal_semaphore_count,
+                                                              vk::Semaphore* signal_semaphores, vk::Fence submit_fence);
+
+        [[nodiscard]] vk::Result SubmitPresentCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                             uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+			                                                 vk::PipelineStageFlags* wait_dst_stages,
+                                                             uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+			                                                 vk::Fence submit_fence);
+
+        [[nodiscard]] vk::Result SubmitTransferCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                              uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+			                                                  vk::PipelineStageFlags* wait_dst_stages,
+                                                              uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+			                                                  vk::Fence submit_fence);
 
 		/***************
 		 * Descriptors *
@@ -88,6 +105,10 @@ namespace brr::render
 
 		VulkanRenderDevice(Window* main_window);
 
+		/****************************
+		 * Initialization Functions *
+		 ****************************/
+
 		void Init_VkInstance(Window* window);
 		void Init_PhysDevice(vk::SurfaceKHR surface);
 		void Init_Queues_Indices(vk::SurfaceKHR surface);
@@ -95,6 +116,7 @@ namespace brr::render
 		void Init_Allocator();
 		void Init_CommandPool();
 
+		// Singleton Device
 		static std::unique_ptr<VulkanRenderDevice> device_;
 
 		// Vulkan Instance
@@ -109,7 +131,7 @@ namespace brr::render
 		// Allocator
 		VmaAllocator m_vma_allocator {};
 
-		// Command Pools
+		// Command Buffers Pools
 
 		vk::CommandPool graphics_command_pool_ {};
 		vk::CommandPool present_command_pool_ {};

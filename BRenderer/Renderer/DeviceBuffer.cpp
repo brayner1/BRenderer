@@ -1,5 +1,7 @@
 #include "Renderer/DeviceBuffer.h"
 
+#include "Renderer/VulkanRenderDevice.h"
+
 #include "Core/LogSystem.h"
 
 

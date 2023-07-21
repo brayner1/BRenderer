@@ -98,8 +98,8 @@ namespace brr
 
     void Window::RenderWindow()
     {
-		vk::CommandBuffer cmd_buff = m_pWindowRenderer->BeginRenderWindow();
-		m_pWindowRenderer->EndRenderWindow(cmd_buff);
+		m_pWindowRenderer->BeginRenderWindow();
+		m_pWindowRenderer->EndRenderWindow();
     }
 
 	void Window::GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const

@@ -1,14 +1,15 @@
 #ifndef BRR_BUFFER_H
 #define BRR_BUFFER_H
+#include "vk_mem_alloc.h"
 
-#include "Renderer/VulkanRenderDevice.h"
 
 namespace brr
 {
 	namespace render
 	{
+        class VulkanRenderDevice;
 
-		enum class MemoryUsage
+        enum class MemoryUsage
 		{
 			// Buffer memory can be mapped and accessed in the CPU.
 			// It's recommended that the reads/writes will be made in sequential order.
