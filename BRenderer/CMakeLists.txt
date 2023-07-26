@@ -42,79 +42,80 @@ endif()
 
 # Define the project files
 set(BRenderer_SOURCE_FILES
-"BRenderer.cpp" 
-
-"Core/App.cpp"
-"Core/LogSystem.cpp"
-"Core/Window.cpp" 
-"Core/WindowManager.cpp"
-"Core/PerspectiveCamera.cpp"
-
-"Geometry/Geometry.cpp"
-
-"Scene/Components.cpp"
-"Scene/Entity.cpp"
-"Scene/Scene.cpp"
-
-"Scene/Components/EntityComponent.cpp"
-"Scene/Components/MaterialComponent.cpp"
-"Scene/Components/Mesh3DComponent.cpp"
-"Scene/Components/NodeComponent.cpp"
-"Scene/Components/Transform3DComponent.cpp"
-
-"Importer/Importer.cpp"
-
-"Renderer/Descriptors.cpp"
-"Renderer/DeviceBuffer.cpp"
-"Renderer/DevicePipeline.cpp"
-"Renderer/VulkanRenderDevice.cpp"
-"Renderer/WindowRenderer.cpp" 
-
-"Renderer/SceneRenderer.cpp"
-"Renderer/Shader.cpp" 
-"Renderer/Swapchain.cpp"
-"Renderer/VkInitializerHelper.cpp" 
-
-"Files/FilesUtils.cpp" 
- )
+    "BRenderer.cpp" 
+    
+    "Core/App.cpp"
+    "Core/LogSystem.cpp"
+    "Core/Window.cpp" 
+    "Core/WindowManager.cpp"
+    "Core/PerspectiveCamera.cpp"
+    
+    "Geometry/Geometry.cpp"
+    
+    "Scene/Components.cpp"
+    "Scene/Entity.cpp"
+    "Scene/Scene.cpp"
+    
+    "Scene/Components/EntityComponent.cpp"
+    "Scene/Components/MaterialComponent.cpp"
+    "Scene/Components/Mesh3DComponent.cpp"
+    "Scene/Components/NodeComponent.cpp"
+    "Scene/Components/Transform3DComponent.cpp"
+    
+    "Importer/Importer.cpp"
+    
+    "Renderer/Allocators/StagingAllocator.cpp"
+    "Renderer/Descriptors.cpp"
+    "Renderer/DeviceBuffer.cpp"
+    "Renderer/DevicePipeline.cpp"
+    "Renderer/VulkanRenderDevice.cpp"
+    "Renderer/WindowRenderer.cpp" 
+    "Renderer/SceneRenderer.cpp"
+    "Renderer/Shader.cpp" 
+    "Renderer/Swapchain.cpp"
+    "Renderer/VkInitializerHelper.cpp" 
+    "Renderer/Vulkan/VmaImpl.cpp"
+    
+    "Files/FilesUtils.cpp" 
+)
 
 set(BRenderer_HEADER_FILES
-"BRenderer.h" 
-
-"Core/App.h"
-"Core/LogSystem.h"
-"Core/Window.h" 
-"Core/WindowManager.h"
-"Core/PerspectiveCamera.h"
-
-"Geometry/Geometry.h"
-
-"Scene/Components.h"
-"Scene/Entity.h"
-"Scene/Scene.h"
-
-"Scene/Components/EntityComponent.h"
-"Scene/Components/MaterialComponent.h"
-"Scene/Components/Mesh3DComponent.h"
-"Scene/Components/NodeComponent.h"
-"Scene/Components/Transform3DComponent.h"
-
-"Importer/Importer.h"
-
-"Renderer/Descriptors.h"
-"Renderer/DeviceBuffer.h"
-"Renderer/DevicePipeline.h"
-"Renderer/RenderDefs.h"
-"Renderer/VulkanRenderDevice.h"
-"Renderer/WindowRenderer.h"
-
-"Renderer/SceneRenderer.h"
-"Renderer/Shader.h"
-"Renderer/Swapchain.h"
-"Renderer/VkInitializerHelper.h" 
-
-"Files/FilesUtils.h"
- ) 
+    "BRenderer.h" 
+    
+    "Core/App.h"
+    "Core/LogSystem.h"
+    "Core/Window.h" 
+    "Core/WindowManager.h"
+    "Core/PerspectiveCamera.h"
+    
+    "Geometry/Geometry.h"
+    
+    "Scene/Components.h"
+    "Scene/Entity.h"
+    "Scene/Scene.h"
+    
+    "Scene/Components/EntityComponent.h"
+    "Scene/Components/MaterialComponent.h"
+    "Scene/Components/Mesh3DComponent.h"
+    "Scene/Components/NodeComponent.h"
+    "Scene/Components/Transform3DComponent.h"
+    
+    "Importer/Importer.h"
+    
+    "Renderer/Allocators/StagingAllocator.h"
+    "Renderer/Descriptors.h"
+    "Renderer/DeviceBuffer.h"
+    "Renderer/DevicePipeline.h"
+    "Renderer/RenderDefs.h"
+    "Renderer/VulkanRenderDevice.h"
+    "Renderer/WindowRenderer.h"
+    "Renderer/SceneRenderer.h"
+    "Renderer/Shader.h"
+    "Renderer/Swapchain.h"
+    "Renderer/VkInitializerHelper.h" 
+    
+    "Files/FilesUtils.h"
+) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Core REGULAR_EXPRESSION "Core/.*")
@@ -143,15 +144,20 @@ target_precompile_headers(BRenderer PRIVATE
 
 target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )
 
-target_link_directories(BRenderer PUBLIC "${VULKAN_PATH}/Lib")
+target_link_directories(BRenderer PUBLIC $<TARGET_LINKER_FILE_DIR:Vulkan::Vulkan>)
 
-target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE Vulkan::Headers spdlog::spdlog VulkanMemoryAllocator)
 
 if (TARGET spdlog)
     message("SpdLog Found!")
     target_compile_definitions(BRenderer PRIVATE USE_SPDLOG)
 else()
     message("SpdLog if not working")
+endif()
+
+if (TARGET VulkanMemoryAllocator)
+    message("VMA Found!")
+    target_compile_definitions(BRenderer PRIVATE USE_VMA)
 endif()
 
 # Set MSVC working directory to the target executable directory.

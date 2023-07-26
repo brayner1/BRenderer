@@ -1,4 +1,7 @@
 #include "Renderer/VulkanRenderDevice.h"
+
+#include <vulkan/vulkan.hpp>
+
 #include "Renderer/RenderDefs.h"
 
 #include "Core/Window.h"
@@ -14,15 +17,44 @@ namespace brr::render
 
 	void VulkanRenderDevice::CreateRenderDevice(Window* window)
 	{
-		assert(!device_ && "VulkanRenderDevice is already created");
+		assert(!device_ && "VulkanRenderDevice is already created. You can only create one.");
 		device_.reset(new VulkanRenderDevice(window));
 	}
 
     VulkanRenderDevice* VulkanRenderDevice::GetSingleton()
 	{
-		assert(device_ && "Can't get non-initialized VulkanRenderDevice.");
+		assert(device_ && "Can't get non-initialized VulkanRenderDevice. Run `VKRD::CreateRenderDevice(Window* window)` before this function.");
 	    return device_.get();
 	}
+
+    VulkanRenderDevice::~VulkanRenderDevice()
+    {
+		WaitIdle();
+
+		vmaDestroyAllocator(m_vma_allocator);
+
+		m_pDescriptorLayoutCache.reset();
+		m_pDescriptorAllocator.reset();
+
+		if (graphics_command_pool_)
+		{
+			m_device.destroyCommandPool(graphics_command_pool_);
+			graphics_command_pool_ = VK_NULL_HANDLE;
+		}
+		if (present_command_pool_)
+		{
+			m_device.destroyCommandPool(present_command_pool_);
+			present_command_pool_ = VK_NULL_HANDLE;
+		}
+		if (transfer_command_pool_)
+		{
+			m_device.destroyCommandPool(transfer_command_pool_);
+			transfer_command_pool_ = VK_NULL_HANDLE;
+		}
+
+		m_device.destroy();
+		std::cout << "Vulkan Renderer Destroyed";
+    }
 
     VulkanRenderDevice::VulkanRenderDevice(Window* main_window)
 	{
@@ -31,10 +63,11 @@ namespace brr::render
 		Init_PhysDevice(surface);
 		Init_Queues_Indices(surface);
 		Init_Device();
+		Init_Allocator();
 		Init_CommandPool();
 
-		m_pDescriptorLayoutCache = new DescriptorLayoutCache(m_device);
-		m_pDescriptorAllocator = new DescriptorAllocator(m_device);
+		m_pDescriptorLayoutCache.reset(new DescriptorLayoutCache(m_device));
+		m_pDescriptorAllocator.reset(new DescriptorAllocator(m_device));
 	}
 
 	vk::ShaderModule Create_ShaderModule(VulkanRenderDevice* device, std::vector<char>& code)
@@ -112,8 +145,9 @@ namespace brr::render
 		m_device.waitIdle();
 	}
 
-	static vk::Result allocateCommandBuffer(vk::Device device, vk::CommandPool cmd_pool, vk::CommandBufferLevel level, uint32_t cmd_buffer_count, std::vector<vk::CommandBuffer>& out_command_buffers)
-	{
+    static vk::Result allocateCommandBuffer(vk::Device device, vk::CommandPool cmd_pool, vk::CommandBufferLevel level,
+                                            uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers)
+    {
         vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
         command_buffer_alloc_info
             .setCommandPool(cmd_pool)
@@ -123,49 +157,119 @@ namespace brr::render
 		auto allocCmdBufferResult = device.allocateCommandBuffers(command_buffer_alloc_info);
 		if (allocCmdBufferResult.result == vk::Result::eSuccess)
 		{
-			out_command_buffers = allocCmdBufferResult.value;
+			std::memcpy(out_command_buffers, allocCmdBufferResult.value.data(), cmd_buffer_count * sizeof(vk::CommandBuffer));
 		}
 		return allocCmdBufferResult.result;
 	}
 
-    vk::Result VulkanRenderDevice::AllocateGraphicsCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
-                                                           std::vector<vk::CommandBuffer>& out_command_buffers) const
+    vk::Result VulkanRenderDevice::AllocateGraphicsCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count,
+                                                                 vk::CommandBuffer* out_command_buffers) const
     {
         return allocateCommandBuffer(m_device, graphics_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
                                      out_command_buffers);
     }
 
-    vk::Result VulkanRenderDevice::AllocatePresentCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
-                                                          std::vector<vk::CommandBuffer>& out_command_buffers) const
+    vk::Result VulkanRenderDevice::AllocatePresentCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count,
+                                                                vk::CommandBuffer* out_command_buffers) const
     {
         return allocateCommandBuffer(m_device, present_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
                                      out_command_buffers);
     }
 
-    vk::Result VulkanRenderDevice::AllocateTransferCommandBuffer(CommandBufferLevel level, uint32_t cmd_buffer_count,
-                                                           std::vector<vk::CommandBuffer>& out_command_buffers) const
+    vk::Result VulkanRenderDevice::AllocateTransferCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count,
+                                                                 vk::CommandBuffer* out_command_buffers) const
     {
         return allocateCommandBuffer(m_device, transfer_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
                                      out_command_buffers);
     }
 
+    vk::Result VulkanRenderDevice::SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+                                                                vk::PipelineStageFlags* wait_dst_stages,
+                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                                vk::Fence submit_fence)
+    {
+		vk::SubmitInfo submit_info{};
+		submit_info
+			.setPCommandBuffers(cmd_buffers)
+			.setCommandBufferCount(cmd_buffer_count)
+			.setPWaitSemaphores(wait_semaphores)
+		    .setWaitSemaphoreCount(wait_semaphore_count)
+			.setPWaitDstStageMask(wait_dst_stages)
+			.setPSignalSemaphores(signal_semaphores)
+	        .setSignalSemaphoreCount(signal_semaphore_count);
+
+		/*vk::CommandBufferSubmitInfo cmd_buffer_submit_info {cmd_buffer};
+
+		vk::SemaphoreSubmitInfo image_available_semaphore_info {};
+		image_available_semaphore_info
+			.setDeviceIndex(0)
+			.setSemaphore(m_current_image_available_semaphore)
+			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		vk::SemaphoreSubmitInfo render_finished_semaphore_info {};
+		render_finished_semaphore_info
+			.setDeviceIndex(0)
+			.setSemaphore(current_render_finished_semaphore)
+			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		vk::SubmitInfo2 submit_info2 {};
+		submit_info2
+			.setCommandBufferInfos(cmd_buffer_submit_info)
+			.setWaitSemaphoreInfos(image_available_semaphore_info)
+			.setSignalSemaphoreInfos(render_finished_semaphore_info);*/
+
+		return GetGraphicsQueue().submit(submit_info, submit_fence);
+    }
+
+    vk::Result VulkanRenderDevice::SubmitPresentCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+		                                                       vk::PipelineStageFlags* wait_dst_stages,
+                                                               uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                               vk::Fence submit_fence)
+    {
+		//TODO
+		return vk::Result::eErrorUnknown;
+    }
+
+    vk::Result VulkanRenderDevice::SubmitTransferCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+		                                                        vk::PipelineStageFlags* wait_dst_stages,
+                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                                vk::Fence submit_fence)
+    {
+		vk::SubmitInfo submit_info{};
+		submit_info
+			.setPCommandBuffers(cmd_buffers)
+			.setCommandBufferCount(cmd_buffer_count)
+			.setPWaitSemaphores(wait_semaphores)
+			.setWaitSemaphoreCount(wait_semaphore_count)
+			.setPWaitDstStageMask(wait_dst_stages)
+			.setPSignalSemaphores(signal_semaphores)
+			.setSignalSemaphoreCount(signal_semaphore_count);
+
+		return GetTransferQueue().submit(submit_info, submit_fence);
+    }
+
     DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
     {
-		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache);
+		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache.get());
     }
 
     DescriptorSetBuilder<FRAME_LAG> VulkanRenderDevice::GetDescriptorSetBuilder(
         const DescriptorLayout& layout) const
     {
-		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator);
+		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator.get());
     }
 
-    void VulkanRenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags usage,
-                                     vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& buffer_memory)
+    void VulkanRenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage,
+                                           VmaMemoryUsage memory_usage, vk::Buffer& buffer,
+                                           VmaAllocation& buffer_allocation, 
+		                                   VmaAllocationCreateFlags buffer_allocation_flags)
     {
 		// Create Buffer
 		{
-			vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+			vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eExclusive : vk::SharingMode::eExclusive;
 			std::vector<uint32_t> indices{
 				GetQueueFamilyIndices().m_graphicsFamily.value(),
 				GetQueueFamilyIndices().m_transferFamily.value()
@@ -173,7 +277,7 @@ namespace brr::render
 
 			vk::BufferCreateInfo buffer_create_info;
 			buffer_create_info
-				.setUsage(usage)
+				.setUsage(buffer_usage)
 				.setSharingMode(sharing_mode)
 				.setSize(buffer_size);
 			if (sharing_mode == vk::SharingMode::eConcurrent)
@@ -182,39 +286,32 @@ namespace brr::render
 				buffer_create_info.setQueueFamilyIndices(indices);
 			}
 
-			auto createBufferResult = m_device.createBuffer(buffer_create_info);
-			if (createBufferResult.result != vk::Result::eSuccess)
+			VmaAllocationCreateInfo allocInfo = {};
+			allocInfo.usage = memory_usage;
+			allocInfo.flags = buffer_allocation_flags;
+			allocInfo.requiredFlags = 0;
+			allocInfo.preferredFlags = 0;
+			allocInfo.memoryTypeBits = 0;
+			allocInfo.pool = VK_NULL_HANDLE;
+			allocInfo.pUserData = nullptr;
+			allocInfo.priority = 1.0;
+
+			VkBuffer new_buffer;
+			VmaAllocation allocation;
+			VmaAllocationInfo allocation_info;
+            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &allocInfo,
+                                                                             &new_buffer, &allocation, &allocation_info));
+
+			if (createBufferResult != vk::Result::eSuccess)
 			{
-				BRR_LogError("Could not create Buffer! Result code: {}.", vk::to_string(createBufferResult.result).c_str());
+				BRR_LogError("Could not create Buffer! Result code: {}.", vk::to_string(createBufferResult).c_str());
 				exit(1);
 			}
-			buffer = createBufferResult.value;
+			buffer = new_buffer;
+			buffer_allocation = allocation;
 
 			BRR_LogInfo("Buffer created.");
 		}
-
-		// Allocate Memory
-		{
-			vk::MemoryRequirements memory_requirements = m_device.getBufferMemoryRequirements(buffer);
-
-			vk::MemoryAllocateInfo allocate_info{};
-			allocate_info
-				.setAllocationSize(memory_requirements.size)
-				.setMemoryTypeIndex(VkHelpers::FindMemoryType(memory_requirements.memoryTypeBits,
-                                                              properties, phys_device_.getMemoryProperties()));
-
-			auto allocMemResult = m_device.allocateMemory(allocate_info);
-			if (allocMemResult.result != vk::Result::eSuccess)
-			{
-				BRR_LogError("Could not allocate DeviceMemory for buffer! Result code: {}.", vk::to_string(allocMemResult.result).c_str());
-				exit(1);
-			}
-			buffer_memory = allocMemResult.value;
-
-			BRR_LogInfo("Buffer Memory Allocated.");
-		}
-
-		m_device.bindBufferMemory(buffer, buffer_memory, 0);
 
 		return;
     }
@@ -254,16 +351,12 @@ namespace brr::render
 
 		cmd_buffer.end();
 
-		vk::SubmitInfo submit_info;
-		submit_info
-			.setCommandBufferCount(1)
-			.setCommandBuffers(cmd_buffer);
-
 		// For now, waiting the device to finish everything before copying data to a potentially used buffer.
 		// TODO: Do correct synchronization (add copies to a setup command buffer)
-		WaitIdle(); 
+		WaitIdle();
 
-		GetTransferQueue().submit(submit_info);
+		SubmitTransferCommandBuffers(1, &cmd_buffer, 0, nullptr, nullptr, 0, nullptr, VK_NULL_HANDLE);
+
 		GetTransferQueue().waitIdle();
 
 		m_device.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
@@ -470,8 +563,12 @@ namespace brr::render
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME
 		};
 
+		vk::PhysicalDeviceSynchronization2Features synchronization2_features {};
+		synchronization2_features.setSynchronization2(true);
+
 		vk::DeviceCreateInfo device_create_info = vk::DeviceCreateInfo{};
 		device_create_info
+		    .setPNext(&synchronization2_features)
 			.setQueueCreateInfos(queues)
 			.setPEnabledFeatures(&device_features)
 			.setEnabledLayerCount(0)
@@ -496,6 +593,49 @@ namespace brr::render
 		transfer_queue_ = (different_transfer_queue_) ? m_device.getQueue(transfer_family_idx, 0) : graphics_queue_;
 
 		BRR_LogInfo("Device Created");
+	}
+
+	void VulkanRenderDevice::Init_Allocator()
+	{
+		VmaVulkanFunctions vulkan_functions{};
+		// Initialize function pointers
+		{
+			vulkan_functions.vkGetInstanceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr;
+			vulkan_functions.vkGetDeviceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr;
+			vulkan_functions.vkGetPhysicalDeviceProperties = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceProperties;
+			vulkan_functions.vkGetPhysicalDeviceMemoryProperties = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceMemoryProperties;
+			vulkan_functions.vkAllocateMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkAllocateMemory;
+			vulkan_functions.vkFreeMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkFreeMemory;
+			vulkan_functions.vkMapMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkMapMemory;
+			vulkan_functions.vkUnmapMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkUnmapMemory;
+			vulkan_functions.vkFlushMappedMemoryRanges = VULKAN_HPP_DEFAULT_DISPATCHER.vkFlushMappedMemoryRanges;
+			vulkan_functions.vkInvalidateMappedMemoryRanges = VULKAN_HPP_DEFAULT_DISPATCHER.vkInvalidateMappedMemoryRanges;
+			vulkan_functions.vkBindBufferMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindBufferMemory;
+			vulkan_functions.vkBindImageMemory = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindImageMemory;
+			vulkan_functions.vkGetBufferMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetBufferMemoryRequirements;
+			vulkan_functions.vkGetImageMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetImageMemoryRequirements;
+			vulkan_functions.vkCreateBuffer = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateBuffer;
+			vulkan_functions.vkDestroyBuffer = VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyBuffer;
+			vulkan_functions.vkCreateImage = VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateImage;
+			vulkan_functions.vkDestroyImage = VULKAN_HPP_DEFAULT_DISPATCHER.vkDestroyImage;
+			vulkan_functions.vkCmdCopyBuffer = VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyBuffer;
+			vulkan_functions.vkGetBufferMemoryRequirements2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetBufferMemoryRequirements2;
+			vulkan_functions.vkGetImageMemoryRequirements2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetImageMemoryRequirements2;
+			vulkan_functions.vkBindBufferMemory2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindBufferMemory2;
+			vulkan_functions.vkBindImageMemory2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkBindImageMemory2;
+			vulkan_functions.vkGetPhysicalDeviceMemoryProperties2KHR = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceMemoryProperties2;
+			vulkan_functions.vkGetDeviceBufferMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceBufferMemoryRequirements;
+			vulkan_functions.vkGetDeviceImageMemoryRequirements = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceImageMemoryRequirements;
+		}
+
+		VmaAllocatorCreateInfo vma_alloc_create_info {};
+		vma_alloc_create_info.device = m_device;
+		vma_alloc_create_info.instance = vulkan_instance_;
+		vma_alloc_create_info.physicalDevice = phys_device_;
+		vma_alloc_create_info.vulkanApiVersion = VK_API_VERSION_1_3;
+		vma_alloc_create_info.pVulkanFunctions = &vulkan_functions;
+
+		vmaCreateAllocator(&vma_alloc_create_info, &m_vma_allocator);
 	}
 
 	void VulkanRenderDevice::Init_CommandPool()

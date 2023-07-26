@@ -187,7 +187,12 @@ namespace brr::render
 	{
 	}
 
-	vk::DescriptorSetLayout DescriptorLayoutCache::CreateDescriptorLayout(
+    DescriptorLayoutCache::~DescriptorLayoutCache()
+    {
+		Cleanup();
+    }
+
+    vk::DescriptorSetLayout DescriptorLayoutCache::CreateDescriptorLayout(
         DescriptorLayoutBindings layout_info)
 	{
 		assert(IsValid() && "'CreateDescriptorLayout' called on invalid DescriptorLayoutCache");

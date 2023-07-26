@@ -9,6 +9,7 @@
 #include <limits>
 #include <algorithm>
 #include <vector>
+#include <deque>
 #include <set>
 #include <fstream>
 #include <iostream>

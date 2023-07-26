@@ -219,7 +219,7 @@ namespace brr::render
 			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
 			.setColorAttachments(color_attachment_ref);
 
-		vk::SubpassDependency subpass_dependency[2];
+		vk::SubpassDependency subpass_dependency[1];
 		subpass_dependency[0]
 			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
 			.setDstSubpass(0)
@@ -228,14 +228,14 @@ namespace brr::render
 			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
 			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite/* | vk::AccessFlagBits::eColorAttachmentRead*/)
 			.setDependencyFlags(vk::DependencyFlags());
-		subpass_dependency[1]
-			.setSrcSubpass(0)
-			.setDstSubpass(VK_SUBPASS_EXTERNAL)
-			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-			.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite/* | vk::AccessFlagBits::eColorAttachmentRead*/)
-			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-			.setDstAccessMask(vk::AccessFlagBits::eNone)
-			.setDependencyFlags(vk::DependencyFlags());
+		//subpass_dependency[1]
+		//	.setSrcSubpass(0)
+		//	.setDstSubpass(0)
+		//	.setSrcStageMask(vk::PipelineStageFlagBits::eTopOfPipe)
+		//	.setSrcAccessMask(vk::AccessFlagBits::eMemoryWrite/* | vk::AccessFlagBits::eColorAttachmentRead*/)
+		//	.setDstStageMask(vk::PipelineStageFlagBits::eVertexInput)
+		//	.setDstAccessMask(vk::AccessFlagBits::eMemoryRead)
+		//	.setDependencyFlags(vk::DependencyFlags());
 
 		vk::RenderPassCreateInfo render_pass_info{};
 		render_pass_info

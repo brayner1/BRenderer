@@ -1,3 +1,6 @@
 [submodule "BRenderer/dependencies/spdlog"]
 	path = BRenderer/dependencies/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "BRenderer/dependencies/VulkanMemoryAllocator"]
+	path = BRenderer/dependencies/VulkanMemoryAllocator
+	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git

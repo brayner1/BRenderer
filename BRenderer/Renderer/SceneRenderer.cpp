@@ -53,8 +53,38 @@ namespace brr::render
 		uint32_t surf_index = m_surfId_idx_map.at(surface_id);
 		assert(m_surfId_idx_map.contains(surface_id) && "Surface is not in the render data map. Something went wrong.");
 		RenderData& render_data = m_render_data[surf_index];
-		UpdateBufferData(render_data.m_vertex_buffer, vertex_buffer.data(), vertex_buffer.size() * sizeof(Vertex3_PosColor), buffer_offset);
-		//CreateVertexBuffer(vertex_buffer, render_data);
+		size_t buffer_size = vertex_buffer.size() * sizeof(Vertex3_PosColor);
+		UpdateBufferData(render_data.m_vertex_buffer, vertex_buffer.data(), buffer_size, buffer_offset);
+
+		if (m_render_device->IsDifferentTransferQueue())
+		{
+			/*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
+			buffer_memory_barrier
+				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
+				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
+				.setDstAccessMask(vk::AccessFlagBits2::eMemoryRead);
+
+			vk::DependencyInfo dependency_info {};
+			dependency_info
+				.setBufferMemoryBarriers(buffer_memory_barrier);
+
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
+			vk::BufferMemoryBarrier buffer_memory_barrier {};
+			buffer_memory_barrier
+				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
+				.setSize(buffer_size)
+				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
+				.setSrcAccessMask(vk::AccessFlags(0));
+
+            m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                                          vk::PipelineStageFlagBits::eVertexInput,
+                                                          vk::DependencyFlags(), 0, nullptr, 1,
+                                                          &buffer_memory_barrier, 0, nullptr);
+		}
     }
 
     void SceneRenderer::UpdateSurfaceIndexBuffer(SurfaceId surface_id, std::vector<uint32_t>& index_buffer, uint32_t buffer_offset)
@@ -62,11 +92,50 @@ namespace brr::render
 		uint32_t surf_index = m_surfId_idx_map.at(surface_id);
 		assert(m_surfId_idx_map.contains(surface_id) && "Surface is not in the render data map. Something went wrong.");
 		RenderData& render_data = m_render_data[surf_index];
-		UpdateBufferData(render_data.m_index_buffer, index_buffer.data(), index_buffer.size() * sizeof(uint32_t), buffer_offset);
-		//CreateIndexBuffer(index_buffer, render_data);
+		size_t buffer_size = index_buffer.size() * sizeof(uint32_t);
+		UpdateBufferData(render_data.m_index_buffer, index_buffer.data(), buffer_size, buffer_offset);
+
+		if (m_render_device->IsDifferentTransferQueue())
+		{
+			/*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
+			buffer_memory_barrier
+				.setBuffer(render_data.m_index_buffer.GetBuffer())
+				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
+				.setDstAccessMask(vk::AccessFlagBits2::eMemoryRead);
+
+			vk::DependencyInfo dependency_info {};
+			dependency_info
+				.setBufferMemoryBarriers(buffer_memory_barrier);
+
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
+			vk::BufferMemoryBarrier buffer_memory_barrier {};
+			buffer_memory_barrier
+				.setBuffer(render_data.m_index_buffer.GetBuffer())
+				.setSize(buffer_size)
+				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
+				.setSrcAccessMask(vk::AccessFlags(0));
+
+			m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+				vk::PipelineStageFlagBits::eVertexInput,
+				vk::DependencyFlags(), 0, nullptr, 1,
+				&buffer_memory_barrier, 0, nullptr);
+		}
     }
 
-    void SceneRenderer::UpdateDirtyInstances(uint32_t buffer_index)
+    void SceneRenderer::BeginRender(uint32_t buffer_index, size_t current_frame, vk::CommandBuffer graphics_command_buffer,
+        vk::CommandBuffer transfer_command_buffer)
+    {
+		m_current_buffer = buffer_index;
+		m_current_frame = current_frame;
+		m_current_graphics_cmd_buffer = graphics_command_buffer;
+		m_current_transfer_cmd_buffer = transfer_command_buffer;
+    }
+
+    void SceneRenderer::UpdateDirtyInstances()
     {
 		assert(m_render_device && "VulkanRenderDevice must be initialized on construction.");
 
@@ -113,7 +182,7 @@ namespace brr::render
 			Transform3DComponent& transform = node->GetEntity().GetComponent<Transform3DComponent>();
 
 			// update transformation uniform
-			if (transform.Dirty() != Transform3DComponent::NOT_DIRTY || render_data.m_uniform_dirty[buffer_index])
+			if (transform.Dirty() != Transform3DComponent::NOT_DIRTY || render_data.m_uniform_dirty[m_current_buffer])
 			{
 				if (!render_data.m_descriptor_sets[0])
 				{
@@ -147,44 +216,44 @@ namespace brr::render
 				Mesh3DUniform uniform{};
 				uniform.model_matrix = transform.GetGlobalTransform();
 
-				render_data.m_uniform_buffers[buffer_index].Map();
-				render_data.m_uniform_buffers[buffer_index].WriteToBuffer(&uniform, sizeof(uniform));
-				render_data.m_uniform_buffers[buffer_index].Unmap();
+				render_data.m_uniform_buffers[m_current_buffer].Map();
+				render_data.m_uniform_buffers[m_current_buffer].WriteToBuffer(&uniform, sizeof(uniform));
+				render_data.m_uniform_buffers[m_current_buffer].Unmap();
 
-				render_data.m_uniform_dirty[buffer_index] = false;
+				render_data.m_uniform_dirty[m_current_buffer] = false;
 			}
 		}
 
 		UniformBufferObject ubo;
 		ubo.projection_view = m_scene->GetMainCamera()->GetProjectionMatrix() * m_scene->GetMainCamera()->GetViewMatrix();;
 
-		m_camera_uniform_info.m_uniform_buffers[buffer_index].Map();
-		m_camera_uniform_info.m_uniform_buffers[buffer_index].WriteToBuffer(&ubo, sizeof(ubo));
-		m_camera_uniform_info.m_uniform_buffers[buffer_index].Unmap();
+		m_camera_uniform_info.m_uniform_buffers[m_current_buffer].Map();
+		m_camera_uniform_info.m_uniform_buffers[m_current_buffer].WriteToBuffer(&ubo, sizeof(ubo));
+		m_camera_uniform_info.m_uniform_buffers[m_current_buffer].Unmap();
 
     }
 
-    void SceneRenderer::Render3D(vk::CommandBuffer cmd_buffer, uint32_t buffer_index, const DevicePipeline& render_pipeline)
+    void SceneRenderer::Render3D(const DevicePipeline& render_pipeline)
     {
-		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipeline());
+		m_current_graphics_cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipeline());
 
-		cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 0, m_camera_uniform_info.m_descriptor_sets[buffer_index], {});
+		m_current_graphics_cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 0, m_camera_uniform_info.m_descriptor_sets[m_current_buffer], {});
 
 		for (RenderData& render_data : m_render_data)
 		{
-			cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 1, render_data.m_descriptor_sets[buffer_index], {});
+			m_current_graphics_cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 1, render_data.m_descriptor_sets[m_current_buffer], {});
 
-			assert(render_data.m_vertex_buffer.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
-			cmd_buffer.bindVertexBuffers(0, render_data.m_vertex_buffer.GetBuffer(), { 0 });
+			assert(render_data.m_vertex_buffer.IsInitialized() && "Vertex buffer must be valid to bind to a command buffer.");
+			m_current_graphics_cmd_buffer.bindVertexBuffers(0, render_data.m_vertex_buffer.GetBuffer(), { 0 });
 
-			if (render_data.m_index_buffer.IsValid())
+			if (render_data.m_index_buffer.IsInitialized())
 			{
-				cmd_buffer.bindIndexBuffer(render_data.m_index_buffer.GetBuffer(), 0, vk::IndexType::eUint32);
-				cmd_buffer.drawIndexed(render_data.num_indices, 1, 0, 0, 0);
+				m_current_graphics_cmd_buffer.bindIndexBuffer(render_data.m_index_buffer.GetBuffer(), 0, vk::IndexType::eUint32);
+				m_current_graphics_cmd_buffer.drawIndexed(render_data.num_indices, 1, 0, 0, 0);
 			}
 			else
 			{
-				cmd_buffer.draw( render_data.num_vertices, 1, 0, 0);
+				m_current_graphics_cmd_buffer.draw( render_data.num_vertices, 1, 0, 0);
 			}
 		}
     }
@@ -196,7 +265,8 @@ namespace brr::render
 			m_camera_uniform_info.m_uniform_buffers[idx] =
 				DeviceBuffer(sizeof(UniformBufferObject),
 					vk::BufferUsageFlagBits::eUniformBuffer,
-					vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+					VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
+					VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
 
 		DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
@@ -223,21 +293,51 @@ namespace brr::render
 
 		vk::DeviceSize buffer_size = sizeof(Vertex3_PosColor) * vertex_buffer.size();
 
-		render::DeviceBuffer staging_buffer = CreateStagingBuffer(buffer_size, vertex_buffer.data());
-
 		BRR_LogInfo("Vertices data copied to Staging Buffer.");
 
 		BRR_LogInfo("Creating Vertex Buffer.");
 
-		render_data.m_vertex_buffer = DeviceBuffer(buffer_size,
-			vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+        render_data.m_vertex_buffer = DeviceBuffer(buffer_size,
+                                                   vk::BufferUsageFlagBits::eTransferDst |
+                                                   vk::BufferUsageFlagBits::eVertexBuffer,
+                                                   VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
 
 		render_data.num_vertices = vertex_buffer.size();
 
 		BRR_LogInfo("Copying Staging Buffer into Vertex Buffer.");
 
-		m_render_device->Copy_Buffer_Immediate(staging_buffer.GetBuffer(), render_data.m_vertex_buffer.GetBuffer(), buffer_size);
+		UpdateBufferData(render_data.m_vertex_buffer, vertex_buffer.data(), buffer_size, 0);
+
+		if (m_render_device->IsDifferentTransferQueue())
+		{
+			/*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
+			buffer_memory_barrier
+				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
+				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
+				.setDstAccessMask(vk::AccessFlagBits2::eMemoryRead);
+
+			vk::DependencyInfo dependency_info {};
+			dependency_info
+				.setBufferMemoryBarriers(buffer_memory_barrier);
+
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
+
+			vk::BufferMemoryBarrier buffer_memory_barrier {};
+			buffer_memory_barrier
+				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
+				.setSize(buffer_size)
+				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
+				.setSrcAccessMask(vk::AccessFlags(0));
+
+            m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                                          vk::PipelineStageFlagBits::eVertexInput,
+                                                          vk::DependencyFlags(), 0, nullptr, 1,
+                                                          &buffer_memory_barrier, 0, nullptr);
+		}
 
 		BRR_LogInfo("Destroying Staging Buffer.");
     }
@@ -249,8 +349,6 @@ namespace brr::render
 
 		vk::DeviceSize buffer_size = sizeof(uint32_t) * index_buffer.size();
 
-		render::DeviceBuffer staging_buffer = CreateStagingBuffer(buffer_size, index_buffer.data());
-
 		BRR_LogInfo("Indices data copied to Staging Buffer.");
 
 		BRR_LogInfo("Creating Index Buffer.");
@@ -258,13 +356,44 @@ namespace brr::render
         render_data.m_index_buffer = DeviceBuffer(buffer_size,
                                                   vk::BufferUsageFlagBits::eTransferDst |
                                                   vk::BufferUsageFlagBits::eIndexBuffer,
-                                                  vk::MemoryPropertyFlagBits::eDeviceLocal);
+                                                  VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
 
 		render_data.num_indices = index_buffer.size();
 
 		BRR_LogInfo("Copying Staging Buffer into Index Buffer.");
 
-		m_render_device->Copy_Buffer_Immediate(staging_buffer.GetBuffer(), render_data.m_index_buffer.GetBuffer(), buffer_size);
+		UpdateBufferData(render_data.m_index_buffer, index_buffer.data(), buffer_size, 0);
+
+		if (m_render_device->IsDifferentTransferQueue())
+		{
+		    /*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
+		    buffer_memory_barrier
+                .setBuffer(render_data.m_index_buffer.GetBuffer())
+                .setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+                .setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+		        .setDstStageMask(vk::PipelineStageFlagBits2::eIndexInput)
+		        .setDstAccessMask(vk::AccessFlagBits2::eMemoryRead)
+		        .setSize(buffer_size);
+
+			vk::DependencyInfo dependency_info {};
+			dependency_info
+				.setBufferMemoryBarriers(buffer_memory_barrier);
+
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
+			vk::BufferMemoryBarrier buffer_memory_barrier {};
+			buffer_memory_barrier
+				.setBuffer(render_data.m_index_buffer.GetBuffer())
+				.setSize(buffer_size)
+				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
+				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
+		        .setSrcAccessMask(vk::AccessFlags(0));
+
+            m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
+                                                          vk::PipelineStageFlagBits::eVertexInput,
+                                                          vk::DependencyFlags(), 0, nullptr, 1,
+                                                          &buffer_memory_barrier, 0, nullptr);
+		}
 
 		BRR_LogInfo("Destroying Staging Buffer.");
     }
@@ -272,23 +401,19 @@ namespace brr::render
     void SceneRenderer::UpdateBufferData(DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset)
     {
 		BRR_LogInfo("Updating buffer data.");
-		render::DeviceBuffer staging_buffer = CreateStagingBuffer(size, data);
+		StagingBufferHandle staging_buffer = CreateStagingBuffer(size, data);
 
-		m_render_device->Copy_Buffer_Immediate(staging_buffer.GetBuffer(), buffer.GetBuffer(), size, 0, offset);
+		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, buffer, m_current_transfer_cmd_buffer, size);
     }
 
-    DeviceBuffer SceneRenderer::CreateStagingBuffer(vk::DeviceSize buffer_size, void* buffer_data)
+    StagingBufferHandle SceneRenderer::CreateStagingBuffer(size_t buffer_size, void* buffer_data)
     {
 		BRR_LogInfo("Creating Staging Buffer.");
 
-        DeviceBuffer staging_buffer{
-            buffer_size,
-            vk::BufferUsageFlagBits::eTransferSrc,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-        };
+		StagingBufferHandle staging_buffer{};
+		m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
 
-		staging_buffer.Map();
-		staging_buffer.WriteToBuffer(buffer_data);
+		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, buffer_data, buffer_size);
 
 		return staging_buffer;
     }
@@ -301,7 +426,8 @@ namespace brr::render
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
 			render_data.m_uniform_buffers[i].Reset(buffer_size, vk::BufferUsageFlagBits::eUniformBuffer,
-                                                   vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+                                                   VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
+				                                   VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
 
 		BRR_LogInfo("Uniform Buffers created.");
