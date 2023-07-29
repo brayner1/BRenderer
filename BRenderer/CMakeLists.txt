@@ -49,6 +49,7 @@ set(BRenderer_SOURCE_FILES
     "Core/Window.cpp" 
     "Core/WindowManager.cpp"
     "Core/PerspectiveCamera.cpp"
+    "Core/Threading/ThreadPool.cpp"
     
     "Geometry/Geometry.cpp"
     
@@ -77,7 +78,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Vulkan/VmaImpl.cpp"
     
     "Files/FilesUtils.cpp" 
-)
+  )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
@@ -87,6 +88,10 @@ set(BRenderer_HEADER_FILES
     "Core/Window.h" 
     "Core/WindowManager.h"
     "Core/PerspectiveCamera.h"
+    "Core/Threading/Barrier.h" 
+    "Core/Threading/Threading.h" 
+    "Core/Threading/ThreadPool.h" 
+    "Core/Threading/Work.h"
     
     "Geometry/Geometry.h"
     
@@ -115,7 +120,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/VkInitializerHelper.h" 
     
     "Files/FilesUtils.h"
-) 
+ ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Core REGULAR_EXPRESSION "Core/.*")
