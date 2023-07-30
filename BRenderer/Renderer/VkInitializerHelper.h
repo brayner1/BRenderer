@@ -1,5 +1,9 @@
 #ifndef BRR_VKINITIALIZERHELPER_H
 #define BRR_VKINITIALIZERHELPER_H
+#include <Renderer/VulkanInc.h>
+
+#include <optional>
+#include <vector>
 
 namespace brr::vis
 {

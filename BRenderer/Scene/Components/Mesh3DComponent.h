@@ -4,6 +4,8 @@
 #include <Scene/Components/EntityComponent.h>
 #include <Geometry/Geometry.h>
 
+#include <set>
+
 namespace brr
 {
     namespace render

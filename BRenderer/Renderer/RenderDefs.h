@@ -1,5 +1,6 @@
 #ifndef BRR_RENDERDEFS_H
 #define BRR_RENDERDEFS_H
+#include <cstdint>
 
 namespace brr::render
 {

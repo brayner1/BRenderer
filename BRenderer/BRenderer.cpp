@@ -1,6 +1,5 @@
 ﻿// VkRenderer.cpp : Defines the entry point for the application.
 //
-#include "pch.h"
 #include "BRenderer.h"
 
 constexpr uint32_t SCREEN_WIDTH = 600;

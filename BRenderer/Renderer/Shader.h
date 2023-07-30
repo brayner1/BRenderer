@@ -1,5 +1,8 @@
 #ifndef BRR_SHADER_H
 #define BRR_SHADER_H
+#include <Renderer/VulkanInc.h>
+
+#include <vector>
 
 namespace brr::render
 {

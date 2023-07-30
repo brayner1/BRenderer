@@ -1,5 +1,7 @@
 #include "FilesUtils.h"
 
+#include <fstream>
+
 namespace brr::files
 {
 	std::vector<char> ReadFile(const std::string& file_path)

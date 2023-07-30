@@ -207,7 +207,7 @@ namespace brr::vis
 
 		vk::Fence in_flight_fence = swapchain_->GetCurrentInFlightFence();
 
-		vk::Result transfer_result = render_device_->SubmitTransferCommandBuffers(1, &m_pTransferCommandBuffers[current_buffer], 0, nullptr, nullptr, 1, &current_transfer_finished_semaphore, VK_NULL_HANDLE);
+		vk::Result transfer_result = render_device_->SubmitTransferCommandBuffers(1, &m_pTransferCommandBuffers[current_buffer], 0, nullptr, nullptr, 1, &current_transfer_finished_semaphore, nullptr);
 
 		std::array<vk::Semaphore, 2> wait_semaphores { m_current_image_available_semaphore, current_transfer_finished_semaphore };
 		std::array<vk::PipelineStageFlags, 2> wait_stages { vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eVertexInput };

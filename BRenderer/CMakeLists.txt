@@ -122,9 +122,10 @@ set(BRenderer_HEADER_FILES
     "Renderer/VkInitializerHelper.h" 
     
     "Files/FilesUtils.h"
- ) 
+   "Core/thirdpartiesInc.h" "Renderer/VulkanInc.h") 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
+source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")
 source_group(Core REGULAR_EXPRESSION "Core/.*")
 source_group(Geometry REGULAR_EXPRESSION "Geometry/.*")
 source_group(Scene REGULAR_EXPRESSION "Scene/.*")
@@ -144,10 +145,6 @@ if (WIN32)
     # Add any required preprocessor definitions here
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
 endif()
-
-target_precompile_headers(BRenderer PRIVATE 
-    [["pch.h"]]
-)
 
 target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )
 

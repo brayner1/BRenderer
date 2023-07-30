@@ -1,6 +1,6 @@
 #ifndef BRR_APP_H
 #define BRR_APP_H
-#include "Visualization/WindowManager.h"
+#include <Visualization/WindowManager.h>
 
 namespace brr
 {

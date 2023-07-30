@@ -1,10 +1,10 @@
-#include "Renderer/DevicePipeline.h"
+#include "DevicePipeline.h"
 
-#include "VulkanRenderDevice.h"
-#include "Renderer/Shader.h"
-#include "Renderer/Swapchain.h"
+#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Shader.h>
+#include <Renderer/Swapchain.h>
 
-#include "Core/LogSystem.h"
+#include <Core/LogSystem.h>
 
 namespace brr::render
 {

@@ -1,7 +1,6 @@
 #ifndef BRR_BUFFER_H
 #define BRR_BUFFER_H
-#include "vk_mem_alloc.h"
-
+#include <Renderer/VulkanInc.h>
 
 namespace brr
 {
@@ -60,8 +59,8 @@ namespace brr
 
 			VulkanRenderDevice* device_ = nullptr;
 
-			vk::Buffer buffer_ = VK_NULL_HANDLE;
-			VmaAllocation buffer_allocation_ = VK_NULL_HANDLE;
+			vk::Buffer buffer_ {};
+			VmaAllocation buffer_allocation_ {};
 
 			void* mapped_ = nullptr;
 

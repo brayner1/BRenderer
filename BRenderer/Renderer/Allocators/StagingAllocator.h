@@ -1,6 +1,6 @@
 #ifndef BRR_STAGINALLOCATOR_H
 #define BRR_STAGINALLOCATOR_H
-#include <vk_mem_alloc.h>
+#include <Renderer/VulkanInc.h>
 
 namespace brr::render
 {
@@ -42,8 +42,8 @@ namespace brr::render
 			size_t frame_id = 0;
 			size_t m_filled_bytes = 0;
 			void* mapping = nullptr;
-			vk::Buffer m_buffer = VK_NULL_HANDLE;
-			VmaAllocation m_allocation = VK_NULL_HANDLE;
+			vk::Buffer m_buffer {};
+			VmaAllocation m_allocation {};
 		};
 
 		void InsertStagingBlock();

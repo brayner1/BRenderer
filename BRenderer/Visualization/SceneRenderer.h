@@ -1,16 +1,17 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
-#include "Geometry/Geometry.h"
-#include "Renderer/VulkanRenderDevice.h"
-#include "Renderer/DeviceBuffer.h"
-#include "Renderer/RenderDefs.h"
-#include "Renderer/Descriptors.h"
-#include "Renderer/DevicePipeline.h"
-#include "Renderer/Allocators/StagingAllocator.h"
+#include <Geometry/Geometry.h>
+#include <Renderer/VulkanInc.h>
+#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/DeviceBuffer.h>
+#include <Renderer/RenderDefs.h>
+#include <Renderer/Descriptors.h>
+#include <Renderer/DevicePipeline.h>
+#include <Renderer/Allocators/StagingAllocator.h>
 
-#include "Scene/Scene.h"
-#include "Scene/Components/Mesh3DComponent.h"
-#include "Scene/Components/NodeComponent.h"
+#include <Scene/Scene.h>
+#include <Scene/Components/Mesh3DComponent.h>
+#include <Scene/Components/NodeComponent.h>
 
 namespace brr::vis
 {
@@ -88,8 +89,8 @@ namespace brr::vis
         uint32_t m_current_buffer = 0;
         size_t m_current_frame = 0;
 
-        vk::CommandBuffer m_current_graphics_cmd_buffer = VK_NULL_HANDLE;
-        vk::CommandBuffer m_current_transfer_cmd_buffer = VK_NULL_HANDLE;
+        vk::CommandBuffer m_current_graphics_cmd_buffer = nullptr;
+        vk::CommandBuffer m_current_transfer_cmd_buffer = nullptr;
 
         struct CameraUniformInfo
         {

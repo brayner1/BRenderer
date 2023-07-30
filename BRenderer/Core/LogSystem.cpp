@@ -1,4 +1,4 @@
-#include <Core/LogSystem.h>
+#include "LogSystem.h"
 
 #ifdef USE_SPDLOG
 #include <spdlog/spdlog.h>

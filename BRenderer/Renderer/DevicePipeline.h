@@ -1,6 +1,10 @@
 #ifndef BRR_PIPELINE_H
 #define BRR_PIPELINE_H
 
+#include <Renderer/VulkanInc.h>
+
+#include <vector>
+
 namespace brr::render
 {
     class VulkanRenderDevice;

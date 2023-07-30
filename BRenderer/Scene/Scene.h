@@ -1,6 +1,7 @@
 #ifndef BRR_SCENE_H
 #define BRR_SCENE_H
 
+#include <Core/thirdpartiesInc.h>
 #include <Core/PerspectiveCamera.h>
 
 namespace brr

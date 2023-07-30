@@ -1,6 +1,6 @@
 #ifndef BRR_WINDOWMANAGER_H
 #define BRR_WINDOWMANAGER_H
-#include "Window.h"
+#include <Visualization/Window.h>
 
 namespace brr::vis
 {

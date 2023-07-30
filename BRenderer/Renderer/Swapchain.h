@@ -1,7 +1,8 @@
 #ifndef BRR_SWAPCHAIN_H
 #define BRR_SWAPCHAIN_H
 
-#include "Renderer/RenderDefs.h"
+#include <Renderer/VulkanInc.h>
+#include <Renderer/RenderDefs.h>
 
 namespace brr::vis
 {

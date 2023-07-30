@@ -1,8 +1,8 @@
 #include "Scene/Scene.h"
 
-#include "Scene/Components.h"
-#include "Scene/Entity.h"
-#include "Core/LogSystem.h"
+#include <Scene/Components.h>
+#include <Scene/Entity.h>
+#include <Core/LogSystem.h>
 
 
 namespace brr

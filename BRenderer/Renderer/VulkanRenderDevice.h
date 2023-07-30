@@ -1,12 +1,10 @@
 #ifndef BRR_RENDERDEVICE_H
 #define BRR_RENDERDEVICE_H
-#include "Renderer/RenderDefs.h"
-#include "Renderer/Descriptors.h"
-#include "Renderer/Shader.h"
-#include "Renderer/VkInitializerHelper.h"
-
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.hpp>
+#include <Renderer/RenderDefs.h>
+#include <Renderer/Descriptors.h>
+#include <Renderer/Shader.h>
+#include <Renderer/VkInitializerHelper.h>
+#include <Renderer/VulkanInc.h>
 
 namespace brr::render
 {

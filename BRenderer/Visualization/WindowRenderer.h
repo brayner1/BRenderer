@@ -1,8 +1,9 @@
 #ifndef BRR_RENDERER_H
 #define BRR_RENDERER_H
-#include "Renderer/DevicePipeline.h"
-#include "Renderer/Swapchain.h"
-#include "Renderer/Descriptors.h"
+#include <Core/thirdpartiesInc.h>
+#include <Renderer/DevicePipeline.h>
+#include <Renderer/Swapchain.h>
+#include <Renderer/Descriptors.h>
 
 namespace brr{
     class Scene;

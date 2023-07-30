@@ -1,7 +1,7 @@
 #include "VkInitializerHelper.h"
 
 #include <Core/LogSystem.h>
-#include <Visualization//Window.h>
+#include <Visualization/Window.h>
 
 
 namespace brr::render::VkHelpers

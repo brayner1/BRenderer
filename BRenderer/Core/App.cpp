@@ -1,8 +1,8 @@
-#include "Core/App.h"
-#include "Core/LogSystem.h"
-#include "Scene/Scene.h"
-#include "Scene/Entity.h"
-#include "Scene/Components/Mesh3DComponent.h"
+#include <Core/App.h>
+#include <Core/LogSystem.h>
+#include <Scene/Scene.h>
+#include <Scene/Entity.h>
+#include <Scene/Components/Mesh3DComponent.h>
 
 
 namespace brr

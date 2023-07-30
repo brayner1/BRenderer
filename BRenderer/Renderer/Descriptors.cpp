@@ -1,4 +1,4 @@
-#include "Renderer/Descriptors.h"
+#include "Descriptors.h"
 
 vk::DescriptorPool CreatePool(vk::Device device, const brr::render::DescriptorAllocator::PoolSizes& poolSizes, int count, vk::DescriptorPoolCreateFlags flags)
 {

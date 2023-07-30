@@ -1,6 +1,8 @@
 #ifndef BRR_PERSPECTIVECAMERA_H
 #define BRR_PERSPECTIVECAMERA_H
 
+#include <Core/thirdpartiesInc.h>
+
 namespace brr
 {
 	class PerspectiveCamera
