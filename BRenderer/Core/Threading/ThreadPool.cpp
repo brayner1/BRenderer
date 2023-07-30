@@ -1,6 +1,8 @@
-#include "pch.h"
 #include "ThreadPool.h"
-#include "Work.h"
+
+#include <Core/Threading/Work.h>
+
+#include <iostream>
 
 namespace brr::threading
 {

@@ -1,14 +1,14 @@
-#include "Renderer/Swapchain.h"
+#include "Swapchain.h"
 
-#include "Renderer/VkInitializerHelper.h"
-#include "Renderer/VulkanRenderDevice.h"
-#include "Core/Window.h"
-#include "Core/LogSystem.h"
+#include <Renderer/VkInitializerHelper.h>
+#include <Renderer/VulkanRenderDevice.h>
+#include <Visualization/Window.h>
+#include <Core/LogSystem.h>
 
 
 namespace brr::render
 {
-	Swapchain::Swapchain(Window* window) : device_(VKRD::GetSingleton()), window_(window)
+	Swapchain::Swapchain(vis::Window* window) : device_(VKRD::GetSingleton()), window_(window)
 	{
 		Init_Swapchain(window);
 		Init_SwapchainResources();
@@ -71,7 +71,7 @@ namespace brr::render
 		}
 	}
 
-	void Swapchain::Init_Swapchain(Window* window)
+	void Swapchain::Init_Swapchain(vis::Window* window)
 	{
 		vk::SurfaceKHR surface = window->GetVulkanSurface(device_->Get_Instance());
 		VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(device_->Get_PhysicalDevice(), surface);

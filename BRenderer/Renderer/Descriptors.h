@@ -1,7 +1,7 @@
 #ifndef BRR_DESCRIPTORS_H
 #define BRR_DESCRIPTORS_H
-
-#include "Core/LogSystem.h"
+#include <Renderer/VulkanInc.h>
+#include <Core/LogSystem.h>
 
 namespace brr::render
 {

@@ -1,9 +1,10 @@
 #ifndef BRR_SWAPCHAIN_H
 #define BRR_SWAPCHAIN_H
 
-#include "Renderer/RenderDefs.h"
+#include <Renderer/VulkanInc.h>
+#include <Renderer/RenderDefs.h>
 
-namespace brr
+namespace brr::vis
 {
 	class Window;
 }
@@ -17,7 +18,7 @@ namespace brr::render
 	{
 	public:
 
-		Swapchain(Window* window);
+		Swapchain(vis::Window* window);
 		~Swapchain();
 
 		vk::Result AcquireNextImage(vk::Semaphore& image_available_semaphore);
@@ -45,13 +46,13 @@ namespace brr::render
 
 	private:
 
-		void Init_Swapchain(Window* window);
+		void Init_Swapchain(vis::Window* window);
 		void Init_SwapchainResources();
 		void Init_RenderPass();
 		void Init_Framebuffers();
 		void Init_Synchronization();
 
-		Window* window_ = nullptr;
+        vis::Window* window_ = nullptr;
 
 		// Device
 

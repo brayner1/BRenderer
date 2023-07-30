@@ -1,13 +1,14 @@
-#include "Renderer/VulkanRenderDevice.h"
+#include "VulkanRenderDevice.h"
 
-#include <vulkan/vulkan.hpp>
+#include <Renderer/RenderDefs.h>
 
-#include "Renderer/RenderDefs.h"
+#include <Visualization/Window.h>
+#include <Core/LogSystem.h>
+#include <Files/FilesUtils.h>
+#include <Geometry/Geometry.h>
 
-#include "Core/Window.h"
-#include "Core/LogSystem.h"
-#include "Files/FilesUtils.h"
-#include "Geometry/Geometry.h"
+#include <filesystem>
+#include <iostream>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -15,7 +16,7 @@ namespace brr::render
 {
 	std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_ {};
 
-	void VulkanRenderDevice::CreateRenderDevice(Window* window)
+	void VulkanRenderDevice::CreateRenderDevice(vis::Window* window)
 	{
 		assert(!device_ && "VulkanRenderDevice is already created. You can only create one.");
 		device_.reset(new VulkanRenderDevice(window));
@@ -56,7 +57,7 @@ namespace brr::render
 		std::cout << "Vulkan Renderer Destroyed";
     }
 
-    VulkanRenderDevice::VulkanRenderDevice(Window* main_window)
+    VulkanRenderDevice::VulkanRenderDevice(vis::Window* main_window)
 	{
 		Init_VkInstance(main_window);
 		vk::SurfaceKHR surface = main_window->GetVulkanSurface(vulkan_instance_);
@@ -362,7 +363,7 @@ namespace brr::render
 		m_device.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
     }
 
-	void VulkanRenderDevice::Init_VkInstance(Window* window)
+	void VulkanRenderDevice::Init_VkInstance(vis::Window* window)
 	{
 		// Dynamic load of the library
 	    {

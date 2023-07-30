@@ -1,18 +1,19 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
-#include "Geometry/Geometry.h"
-#include "Renderer/VulkanRenderDevice.h"
-#include "Renderer/DeviceBuffer.h"
-#include "Renderer/RenderDefs.h"
-#include "Renderer/Descriptors.h"
-#include "Renderer/DevicePipeline.h"
-#include "Renderer/Allocators/StagingAllocator.h"
+#include <Geometry/Geometry.h>
+#include <Renderer/VulkanInc.h>
+#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/DeviceBuffer.h>
+#include <Renderer/RenderDefs.h>
+#include <Renderer/Descriptors.h>
+#include <Renderer/DevicePipeline.h>
+#include <Renderer/Allocators/StagingAllocator.h>
 
-#include "Scene/Scene.h"
-#include "Scene/Components/Mesh3DComponent.h"
-#include "Scene/Components/NodeComponent.h"
+#include <Scene/Scene.h>
+#include <Scene/Components/Mesh3DComponent.h>
+#include <Scene/Components/NodeComponent.h>
 
-namespace brr::render
+namespace brr::vis
 {
     enum class SurfaceId : uint64_t
     {
@@ -34,7 +35,7 @@ namespace brr::render
 
         void UpdateDirtyInstances();
 
-        void Render3D(const DevicePipeline& render_pipeline);
+        void Render3D(const render::DevicePipeline& render_pipeline);
 
         struct MeshDirty {};
 
@@ -57,44 +58,44 @@ namespace brr::render
 
             NodeComponent* m_owner_node;
 
-            DeviceBuffer m_vertex_buffer{};
-            DeviceBuffer m_index_buffer{};
+            render::DeviceBuffer m_vertex_buffer{};
+            render::DeviceBuffer m_index_buffer{};
             bool m_vertices_dirty = true;
             bool m_indices_dirty  = true;
 
             size_t num_vertices = 0, num_indices = 0;
 
-            DescriptorLayout m_descriptor_layout;
-            std::array<bool, FRAME_LAG> m_uniform_dirty { true };
-            std::array<DeviceBuffer, FRAME_LAG>       m_uniform_buffers{}; // model transform
-            std::array<vk::DescriptorSet, FRAME_LAG>  m_descriptor_sets{};
+            render::DescriptorLayout m_descriptor_layout;
+            std::array<bool, render::FRAME_LAG> m_uniform_dirty { true };
+            std::array<render::DeviceBuffer, render::FRAME_LAG>       m_uniform_buffers{}; // model transform
+            std::array<vk::DescriptorSet, render::FRAME_LAG>  m_descriptor_sets{};
         };
 
         void SetupCameraUniforms();
 
         void CreateVertexBuffer(std::vector<Vertex3_PosColor>& vertex_buffer, RenderData& render_data);
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
-        void UpdateBufferData(DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset);
+        void UpdateBufferData(render::DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset);
 
-        StagingBufferHandle CreateStagingBuffer(size_t buffer_size, void* buffer_data);
+        render::StagingBufferHandle CreateStagingBuffer(size_t buffer_size, void* buffer_data);
 
         void Init_UniformBuffers(RenderData& render_data);
 
         Scene* m_scene;
-        VulkanRenderDevice* m_render_device = nullptr;
+        render::VulkanRenderDevice* m_render_device = nullptr;
 
-        StagingAllocator m_staging_allocator;
+        render::StagingAllocator m_staging_allocator;
 
         uint32_t m_current_buffer = 0;
         size_t m_current_frame = 0;
 
-        vk::CommandBuffer m_current_graphics_cmd_buffer = VK_NULL_HANDLE;
-        vk::CommandBuffer m_current_transfer_cmd_buffer = VK_NULL_HANDLE;
+        vk::CommandBuffer m_current_graphics_cmd_buffer = nullptr;
+        vk::CommandBuffer m_current_transfer_cmd_buffer = nullptr;
 
         struct CameraUniformInfo
         {
-            std::array<DeviceBuffer, FRAME_LAG> m_uniform_buffers;
-            std::array<vk::DescriptorSet, FRAME_LAG> m_descriptor_sets;
+            std::array<render::DeviceBuffer, render::FRAME_LAG> m_uniform_buffers;
+            std::array<vk::DescriptorSet, render::FRAME_LAG> m_descriptor_sets;
         } m_camera_uniform_info;
 
         std::unordered_map<SurfaceId, uint32_t> m_surfId_idx_map;

@@ -1,7 +1,7 @@
-#include "Renderer/VkInitializerHelper.h"
+#include "VkInitializerHelper.h"
 
-#include "Core/LogSystem.h"
-#include "Core/Window.h"
+#include <Core/LogSystem.h>
+#include <Visualization/Window.h>
 
 
 namespace brr::render::VkHelpers
@@ -214,7 +214,7 @@ namespace brr::render::VkHelpers
 		return vk::PresentModeKHR::eFifo;
 	}
 
-	vk::Extent2D Select_SwapchainExtent(Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities)
+	vk::Extent2D Select_SwapchainExtent(vis::Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities)
 	{
 		if (surface_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 		{

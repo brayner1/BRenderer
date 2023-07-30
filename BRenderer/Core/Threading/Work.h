@@ -2,6 +2,7 @@
 #define BRR_Work_h
 #include <mutex>
 #include <functional>
+#include <iostream>
 
 namespace brr::threading
 {

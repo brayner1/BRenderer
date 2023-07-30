@@ -1,8 +1,8 @@
-#include "Core/App.h"
-#include "Core/LogSystem.h"
-#include "Scene/Scene.h"
-#include "Scene/Entity.h"
-#include "Scene/Components/Mesh3DComponent.h"
+#include <Core/App.h>
+#include <Core/LogSystem.h>
+#include <Scene/Scene.h>
+#include <Scene/Entity.h>
+#include <Scene/Components/Mesh3DComponent.h>
 
 
 namespace brr
@@ -33,7 +33,7 @@ namespace brr
 
 	void App::Init()
 	{
-		m_pWindowManager.reset(new WindowManager{ 800, 600 });
+		m_pWindowManager.reset(new vis::WindowManager{ 800, 600 });
 
 
 		scene_ = m_pWindowManager->GetMainWindow()->GetScene();

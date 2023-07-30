@@ -1,5 +1,7 @@
 #ifndef BRR_LOGSYSTEM_H
 #define BRR_LOGSYSTEM_H
+#include <string>
+#include <sstream>
 
 namespace brr
 {

@@ -1,7 +1,7 @@
-#include "Renderer/Shader.h"
+#include "Shader.h"
 
-#include "Renderer/VulkanRenderDevice.h"
-#include "Core/LogSystem.h"
+#include <Renderer/VulkanRenderDevice.h>
+#include <Core/LogSystem.h>
 
 
 namespace brr::render

@@ -1,6 +1,6 @@
-#include "Scene/Components/Mesh3DComponent.h"
+#include "Mesh3DComponent.h"
 
-#include <Renderer/SceneRenderer.h>
+#include <Visualization/SceneRenderer.h>
 
 namespace brr
 {
@@ -43,9 +43,9 @@ namespace brr
         m_dirty_surfaces.insert(m_surfaces.size());
         SurfaceData& new_surface = m_surfaces.emplace_back(vertices, indices);
         if (!new_surface.GetVertices().empty()
-         && !GetEntity().HasAllComponents<render::SceneRenderer::MeshDirty>())
+         && !GetEntity().HasAllComponents<vis::SceneRenderer::MeshDirty>())
         {
-            GetEntity().AddComponent<render::SceneRenderer::MeshDirty>();
+            GetEntity().AddComponent<vis::SceneRenderer::MeshDirty>();
         }
         return m_surfaces.size() - 1;
     }
@@ -56,9 +56,9 @@ namespace brr
         m_dirty_surfaces.insert(m_surfaces.size());
         SurfaceData& new_surface = m_surfaces.emplace_back(std::forward<SurfaceData&&>(surface));
         if (!new_surface.GetVertices().empty()
-         && !GetEntity().HasAllComponents<render::SceneRenderer::MeshDirty>())
+         && !GetEntity().HasAllComponents<vis::SceneRenderer::MeshDirty>())
         {
-            GetEntity().AddComponent<render::SceneRenderer::MeshDirty>();
+            GetEntity().AddComponent<vis::SceneRenderer::MeshDirty>();
         }
         return m_surfaces.size() - 1;
     }

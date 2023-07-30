@@ -1,11 +1,12 @@
 #ifndef BRR_SCENE_H
 #define BRR_SCENE_H
 
+#include <Core/thirdpartiesInc.h>
 #include <Core/PerspectiveCamera.h>
 
 namespace brr
 {
-    namespace render
+    namespace vis
 	{
         class SceneRenderer;
         class WindowRenderer;
@@ -25,7 +26,7 @@ namespace brr
 	private:
 		
 		friend class Entity;
-		friend class render::SceneRenderer;
+		friend class vis::SceneRenderer;
 
 		entt::registry m_registry_ {};
 

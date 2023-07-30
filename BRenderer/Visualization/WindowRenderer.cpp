@@ -1,17 +1,14 @@
-#include "Renderer/WindowRenderer.h"
+#include "WindowRenderer.h"
 
-#include "Renderer/SceneRenderer.h"
-#include "Renderer/VkInitializerHelper.h"
-#include "Renderer/VulkanRenderDevice.h"
-#include "Renderer/Swapchain.h"
-#include "Renderer/Shader.h"
-#include "Core/Window.h"
-#include "Core/PerspectiveCamera.h"
-#include "Core/LogSystem.h"
-#include "Scene/Entity.h"
+#include <Visualization/SceneRenderer.h>
+#include <Visualization/Window.h>
+#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Swapchain.h>
+#include <Renderer/Shader.h>
+#include <Core/LogSystem.h>
 
 
-namespace brr::render
+namespace brr::vis
 {
 
 	struct ModelMatrixPushConstant
@@ -21,9 +18,9 @@ namespace brr::render
 
     WindowRenderer::WindowRenderer(Window* window)
     : m_pOwnerWindow(window),
-      render_device_(VKRD::GetSingleton())
+      render_device_(render::VKRD::GetSingleton())
     {
-		swapchain_ = std::make_unique<Swapchain>(m_pOwnerWindow);
+		swapchain_ = std::make_unique<render::Swapchain>(m_pOwnerWindow);
 		scene_renderer = std::make_unique<SceneRenderer>(m_pOwnerWindow->GetScene());
 
 		// Create DescriptorPool and the DescriptorSets
@@ -51,25 +48,25 @@ namespace brr::render
 
 	void WindowRenderer::Init_DescriptorLayouts()
 	{
-		DescriptorLayoutBuilder layoutBuilder = render_device_->GetDescriptorLayoutBuilder();
+        render::DescriptorLayoutBuilder layoutBuilder = render_device_->GetDescriptorLayoutBuilder();
 		layoutBuilder
 			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
-		DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
 		m_pDescriptorSetLayout = descriptor_layout.m_descriptor_set_layout;
 	}
 
 	void WindowRenderer::Init_GraphicsPipeline()
 	{
-		Shader shader = render_device_->CreateShaderFromFiles("vert", "frag");
+        render::Shader shader = render_device_->CreateShaderFromFiles("vert", "frag");
 
-		m_graphics_pipeline = std::make_unique<DevicePipeline>(std::vector{2, m_pDescriptorSetLayout}, shader,
-                                                               swapchain_.get());
+		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector{2, m_pDescriptorSetLayout}, shader,
+                                                                       swapchain_.get());
 	}
 
 	void WindowRenderer::Init_CommandBuffers()
 	{
-		vk::Result alloc_result = render_device_->AllocateGraphicsCommandBuffers(VulkanRenderDevice::CommandBufferLevel::Primary, 2, m_pGraphicsCommandBuffers.data());
+		vk::Result alloc_result = render_device_->AllocateGraphicsCommandBuffers(render::VulkanRenderDevice::CommandBufferLevel::Primary, 2, m_pGraphicsCommandBuffers.data());
 		if (alloc_result != vk::Result::eSuccess)
 		{
 			BRR_LogError("Could not allocate Graphics CommandBuffer! Result code: {}.", vk::to_string(alloc_result).c_str());
@@ -78,7 +75,7 @@ namespace brr::render
 
 		BRR_LogInfo("Graphics CommandBuffer Created.");
 
-		alloc_result = render_device_->AllocateTransferCommandBuffers(VulkanRenderDevice::CommandBufferLevel::Primary, 2, m_pTransferCommandBuffers.data());
+		alloc_result = render_device_->AllocateTransferCommandBuffers(render::VulkanRenderDevice::CommandBufferLevel::Primary, 2, m_pTransferCommandBuffers.data());
 		if (alloc_result != vk::Result::eSuccess)
 		{
 			BRR_LogError("Could not allocate Transfer CommandBuffer! Result code: {}.", vk::to_string(alloc_result).c_str());
@@ -90,7 +87,7 @@ namespace brr::render
 
     void WindowRenderer::Init_Synchronization()
     {
-		for (int i = 0; i < FRAME_LAG; i++)
+		for (int i = 0; i < render::FRAME_LAG; i++)
 		{
 			// Render finished semaphores
 		    {
@@ -210,7 +207,7 @@ namespace brr::render
 
 		vk::Fence in_flight_fence = swapchain_->GetCurrentInFlightFence();
 
-		vk::Result transfer_result = render_device_->SubmitTransferCommandBuffers(1, &m_pTransferCommandBuffers[current_buffer], 0, nullptr, nullptr, 1, &current_transfer_finished_semaphore, VK_NULL_HANDLE);
+		vk::Result transfer_result = render_device_->SubmitTransferCommandBuffers(1, &m_pTransferCommandBuffers[current_buffer], 0, nullptr, nullptr, 1, &current_transfer_finished_semaphore, nullptr);
 
 		std::array<vk::Semaphore, 2> wait_semaphores { m_current_image_available_semaphore, current_transfer_finished_semaphore };
 		std::array<vk::PipelineStageFlags, 2> wait_stages { vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eVertexInput };
@@ -230,7 +227,7 @@ namespace brr::render
 
 	void WindowRenderer::Reset()
 	{
-		for (uint32_t i = 0; i < FRAME_LAG; i++)
+		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
 		{
 			render_device_->Get_VkDevice().destroySemaphore(render_finished_semaphores_[i]);
 			render_device_->Get_VkDevice().destroySemaphore(transfer_finished_semaphores_[i]);

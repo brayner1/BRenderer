@@ -46,8 +46,6 @@ set(BRenderer_SOURCE_FILES
     
     "Core/App.cpp"
     "Core/LogSystem.cpp"
-    "Core/Window.cpp" 
-    "Core/WindowManager.cpp"
     "Core/PerspectiveCamera.cpp"
     "Core/Threading/ThreadPool.cpp"
     
@@ -62,6 +60,11 @@ set(BRenderer_SOURCE_FILES
     "Scene/Components/Mesh3DComponent.cpp"
     "Scene/Components/NodeComponent.cpp"
     "Scene/Components/Transform3DComponent.cpp"
+ 
+    "Visualization/SceneRenderer.cpp"
+    "Visualization/Window.cpp" 
+    "Visualization/WindowManager.cpp"
+    "Visualization/WindowRenderer.cpp"
     
     "Importer/Importer.cpp"
     
@@ -70,8 +73,6 @@ set(BRenderer_SOURCE_FILES
     "Renderer/DeviceBuffer.cpp"
     "Renderer/DevicePipeline.cpp"
     "Renderer/VulkanRenderDevice.cpp"
-    "Renderer/WindowRenderer.cpp" 
-    "Renderer/SceneRenderer.cpp"
     "Renderer/Shader.cpp" 
     "Renderer/Swapchain.cpp"
     "Renderer/VkInitializerHelper.cpp" 
@@ -85,8 +86,6 @@ set(BRenderer_HEADER_FILES
     
     "Core/App.h"
     "Core/LogSystem.h"
-    "Core/Window.h" 
-    "Core/WindowManager.h"
     "Core/PerspectiveCamera.h"
     "Core/Threading/Barrier.h" 
     "Core/Threading/Threading.h" 
@@ -104,6 +103,11 @@ set(BRenderer_HEADER_FILES
     "Scene/Components/Mesh3DComponent.h"
     "Scene/Components/NodeComponent.h"
     "Scene/Components/Transform3DComponent.h"
+
+    "Visualization/SceneRenderer.h"
+    "Visualization/Window.h" 
+    "Visualization/WindowManager.h"
+    "Visualization/WindowRenderer.h"
     
     "Importer/Importer.h"
     
@@ -113,16 +117,15 @@ set(BRenderer_HEADER_FILES
     "Renderer/DevicePipeline.h"
     "Renderer/RenderDefs.h"
     "Renderer/VulkanRenderDevice.h"
-    "Renderer/WindowRenderer.h"
-    "Renderer/SceneRenderer.h"
     "Renderer/Shader.h"
     "Renderer/Swapchain.h"
     "Renderer/VkInitializerHelper.h" 
     
     "Files/FilesUtils.h"
- ) 
+   "Core/thirdpartiesInc.h" "Renderer/VulkanInc.h") 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
+source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")
 source_group(Core REGULAR_EXPRESSION "Core/.*")
 source_group(Geometry REGULAR_EXPRESSION "Geometry/.*")
 source_group(Scene REGULAR_EXPRESSION "Scene/.*")
@@ -142,10 +145,6 @@ if (WIN32)
     # Add any required preprocessor definitions here
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
 endif()
-
-target_precompile_headers(BRenderer PRIVATE 
-    [["pch.h"]]
-)
 
 target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )
 
