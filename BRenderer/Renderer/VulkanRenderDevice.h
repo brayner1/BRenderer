@@ -14,7 +14,7 @@ namespace brr::render
 	{
 	public:
 
-		static void CreateRenderDevice(Window* window);
+		static void CreateRenderDevice(vis::Window* window);
 
         static VulkanRenderDevice* GetSingleton();
 
@@ -103,13 +103,13 @@ namespace brr::render
 
 	private:
 
-		VulkanRenderDevice(Window* main_window);
+		VulkanRenderDevice(vis::Window* main_window);
 
 		/****************************
 		 * Initialization Functions *
 		 ****************************/
 
-		void Init_VkInstance(Window* window);
+		void Init_VkInstance(vis::Window* window);
 		void Init_PhysDevice(vk::SurfaceKHR surface);
 		void Init_Queues_Indices(vk::SurfaceKHR surface);
 		void Init_Device();

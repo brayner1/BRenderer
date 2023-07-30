@@ -54,7 +54,7 @@ namespace brr
 
 
     private:
-		friend class brr::render::SceneRenderer;
+		friend class brr::vis::SceneRenderer;
 
 		std::vector<SurfaceData> m_surfaces{};
 		std::set<uint32_t> m_dirty_surfaces{};

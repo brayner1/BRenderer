@@ -1,6 +1,6 @@
 #ifndef BRR_APP_H
 #define BRR_APP_H
-#include "Core/WindowManager.h"
+#include "Visualization/WindowManager.h"
 
 namespace brr
 {
@@ -20,7 +20,7 @@ namespace brr
 
 		bool m_pShouldFinish = false;
 
-		std::unique_ptr<WindowManager> m_pWindowManager{};
+		std::unique_ptr<vis::WindowManager> m_pWindowManager{};
 
 		Scene* scene_;
 	};

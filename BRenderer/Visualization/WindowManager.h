@@ -2,7 +2,7 @@
 #define BRR_WINDOWMANAGER_H
 #include "Window.h"
 
-namespace brr
+namespace brr::vis
 {
 	class WindowManager
 	{

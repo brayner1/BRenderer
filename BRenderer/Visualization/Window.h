@@ -3,7 +3,7 @@
 #include "Renderer/VulkanRenderDevice.h"
 #include "Scene/Scene.h"
 
-namespace brr
+namespace brr::vis
 {
 	typedef Uint32 WindowId;
 	class Window
@@ -48,7 +48,7 @@ namespace brr
 
 		vk::SurfaceKHR window_surface_ {};
 
-		std::unique_ptr<render::WindowRenderer> m_pWindowRenderer;
+		std::unique_ptr<WindowRenderer> m_pWindowRenderer;
 
 		std::unique_ptr<Scene> scene;
 	};

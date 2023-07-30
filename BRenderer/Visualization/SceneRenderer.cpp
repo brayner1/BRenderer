@@ -1,11 +1,11 @@
-#include "Renderer/SceneRenderer.h"
-#include "Renderer/VulkanRenderDevice.h"
+#include "SceneRenderer.h"
 
-#include "Scene/Components/Mesh3DComponent.h"
-#include "Scene/Components/Transform3DComponent.h"
-#include "Core/LogSystem.h"
+#include <Renderer/VulkanRenderDevice.h>
+#include <Scene/Components/Mesh3DComponent.h>
+#include <Scene/Components/Transform3DComponent.h>
+#include <Core/LogSystem.h>
 
-namespace brr::render
+namespace brr::vis
 {
 	
 	static SurfaceId GetNewSurfaceId()
@@ -16,7 +16,7 @@ namespace brr::render
 
     SceneRenderer::SceneRenderer(Scene* scene)
     : m_scene(scene),
-      m_render_device(VKRD::GetSingleton())
+      m_render_device(render::VKRD::GetSingleton())
     {
 		assert(m_render_device && "Can't create SceneRenderer without VulkanRenderDevice.");
 		BRR_LogInfo("Creating SceneRenderer");
@@ -188,14 +188,14 @@ namespace brr::render
 				{
 					Init_UniformBuffers(render_data);
 
-					DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
+                    render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
 					layoutBuilder
 						.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
 					render_data.m_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
 
-					std::array<vk::DescriptorBufferInfo, FRAME_LAG> model_descriptor_buffer_infos;
-					for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
+					std::array<vk::DescriptorBufferInfo, render::FRAME_LAG> model_descriptor_buffer_infos;
+					for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
 					{
 						model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
 					}
@@ -233,7 +233,7 @@ namespace brr::render
 
     }
 
-    void SceneRenderer::Render3D(const DevicePipeline& render_pipeline)
+    void SceneRenderer::Render3D(const render::DevicePipeline& render_pipeline)
     {
 		m_current_graphics_cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipeline());
 
@@ -260,27 +260,27 @@ namespace brr::render
 
     void SceneRenderer::SetupCameraUniforms()
     {
-		for (size_t idx = 0; idx < FRAME_LAG; idx++)
+		for (size_t idx = 0; idx < render::FRAME_LAG; idx++)
 		{
 			m_camera_uniform_info.m_uniform_buffers[idx] =
-				DeviceBuffer(sizeof(UniformBufferObject),
-					vk::BufferUsageFlagBits::eUniformBuffer,
-					VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
-					VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                render::DeviceBuffer(sizeof(UniformBufferObject),
+                                     vk::BufferUsageFlagBits::eUniformBuffer,
+                                     VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
+                                     VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
 
-		DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
+        render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
 		layoutBuilder
 			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
-		std::array<vk::DescriptorBufferInfo, FRAME_LAG> camera_descriptor_buffer_infos;
-		for (uint32_t buffer_info_idx = 0; buffer_info_idx < FRAME_LAG; buffer_info_idx++)
+		std::array<vk::DescriptorBufferInfo, render::FRAME_LAG> camera_descriptor_buffer_infos;
+		for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
 		{
 			camera_descriptor_buffer_infos[buffer_info_idx] =
 				m_camera_uniform_info.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
 		}
 
-		DescriptorLayout layout = layoutBuilder.BuildDescriptorLayout();
+        render::DescriptorLayout layout = layoutBuilder.BuildDescriptorLayout();
 		auto setBuilder = m_render_device->GetDescriptorSetBuilder(layout);
 		setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
 
@@ -297,10 +297,10 @@ namespace brr::render
 
 		BRR_LogInfo("Creating Vertex Buffer.");
 
-        render_data.m_vertex_buffer = DeviceBuffer(buffer_size,
-                                                   vk::BufferUsageFlagBits::eTransferDst |
-                                                   vk::BufferUsageFlagBits::eVertexBuffer,
-                                                   VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
+        render_data.m_vertex_buffer = render::DeviceBuffer(buffer_size,
+                                                           vk::BufferUsageFlagBits::eTransferDst |
+                                                           vk::BufferUsageFlagBits::eVertexBuffer,
+                                                           VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
 
 		render_data.num_vertices = vertex_buffer.size();
 
@@ -353,10 +353,10 @@ namespace brr::render
 
 		BRR_LogInfo("Creating Index Buffer.");
 
-        render_data.m_index_buffer = DeviceBuffer(buffer_size,
-                                                  vk::BufferUsageFlagBits::eTransferDst |
-                                                  vk::BufferUsageFlagBits::eIndexBuffer,
-                                                  VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
+        render_data.m_index_buffer = render::DeviceBuffer(buffer_size,
+                                                          vk::BufferUsageFlagBits::eTransferDst |
+                                                          vk::BufferUsageFlagBits::eIndexBuffer,
+                                                          VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
 
 		render_data.num_indices = index_buffer.size();
 
@@ -398,19 +398,19 @@ namespace brr::render
 		BRR_LogInfo("Destroying Staging Buffer.");
     }
 
-    void SceneRenderer::UpdateBufferData(DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset)
+    void SceneRenderer::UpdateBufferData(render::DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset)
     {
 		BRR_LogInfo("Updating buffer data.");
-		StagingBufferHandle staging_buffer = CreateStagingBuffer(size, data);
+        render::StagingBufferHandle staging_buffer = CreateStagingBuffer(size, data);
 
 		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, buffer, m_current_transfer_cmd_buffer, size);
     }
 
-    StagingBufferHandle SceneRenderer::CreateStagingBuffer(size_t buffer_size, void* buffer_data)
+    render::StagingBufferHandle SceneRenderer::CreateStagingBuffer(size_t buffer_size, void* buffer_data)
     {
 		BRR_LogInfo("Creating Staging Buffer.");
 
-		StagingBufferHandle staging_buffer{};
+        render::StagingBufferHandle staging_buffer{};
 		m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
 
 		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, buffer_data, buffer_size);
@@ -423,7 +423,7 @@ namespace brr::render
 		vk::DeviceSize buffer_size = sizeof(Mesh3DUniform);
 
 		BRR_LogInfo("Creating Uniform Buffers");
-		for (uint32_t i = 0; i < FRAME_LAG; i++)
+		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
 		{
 			render_data.m_uniform_buffers[i].Reset(buffer_size, vk::BufferUsageFlagBits::eUniformBuffer,
                                                    VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,

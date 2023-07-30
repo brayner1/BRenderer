@@ -2,7 +2,7 @@
 
 #include "Core/LogSystem.h"
 
-namespace brr
+namespace brr::vis
 {
 	WindowManager::WindowManager(uint32_t width, uint32_t height)
 	{

@@ -5,16 +5,21 @@
 #include "Renderer/Descriptors.h"
 
 namespace brr{
-    class WindowManager;
     class Scene;
-
-	class Window;
+	
 	class PerspectiveCamera;
+
 	namespace render
 	{
 		class VulkanRenderDevice;
-        class SceneRenderer;
-        class Shader;
+		class Shader;
+	}
+
+	namespace vis
+	{
+		class Window;
+		class WindowManager;
+		class SceneRenderer;
 
         class WindowRenderer
 		{
@@ -32,14 +37,14 @@ namespace brr{
 			 * Pipelines
 			 */
 
-			vk::Pipeline CreateGraphicsPipeline(const Shader& shader);
+			vk::Pipeline CreateGraphicsPipeline(const render::Shader& shader);
 
-			[[nodiscard]] const DevicePipeline* GetGraphicsPipeline() const { return m_graphics_pipeline.get(); }
+			[[nodiscard]] const render::DevicePipeline* GetGraphicsPipeline() const { return m_graphics_pipeline.get(); }
 
 			void Reset();
 
 		private:
-			friend class brr::WindowManager;
+			friend class WindowManager;
 
 			// Define DescriptorSetLayout and create the GraphicsPipeline
 			void Init_GraphicsPipeline();
@@ -73,26 +78,26 @@ namespace brr{
 
 			// DevicePipeline
 
-			std::unique_ptr<DevicePipeline> m_graphics_pipeline {};
+			std::unique_ptr<render::DevicePipeline> m_graphics_pipeline {};
 
 			// Swapchain
-			std::unique_ptr<Swapchain> swapchain_{};
+			std::unique_ptr<render::Swapchain> swapchain_{};
 			size_t m_frame_count = 0;
 
 			//uint32_t current_image_idx{};
 
 			// Command Buffers
-			std::array<vk::CommandBuffer, FRAME_LAG> m_pGraphicsCommandBuffers;
-			std::array<vk::CommandBuffer, FRAME_LAG> m_pTransferCommandBuffers;
+			std::array<vk::CommandBuffer, render::FRAME_LAG> m_pGraphicsCommandBuffers;
+			std::array<vk::CommandBuffer, render::FRAME_LAG> m_pTransferCommandBuffers;
 
 
             vk::Semaphore m_current_image_available_semaphore {};
-			vk::Semaphore render_finished_semaphores_[FRAME_LAG];
-			vk::Semaphore transfer_finished_semaphores_[FRAME_LAG];
+			vk::Semaphore render_finished_semaphores_[render::FRAME_LAG];
+			vk::Semaphore transfer_finished_semaphores_[render::FRAME_LAG];
 
 			std::unique_ptr<SceneRenderer> scene_renderer;
 
-			VulkanRenderDevice* render_device_ {};
+            render::VulkanRenderDevice* render_device_ {};
 		};
 	}
 }

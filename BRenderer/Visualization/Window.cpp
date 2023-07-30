@@ -1,10 +1,10 @@
-#include "Core/Window.h"
+#include "Window.h"
 
-#include "Core/LogSystem.h"
-#include "Renderer/WindowRenderer.h"
+#include <Visualization/WindowRenderer.h>
+#include <Core/LogSystem.h>
 
 
-namespace brr
+namespace brr::vis
 {
 	Window::Window(const std::string& window_name, glm::uvec2 window_size)
 	{
@@ -61,7 +61,7 @@ namespace brr
 
     void Window::InitWindowRenderer()
     {
-		m_pWindowRenderer = std::make_unique<render::WindowRenderer>(this);
+		m_pWindowRenderer = std::make_unique<WindowRenderer>(this);
     }
 
     void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)

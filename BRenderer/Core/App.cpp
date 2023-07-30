@@ -33,7 +33,7 @@ namespace brr
 
 	void App::Init()
 	{
-		m_pWindowManager.reset(new WindowManager{ 800, 600 });
+		m_pWindowManager.reset(new vis::WindowManager{ 800, 600 });
 
 
 		scene_ = m_pWindowManager->GetMainWindow()->GetScene();
