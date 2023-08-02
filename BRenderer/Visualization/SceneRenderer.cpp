@@ -58,32 +58,20 @@ namespace brr::vis
 
 		if (m_render_device->IsDifferentTransferQueue())
 		{
-			/*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
-			buffer_memory_barrier
-				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
-				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
-				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
-				.setDstAccessMask(vk::AccessFlagBits2::eMemoryRead);
-
-			vk::DependencyInfo dependency_info {};
-			dependency_info
-				.setBufferMemoryBarriers(buffer_memory_barrier);
-
-			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
-			vk::BufferMemoryBarrier buffer_memory_barrier {};
+			vk::BufferMemoryBarrier2 buffer_memory_barrier {};
 			buffer_memory_barrier
 				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
 				.setSize(buffer_size)
 				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
 				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
-				.setSrcAccessMask(vk::AccessFlags(0));
+				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
+				.setDstAccessMask(vk::AccessFlagBits2::eVertexAttributeRead);
 
-            m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                          vk::PipelineStageFlagBits::eVertexInput,
-                                                          vk::DependencyFlags(), 0, nullptr, 1,
-                                                          &buffer_memory_barrier, 0, nullptr);
+			vk::DependencyInfo dependency_info {};
+			dependency_info
+				.setBufferMemoryBarriers(buffer_memory_barrier);
+
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);
 		}
     }
 
@@ -97,32 +85,20 @@ namespace brr::vis
 
 		if (m_render_device->IsDifferentTransferQueue())
 		{
-			/*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
+			vk::BufferMemoryBarrier2 buffer_memory_barrier {};
 			buffer_memory_barrier
 				.setBuffer(render_data.m_index_buffer.GetBuffer())
+			    .setSize(buffer_size)
 				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
 				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
-				.setDstAccessMask(vk::AccessFlagBits2::eMemoryRead);
+				.setDstStageMask(vk::PipelineStageFlagBits2::eIndexInput)
+				.setDstAccessMask(vk::AccessFlagBits2::eIndexRead);
 
 			vk::DependencyInfo dependency_info {};
 			dependency_info
 				.setBufferMemoryBarriers(buffer_memory_barrier);
 
-			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
-			vk::BufferMemoryBarrier buffer_memory_barrier {};
-			buffer_memory_barrier
-				.setBuffer(render_data.m_index_buffer.GetBuffer())
-				.setSize(buffer_size)
-				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
-				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
-				.setSrcAccessMask(vk::AccessFlags(0));
-
-			m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-				vk::PipelineStageFlagBits::eVertexInput,
-				vk::DependencyFlags(), 0, nullptr, 1,
-				&buffer_memory_barrier, 0, nullptr);
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);
 		}
     }
 
@@ -310,33 +286,20 @@ namespace brr::vis
 
 		if (m_render_device->IsDifferentTransferQueue())
 		{
-			/*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
-			buffer_memory_barrier
-				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
-				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
-				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
-				.setDstAccessMask(vk::AccessFlagBits2::eMemoryRead);
-
-			vk::DependencyInfo dependency_info {};
-			dependency_info
-				.setBufferMemoryBarriers(buffer_memory_barrier);
-
-			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
-
-			vk::BufferMemoryBarrier buffer_memory_barrier {};
+			vk::BufferMemoryBarrier2 buffer_memory_barrier {};
 			buffer_memory_barrier
 				.setBuffer(render_data.m_vertex_buffer.GetBuffer())
 				.setSize(buffer_size)
 				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
 				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
-				.setSrcAccessMask(vk::AccessFlags(0));
+				.setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
+				.setDstAccessMask(vk::AccessFlagBits2::eVertexAttributeRead);
 
-            m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                          vk::PipelineStageFlagBits::eVertexInput,
-                                                          vk::DependencyFlags(), 0, nullptr, 1,
-                                                          &buffer_memory_barrier, 0, nullptr);
+			vk::DependencyInfo dependency_info {};
+			dependency_info
+				.setBufferMemoryBarriers(buffer_memory_barrier);
+
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);
 		}
 
 		BRR_LogInfo("Destroying Staging Buffer.");
@@ -366,33 +329,20 @@ namespace brr::vis
 
 		if (m_render_device->IsDifferentTransferQueue())
 		{
-		    /*vk::BufferMemoryBarrier2 buffer_memory_barrier {};
+		    vk::BufferMemoryBarrier2 buffer_memory_barrier {};
 		    buffer_memory_barrier
                 .setBuffer(render_data.m_index_buffer.GetBuffer())
+                .setSize(buffer_size)
                 .setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
                 .setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
 		        .setDstStageMask(vk::PipelineStageFlagBits2::eIndexInput)
-		        .setDstAccessMask(vk::AccessFlagBits2::eMemoryRead)
-		        .setSize(buffer_size);
+		        .setDstAccessMask(vk::AccessFlagBits2::eIndexRead);
 
 			vk::DependencyInfo dependency_info {};
 			dependency_info
 				.setBufferMemoryBarriers(buffer_memory_barrier);
 
-			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);*/
-			vk::BufferMemoryBarrier buffer_memory_barrier {};
-			buffer_memory_barrier
-				.setBuffer(render_data.m_index_buffer.GetBuffer())
-				.setSize(buffer_size)
-				.setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
-				.setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-				.setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead)
-		        .setSrcAccessMask(vk::AccessFlags(0));
-
-            m_current_graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe,
-                                                          vk::PipelineStageFlagBits::eVertexInput,
-                                                          vk::DependencyFlags(), 0, nullptr, 1,
-                                                          &buffer_memory_barrier, 0, nullptr);
+			m_current_graphics_cmd_buffer.pipelineBarrier2(dependency_info);
 		}
 
 		BRR_LogInfo("Destroying Staging Buffer.");

@@ -195,12 +195,12 @@ namespace brr::render
 
         if (m_render_device->IsDifferentTransferQueue())
         {
-            /*vk::BufferMemoryBarrier2 buffer_memory_barrier;
+            vk::BufferMemoryBarrier2 buffer_memory_barrier;
             buffer_memory_barrier
                 .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                .setSrcAccessMask(vk::AccessFlagBits2::eMemoryWrite)
+                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
                 .setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
-                .setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
+                .setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
                 .setBuffer(dst_buffer.GetBuffer())
                 .setSize(size);
 
@@ -208,19 +208,7 @@ namespace brr::render
             dependency_info
                 .setBufferMemoryBarriers(buffer_memory_barrier);
 
-            transfer_cmd_buffer.pipelineBarrier2(dependency_info);*/
-            vk::BufferMemoryBarrier buffer_memory_barrier;
-            buffer_memory_barrier
-                .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
-                .setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-                .setBuffer(dst_buffer.GetBuffer())
-                .setSize(size);
-
-            transfer_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                vk::PipelineStageFlagBits::eBottomOfPipe,
-                vk::DependencyFlags(), 0, nullptr, 1,
-                &buffer_memory_barrier, 0, nullptr);
+            transfer_cmd_buffer.pipelineBarrier2(dependency_info);
         }
         else
         {
