@@ -240,7 +240,7 @@ namespace brr::vis
 		{
 			m_camera_uniform_info.m_uniform_buffers[idx] =
                 render::DeviceBuffer(sizeof(UniformBufferObject),
-                                     vk::BufferUsageFlagBits::eUniformBuffer,
+					                 render::VulkanRenderDevice::BufferUsage::UniformBuffer,
                                      VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
                                      VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
@@ -273,9 +273,11 @@ namespace brr::vis
 
 		BRR_LogInfo("Creating Vertex Buffer.");
 
+        render::VulkanRenderDevice::BufferUsage usage = render::VulkanRenderDevice::BufferUsage::TransferDst |
+                                                        render::VulkanRenderDevice::BufferUsage::VertexBuffer;
+
         render_data.m_vertex_buffer = render::DeviceBuffer(buffer_size,
-                                                           vk::BufferUsageFlagBits::eTransferDst |
-                                                           vk::BufferUsageFlagBits::eVertexBuffer,
+			                                               usage,
                                                            VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
 
 		render_data.num_vertices = vertex_buffer.size();
@@ -316,9 +318,11 @@ namespace brr::vis
 
 		BRR_LogInfo("Creating Index Buffer.");
 
+        render::VulkanRenderDevice::BufferUsage usage = render::VulkanRenderDevice::BufferUsage::TransferDst |
+                                                        render::VulkanRenderDevice::BufferUsage::IndexBuffer;
+
         render_data.m_index_buffer = render::DeviceBuffer(buffer_size,
-                                                          vk::BufferUsageFlagBits::eTransferDst |
-                                                          vk::BufferUsageFlagBits::eIndexBuffer,
+			                                              usage,
                                                           VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO);
 
 		render_data.num_indices = index_buffer.size();
@@ -375,7 +379,7 @@ namespace brr::vis
 		BRR_LogInfo("Creating Uniform Buffers");
 		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
 		{
-			render_data.m_uniform_buffers[i].Reset(buffer_size, vk::BufferUsageFlagBits::eUniformBuffer,
+			render_data.m_uniform_buffers[i].Reset(buffer_size, render::VulkanRenderDevice::BufferUsage::UniformBuffer,
                                                    VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO,
 				                                   VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}

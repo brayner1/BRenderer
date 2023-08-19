@@ -2,6 +2,8 @@
 #define BRR_BUFFER_H
 #include <Renderer/VulkanInc.h>
 
+#include "VulkanRenderDevice.h"
+
 namespace brr
 {
 	namespace render
@@ -24,14 +26,14 @@ namespace brr
 		public:
 
 			DeviceBuffer();
-			DeviceBuffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
+			DeviceBuffer(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
 			DeviceBuffer(DeviceBuffer&& device_buffer) noexcept;
 
 			DeviceBuffer& operator=(DeviceBuffer&& device_buffer) noexcept;
 
 			~DeviceBuffer();
 
-			void Reset(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
+			void Reset(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
 
 			void Map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 			void Unmap();
@@ -65,7 +67,7 @@ namespace brr
 			void* mapped_ = nullptr;
 
 			vk::DeviceSize buffer_size_ {};
-			vk::BufferUsageFlags buffer_usage_ {};
+			VulkanRenderDevice::BufferUsage buffer_usage_ {};
 			VmaMemoryUsage memory_usage_ {};
 		};
 	}

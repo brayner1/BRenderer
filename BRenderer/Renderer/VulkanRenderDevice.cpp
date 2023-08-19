@@ -14,6 +14,105 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 namespace brr::render
 {
+	static vk::BufferUsageFlags VkBufferUsageFromDeviceBufferUsage(VulkanRenderDevice::BufferUsage buffer_usage)
+	{
+		using BufferUsage = VulkanRenderDevice::BufferUsage;
+		vk::BufferUsageFlags output {};
+		if (buffer_usage & BufferUsage::TransferSrc)
+		{
+			output |= vk::BufferUsageFlagBits::eTransferSrc;
+		}
+		if (buffer_usage & BufferUsage::TransferDst)
+		{
+			output |= vk::BufferUsageFlagBits::eTransferDst;
+		}
+		if (buffer_usage & BufferUsage::UniformTexelBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eUniformTexelBuffer;
+		}
+		if (buffer_usage & BufferUsage::StorageTexelBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eStorageTexelBuffer;
+		}
+		if (buffer_usage & BufferUsage::UniformBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eUniformBuffer;
+		}
+		if (buffer_usage & BufferUsage::StorageBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eStorageBuffer;
+		}
+		if (buffer_usage & BufferUsage::IndexBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eIndexBuffer;
+		}
+		if (buffer_usage & BufferUsage::VertexBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eVertexBuffer;
+		}
+		if (buffer_usage & BufferUsage::IndirectBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eIndirectBuffer;
+		}
+		if (buffer_usage & BufferUsage::ShaderDeviceAddress)
+		{
+			output |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
+		}
+		if (buffer_usage & BufferUsage::VideoDecodeSrc)
+		{
+			output |= vk::BufferUsageFlagBits::eVideoDecodeSrcKHR;
+		}
+		if (buffer_usage & BufferUsage::VideoDecodeDst)
+		{
+			output |= vk::BufferUsageFlagBits::eVideoDecodeDstKHR;
+		}
+		if (buffer_usage & BufferUsage::TransformFeedbackBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eTransformFeedbackBufferEXT;
+		}
+		if (buffer_usage & BufferUsage::TransformFeedbackCounterBuffer)
+		{
+			output |= vk::BufferUsageFlagBits::eTransformFeedbackCounterBufferEXT;
+		}
+		if (buffer_usage & BufferUsage::ConditionalRendering)
+		{
+			output |= vk::BufferUsageFlagBits::eConditionalRenderingEXT;
+		}
+		if (buffer_usage & BufferUsage::AccelerationStructureBuildInputReadOnly)
+		{
+			output |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
+		}
+		if (buffer_usage & BufferUsage::AccelerationStructureStorage)
+		{
+			output |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
+		}
+		if (buffer_usage & BufferUsage::ShaderBindingTable)
+		{
+			output |= vk::BufferUsageFlagBits::eShaderBindingTableKHR;
+		}
+		if (buffer_usage & BufferUsage::RayTracingNV)
+		{
+			output |= vk::BufferUsageFlagBits::eRayTracingNV;
+		}
+		return output;
+	}
+
+	static vk::ShaderModule Create_ShaderModule(VulkanRenderDevice* device, std::vector<char>& code)
+	{
+		vk::ShaderModuleCreateInfo shader_module_info{};
+		shader_module_info
+			.setCodeSize(code.size())
+			.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
+
+		auto createShaderModuleResult = device->Get_VkDevice().createShaderModule(shader_module_info);
+		if (createShaderModuleResult.result != vk::Result::eSuccess)
+		{
+			BRR_LogError("Could not create ShaderModule! Result code: {}.", vk::to_string(createShaderModuleResult.result).c_str());
+			exit(1);
+		}
+		return createShaderModuleResult.value;
+	}
+
 	std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_ {};
 
 	void VulkanRenderDevice::CreateRenderDevice(vis::Window* window)
@@ -69,22 +168,6 @@ namespace brr::render
 
 		m_pDescriptorLayoutCache.reset(new DescriptorLayoutCache(m_device));
 		m_pDescriptorAllocator.reset(new DescriptorAllocator(m_device));
-	}
-
-	vk::ShaderModule Create_ShaderModule(VulkanRenderDevice* device, std::vector<char>& code)
-	{
-		vk::ShaderModuleCreateInfo shader_module_info{};
-		shader_module_info
-			.setCodeSize(code.size())
-			.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
-
-		auto createShaderModuleResult = device->Get_VkDevice().createShaderModule(shader_module_info);
-		if (createShaderModuleResult.result != vk::Result::eSuccess)
-		{
-			BRR_LogError("Could not create ShaderModule! Result code: {}.", vk::to_string(createShaderModuleResult.result).c_str());
-			exit(1);
-		}
-		return createShaderModuleResult.value;
 	}
 
     Shader VulkanRenderDevice::CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name)
@@ -263,10 +346,10 @@ namespace brr::render
 		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator.get());
     }
 
-    void VulkanRenderDevice::Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage,
+    void VulkanRenderDevice::Create_Buffer(size_t buffer_size, BufferUsage buffer_usage,
                                            VmaMemoryUsage memory_usage, vk::Buffer& buffer,
-                                           VmaAllocation& buffer_allocation, 
-		                                   VmaAllocationCreateFlags buffer_allocation_flags)
+                                           VmaAllocation& buffer_allocation,
+                                           VmaAllocationCreateFlags buffer_allocation_flags)
     {
 		// Create Buffer
 		{
@@ -276,9 +359,11 @@ namespace brr::render
 				GetQueueFamilyIndices().m_transferFamily.value()
 			};
 
+            const vk::BufferUsageFlags vk_buffer_usage = VkBufferUsageFromDeviceBufferUsage(buffer_usage);
+
 			vk::BufferCreateInfo buffer_create_info;
 			buffer_create_info
-				.setUsage(buffer_usage)
+				.setUsage(vk_buffer_usage)
 				.setSharingMode(sharing_mode)
 				.setSize(buffer_size);
 			if (sharing_mode == vk::SharingMode::eConcurrent)
@@ -493,6 +578,8 @@ namespace brr::render
 				log_msg << "\n\tExtension name: " << extension.extensionName;
 		    }
 		}
+
+		m_device_properties = phys_device_.getProperties2();
 
 		BRR_LogInfo("Selected physical device: {}", phys_device_.getProperties().deviceName);
 	}

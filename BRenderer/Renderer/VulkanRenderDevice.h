@@ -92,7 +92,30 @@ namespace brr::render
 		 * Buffers *
 		 ***********/
 
-        void Create_Buffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage,
+		enum BufferUsage : int
+		{
+		    TransferSrc = 1 << 0,
+		    TransferDst = 1 << 1,
+		    UniformTexelBuffer = 1 << 2,
+		    StorageTexelBuffer = 1 << 3,
+		    UniformBuffer = 1 << 4,
+		    StorageBuffer = 1 << 5,
+		    IndexBuffer = 1 << 6,
+		    VertexBuffer = 1 << 7,
+		    IndirectBuffer = 1 << 8,
+		    ShaderDeviceAddress = 1 << 9,
+		    VideoDecodeSrc = 1 << 10,
+		    VideoDecodeDst = 1 << 11,
+		    TransformFeedbackBuffer = 1 << 12,
+		    TransformFeedbackCounterBuffer = 1 << 13,
+		    ConditionalRendering = 1 << 14,
+		    AccelerationStructureBuildInputReadOnly = 1 << 15,
+		    AccelerationStructureStorage = 1 << 16,
+		    ShaderBindingTable = 1 << 17,
+		    RayTracingNV = 1 << 18
+		};
+
+        void Create_Buffer(size_t buffer_size, BufferUsage buffer_usage,
                            VmaMemoryUsage memory_usage, vk::Buffer& buffer, VmaAllocation& buffer_allocation,
                            VmaAllocationCreateFlags buffer_allocation_flags);
 
@@ -124,6 +147,8 @@ namespace brr::render
 		// Physical and Logical Devices
 
 		vk::PhysicalDevice phys_device_ {};
+		vk::PhysicalDeviceProperties2 m_device_properties {};
+
 		vk::Device m_device {};
 
 		// Allocator
@@ -148,6 +173,11 @@ namespace brr::render
 		std::unique_ptr<DescriptorLayoutCache> m_pDescriptorLayoutCache = nullptr;
 
 	};
+
+	inline VulkanRenderDevice::BufferUsage operator|(VulkanRenderDevice::BufferUsage a, VulkanRenderDevice::BufferUsage b)
+    {
+        return static_cast<VulkanRenderDevice::BufferUsage>(static_cast<int>(a) | static_cast<int>(b));
+    }
 
 #define VKRD VulkanRenderDevice
 }

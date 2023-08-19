@@ -11,11 +11,11 @@ namespace brr
 	{
 		DeviceBuffer::DeviceBuffer() = default;
 
-		DeviceBuffer::DeviceBuffer(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage,
+		DeviceBuffer::DeviceBuffer(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage,
 		                           VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags) :
 		device_(VKRD::GetSingleton()), buffer_size_(buffer_size), buffer_usage_(buffer_usage), memory_usage_(memory_usage)
 		{
-			BRR_LogInfo("Creating Buffer. New buffer: [ size: {}, usage: {} ]", buffer_size, vk::to_string(buffer_usage).c_str());
+			BRR_LogInfo("Creating Buffer. New buffer: [ size: {} ]", buffer_size);
 			device_->Create_Buffer(buffer_size_, buffer_usage_, memory_usage_, buffer_, buffer_allocation_, allocation_create_flags);
 		}
 
@@ -59,10 +59,10 @@ namespace brr
 			}
 		}
 
-		void DeviceBuffer::Reset(vk::DeviceSize buffer_size, vk::BufferUsageFlags buffer_usage,
+		void DeviceBuffer::Reset(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage,
                                  VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
 		{
-			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {}, usage: {} ]", buffer_size, vk::to_string(buffer_usage).c_str());
+			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {} ]", buffer_size);
 			if (IsInitialized())
 			{
 				DestroyBuffer();
@@ -73,7 +73,7 @@ namespace brr
 			buffer_usage_ = buffer_usage;
 			memory_usage_ = memory_usage;
 
-			device_->Create_Buffer(buffer_size, buffer_usage, memory_usage, buffer_, buffer_allocation_, allocation_create_flags);
+			device_->Create_Buffer(buffer_size, buffer_usage_, memory_usage, buffer_, buffer_allocation_, allocation_create_flags);
 		}
 
 		void DeviceBuffer::Map(vk::DeviceSize size, vk::DeviceSize offset)
