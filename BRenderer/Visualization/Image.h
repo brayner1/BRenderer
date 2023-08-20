@@ -18,6 +18,12 @@ namespace brr::vis
         // Destructor
         ~Image();
 
+        uint32_t Width() const { return m_width; }
+        uint32_t Height() const { return m_height; }
+
+        const uint8_t* Data() const { return m_buffer; }
+        uint32_t DataSize() const { return m_totalSize; }
+
     private:
         uint8_t* m_buffer = nullptr;
         uint32_t m_totalSize = 0;

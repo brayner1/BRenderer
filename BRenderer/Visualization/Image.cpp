@@ -15,6 +15,13 @@ namespace brr::vis
             return;
         }
 
+        if (!std::filesystem::exists(image_path))
+        {
+            BRR_LogError("Invalid input file path '{}'. File does not exist.", image_path.string());
+            BRR_LogInfo("Current path: {}", std::filesystem::current_path().string());
+            return;
+        }
+
         int w, h, c;
         if (!stbi_info(image_path.string().c_str(), &w, &h, &c))
         {

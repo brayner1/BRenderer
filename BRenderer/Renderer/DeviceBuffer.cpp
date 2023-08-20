@@ -93,7 +93,7 @@ namespace brr
 			}
 		}
 
-		vk::DescriptorBufferInfo DeviceBuffer::GetDescriptorInfo(vk::DeviceSize size, vk::DeviceSize offset) const
+		vk::DescriptorBufferInfo DeviceBuffer::GetDescriptorInfo(size_t size, size_t offset) const
 		{
 			assert(IsInitialized() && "DeviceBuffer must be initialized before getting its DescriptorBufferInfo.");
 			assert((size == VK_WHOLE_SIZE || size <= m_buffer_size) && "Parameter size must be either 'VK_WHOLE_SIZE' or <= DeviceBuffer size  ");

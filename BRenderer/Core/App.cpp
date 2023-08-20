@@ -7,11 +7,20 @@
 
 namespace brr
 {
-	static const std::vector<Vertex3_PosColor> vertices{
+	static const std::vector<Vertex3_PosColor> vertices
+    {
 		{glm::vec3{-0.5f, -0.5f, 0.0f}, glm::vec3{1.f, 0.f, 0.f}},
 		{glm::vec3{0.5f, -0.5f, 0.0f}, glm::vec3{0.f, 1.f, 0.f}},
 		{glm::vec3{.5f, .5f, 0.0f}, glm::vec3{0.f, 0.f, 1.f}},
 		{glm::vec3{-.5f, .5f, 0.0f}, glm::vec3{1.f, 1.f, 1.f}}
+	};
+
+	static const std::vector<Vertex3> vertices_uv
+    {
+		{glm::vec3{-0.5f, -0.5f, 0.0f}, glm::vec3{1.f, 0.f, 0.f}, {0.0, 1.0}},
+		{glm::vec3{0.5f, -0.5f, 0.0f}, glm::vec3{0.f, 1.f, 0.f}, {1.0, 1.0}},
+		{glm::vec3{.5f, .5f, 0.0f}, glm::vec3{0.f, 0.f, 1.f}, {1.0, 0.0}},
+		{glm::vec3{-.5f, .5f, 0.0f}, glm::vec3{1.f, 1.f, 1.f}, {0.0, 0.0}}
 	};
 
 	static const std::vector<uint32_t> indices
@@ -39,7 +48,7 @@ namespace brr
 		scene_ = m_pWindowManager->GetMainWindow()->GetScene();
 		Entity entity = scene_->Add3DEntity({});
 		Mesh3DComponent& mesh = entity.AddComponent<Mesh3DComponent>();
-		mesh.AddSurface({ vertices, indices });
+		mesh.AddSurface({ vertices_uv, indices });
 	}
 
 	void App::MainLoop()

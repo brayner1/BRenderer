@@ -15,6 +15,14 @@ namespace brr::vis
 		BRR_LogInfo("Creating SceneRenderer");
 
 		SetupCameraUniforms();
+
+		m_image = std::make_unique<Image>("UV_Grid.jpg");
+
+		m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(), render::VKRD::ImageUsage::TransferDstImage | render::VKRD::ImageUsage::SampledImage);
+		if (m_texture_2d_handle != render::null_handle)
+		{
+		    m_render_device->UpdateTexture2DData(m_texture_2d_handle, m_image->Data(), m_image->DataSize(), {0, 0}, {m_image->Width(), m_image->Height()});
+		}
     }
 
     SceneRenderer::~SceneRenderer()
@@ -23,6 +31,7 @@ namespace brr::vis
 		{
             DestroyBuffers(render_data);
 		}
+		m_render_device->DestroyTexture2D(m_texture_2d_handle);
     }
 
     SurfaceId SceneRenderer::CreateNewSurface(Mesh3DComponent::SurfaceData& surface,
@@ -36,7 +45,7 @@ namespace brr::vis
 		
 		RenderData& render_data = m_render_data.Get(render_data_id);
 
-		auto& vertices = const_cast<std::vector<Vertex3_PosColor>&> (surface.GetVertices());
+		auto& vertices = const_cast<std::vector<Vertex3>&> (surface.GetVertices());
 		auto& indices = const_cast<std::vector<uint32_t>&> (surface.GetIndices());
 
 		CreateVertexBuffer(vertices, render_data);
@@ -79,7 +88,8 @@ namespace brr::vis
 
                     render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
 					layoutBuilder
-						.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+						.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+				        .SetBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
 
 					render_data.m_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
 
@@ -89,8 +99,15 @@ namespace brr::vis
 						model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
 					}
 
+					std::array<vk::DescriptorImageInfo, render::FRAME_LAG> model_descriptor_image_infos;
+					for (uint32_t image_info_idx = 0; image_info_idx < render::FRAME_LAG; image_info_idx++)
+					{
+						model_descriptor_image_infos[image_info_idx] = m_render_device->GetImageDescriptorInfo(m_texture_2d_handle);
+					}
+
 					auto setBuilder = m_render_device->GetDescriptorSetBuilder(render_data.m_descriptor_layout);
 					setBuilder.BindBuffer(0, model_descriptor_buffer_infos);
+					setBuilder.BindImage(1, model_descriptor_image_infos);
 
 					setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
 
@@ -175,11 +192,11 @@ namespace brr::vis
 		setBuilder.BuildDescriptorSet(m_camera_uniform_info.m_descriptor_sets);
     }
 
-    void SceneRenderer::CreateVertexBuffer(std::vector<Vertex3_PosColor>& vertex_buffer, RenderData& render_data)
+    void SceneRenderer::CreateVertexBuffer(std::vector<Vertex3>& vertex_buffer, RenderData& render_data)
     {
 		assert(!vertex_buffer.empty() && "Vertices data can't be empty.");
 
-		vk::DeviceSize buffer_size = sizeof(Vertex3_PosColor) * vertex_buffer.size();
+        const size_t buffer_size = sizeof(Vertex3) * vertex_buffer.size();
 
 		BRR_LogInfo("Creating Vertex Buffer.");
 

@@ -9,6 +9,8 @@
 #include <Renderer/Vulkan/VkInitializerHelper.h>
 #include <Renderer/Vulkan/VulkanInc.h>
 
+#include "glm/vec2.hpp"
+
 namespace brr::render
 {
 	//TODO: Inherit from a base class RenderDevice. Support multiple APIs in the future.
@@ -176,6 +178,34 @@ namespace brr::render
 
 		bool BindIndexBuffer(IndexBufferHandle index_buffer_handle);
 
+		/************
+         * Textures *
+         ************/
+
+        //
+        enum ImageUsage : int
+        {
+            TransferSrcImage			= (1 << 0),
+            TransferDstImage			= (1 << 1),
+            SampledImage				= (1 << 2),
+            StorageImage				= (1 << 3),
+            ColorAttachmentImage		= (1 << 4),
+            DepthStencilAttachmentImage = (1 << 5),
+            TransientAttachmentImage	= (1 << 6),
+            InputAttachmentImage		= (1 << 7)
+        };
+
+        
+        // 
+        Texture2DHandle Create_Texture2D(size_t width, size_t height, ImageUsage image_usage);
+
+		bool DestroyTexture2D(Texture2DHandle texture2d_handle);
+
+        bool UpdateTexture2DData(Texture2DHandle texture2d_handle, const void* data, size_t buffer_size,
+                                 const glm::ivec2& image_offset, const glm::uvec2& image_extent);
+
+		vk::DescriptorImageInfo GetImageDescriptorInfo(Texture2DHandle texture2d_handle);
+
 		/*********************
 		 * Graphics Pipeline *
 		 *********************/
@@ -212,6 +242,7 @@ namespace brr::render
 		void Init_CommandPool();
 		void Init_Frames();
 		void Init_DescriptorLayouts();
+		void Init_Texture2DSampler();
 
 		/***************************
 		 * CommandBuffer Functions *
@@ -277,6 +308,20 @@ namespace brr::render
 		};
 
 		ResourceAllocator<IndexBuffer> m_index_buffer_alloc;
+
+		struct Texture2D
+		{
+		    vk::Image image {};
+		    vk::ImageView image_view {};
+			VmaAllocation image_allocation {};
+			VmaAllocationInfo allocation_info {};
+
+			uint32_t width, height;
+			vk::DeviceSize buffer_size {};
+			IndexType buffer_format {};
+		};
+
+		ResourceAllocator<Texture2D> m_texture2d_alloc;
 		
 	private: // Data
 
@@ -317,7 +362,15 @@ namespace brr::render
 			vk::Semaphore transfer_finished_semaphore {};
 			vk::Semaphore render_finished_semaphore {};
 
-			std::vector<std::pair<vk::Buffer, VmaAllocation>> buffer_delete_list;
+			typedef std::pair<vk::Buffer, VmaAllocation> BufferDeleteElem;
+			struct TextureDeleteElem
+			{
+			    vk::Image image;
+				vk::ImageView image_view;
+				VmaAllocation allocation;
+			};
+			std::vector<BufferDeleteElem> buffer_delete_list;
+			std::vector<TextureDeleteElem> texture_delete_list;
 
 			bool graphics_cmd_buffer_begin = false;
 			bool transfer_cmd_buffer_begin = false;
@@ -340,7 +393,10 @@ namespace brr::render
 		bool m_different_transfer_queue = false;
 
 		// Descriptor Sets
-			vk::DescriptorSetLayout m_descriptor_set_layout {};
+		vk::DescriptorSetLayout m_descriptor_set0_layout {};
+		vk::DescriptorSetLayout m_descriptor_set1_layout {};
+
+		vk::Sampler m_texture2DSampler {};
 
 		// DevicePipeline
 		std::unique_ptr<render::DevicePipeline> m_graphics_pipeline {};
@@ -358,6 +414,11 @@ namespace brr::render
 	inline VulkanRenderDevice::VertexFormatFlags operator|(VulkanRenderDevice::VertexFormatFlags a, VulkanRenderDevice::VertexFormatFlags b)
     {
         return static_cast<VulkanRenderDevice::VertexFormatFlags>(static_cast<int>(a) | static_cast<int>(b));
+    }
+
+	inline VulkanRenderDevice::ImageUsage operator|(VulkanRenderDevice::ImageUsage a, VulkanRenderDevice::ImageUsage b)
+    {
+        return static_cast<VulkanRenderDevice::ImageUsage>(static_cast<int>(a) | static_cast<int>(b));
     }
 
 #define VKRD VulkanRenderDevice

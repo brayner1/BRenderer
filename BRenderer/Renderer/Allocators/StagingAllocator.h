@@ -3,6 +3,8 @@
 #include <Renderer/Vulkan/VulkanInc.h>
 #include <Renderer/ResourcesHandles.h>
 
+#include "glm/vec2.hpp"
+
 namespace brr::render
 {
     class VulkanRenderDevice;
@@ -38,12 +40,20 @@ namespace brr::render
                                        StagingBufferHandle* out_staging_buffer, bool can_segment = true);
 
 
-        void WriteToStagingBuffer(StagingBufferHandle staging_buffer, uint32_t staging_buffer_offset, void* data, size_t data_size);
+        void WriteLinearBufferToStaging(StagingBufferHandle staging_buffer, uint32_t staging_buffer_offset, const void* data, size_t data_size);
+
+        void WriteBlockImageToStaging(StagingBufferHandle staging_buffer, const unsigned char* image_data,
+                                      glm::uvec2 block_offset, glm::uvec2 block_size, glm::uvec2 image_size, uint8_t
+                                      pixel_size);
 
 
         void CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::Buffer dst_buffer,
                                      size_t size,
                                      uint32_t staging_buffer_offset = 0, uint32_t dst_buffer_offset = 0);
+
+		void CopyFromStagingToImage(StagingBufferHandle staging_buffer, vk::Image dst_image,
+                                    vk::Extent3D image_extent,
+                                    uint32_t src_offset = 0, vk::Offset3D image_offset = 0);
 
     private:
 
