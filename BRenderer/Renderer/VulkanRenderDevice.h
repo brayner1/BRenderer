@@ -18,6 +18,13 @@ namespace brr::render
 
 		~VulkanRenderDevice();
 
+		/* Frame */
+
+		uint32_t BeginFrame();
+		vk::Semaphore EndFrame(vk::Semaphore wait_semaphore, vk::Fence wait_fence);
+
+		uint32_t GetCurrentFrame() const { return m_current_frame; }
+
         /* Shader */
 
 		Shader CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name);
@@ -54,9 +61,8 @@ namespace brr::render
 			Secondary = (uint8_t)vk::CommandBufferLevel::eSecondary
 		};
 
-		[[nodiscard]] vk::Result AllocateGraphicsCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers) const;
-		[[nodiscard]] vk::Result AllocatePresentCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers) const;
-		[[nodiscard]] vk::Result AllocateTransferCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers) const;
+		vk::CommandBuffer GetCurrentGraphicsCommandBuffer();
+		vk::CommandBuffer GetCurrentTransferCommandBuffer();
 
 		[[nodiscard]] vk::Result SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
@@ -136,7 +142,8 @@ namespace brr::render
 		void Init_Device();
 		void Init_Allocator();
 		void Init_CommandPool();
-
+		void Init_Frames();
+		
 		// Singleton Device
 		static std::unique_ptr<VulkanRenderDevice> device_;
 
@@ -159,6 +166,20 @@ namespace brr::render
 		vk::CommandPool graphics_command_pool_ {};
 		vk::CommandPool present_command_pool_ {};
 		vk::CommandPool transfer_command_pool_ {};
+
+		struct Frame
+		{
+			vk::CommandBuffer transfer_cmd_buffer {};
+		    vk::CommandBuffer graphics_cmd_buffer {};
+
+			vk::Semaphore transfer_finished_semaphore {};
+			vk::Semaphore render_finished_semaphore {};
+		};
+
+		std::array<Frame, FRAME_LAG> m_frames {};
+
+		uint32_t m_current_buffer = 0;
+		uint32_t m_current_frame = 0;
 
 		// Queue families indices and queues
 

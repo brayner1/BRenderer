@@ -131,6 +131,12 @@ namespace brr::render
     {
 		WaitIdle();
 
+		for (size_t idx = 0; idx < FRAME_LAG; ++idx)
+		{
+		    m_device.destroySemaphore(m_frames[idx].render_finished_semaphore);
+		    m_device.destroySemaphore(m_frames[idx].transfer_finished_semaphore);
+		}
+
 		vmaDestroyAllocator(m_vma_allocator);
 
 		m_pDescriptorLayoutCache.reset();
@@ -156,6 +162,52 @@ namespace brr::render
 		std::cout << "Vulkan Renderer Destroyed";
     }
 
+    uint32_t VulkanRenderDevice::BeginFrame()
+    {
+		vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
+
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		const vk::Result transf_reset_result = current_frame.graphics_cmd_buffer.reset();
+		if (transf_reset_result != vk::Result::eSuccess)
+		{
+			BRR_LogError("Could not reset current transfer command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(transf_reset_result).c_str());
+			exit(1);
+		}
+
+		const vk::Result graph_reset_result = current_frame.transfer_cmd_buffer.reset();
+		if (graph_reset_result != vk::Result::eSuccess)
+		{
+			BRR_LogError("Could not reset current graphics command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(graph_reset_result).c_str());
+			exit(1);
+		}
+
+		current_frame.graphics_cmd_buffer.begin(cmd_buffer_begin_info);
+		current_frame.transfer_cmd_buffer.begin(cmd_buffer_begin_info);
+
+		return m_current_frame;
+    }
+
+    vk::Semaphore VulkanRenderDevice::EndFrame(vk::Semaphore wait_semaphore, vk::Fence wait_fence)
+    {
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		current_frame.graphics_cmd_buffer.end();
+		current_frame.transfer_cmd_buffer.end();
+
+		vk::Result transfer_result = SubmitTransferCommandBuffers(1, &current_frame.transfer_cmd_buffer, 0, nullptr, nullptr, 1, &current_frame.transfer_finished_semaphore, nullptr);
+
+		std::array<vk::Semaphore, 2> wait_semaphores { wait_semaphore, current_frame.transfer_finished_semaphore };
+		std::array<vk::PipelineStageFlags, 2> wait_stages { vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eVertexInput };
+
+		vk::Result result = SubmitGraphicsCommandBuffers(1, &current_frame.graphics_cmd_buffer, 2, wait_semaphores.data(), wait_stages.data(), 1, &current_frame.render_finished_semaphore, wait_fence);
+
+		++m_current_frame;
+		m_current_buffer = (m_current_frame % FRAME_LAG);
+
+		return current_frame.render_finished_semaphore;
+    }
+
     VulkanRenderDevice::VulkanRenderDevice(vis::Window* main_window)
 	{
 		Init_VkInstance(main_window);
@@ -165,6 +217,7 @@ namespace brr::render
 		Init_Device();
 		Init_Allocator();
 		Init_CommandPool();
+		Init_Frames();
 
 		m_pDescriptorLayoutCache.reset(new DescriptorLayoutCache(m_device));
 		m_pDescriptorAllocator.reset(new DescriptorAllocator(m_device));
@@ -246,25 +299,18 @@ namespace brr::render
 		return allocCmdBufferResult.result;
 	}
 
-    vk::Result VulkanRenderDevice::AllocateGraphicsCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count,
-                                                                 vk::CommandBuffer* out_command_buffers) const
+    vk::CommandBuffer VulkanRenderDevice::GetCurrentGraphicsCommandBuffer()
     {
-        return allocateCommandBuffer(m_device, graphics_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
-                                     out_command_buffers);
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		return current_frame.graphics_cmd_buffer;
     }
 
-    vk::Result VulkanRenderDevice::AllocatePresentCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count,
-                                                                vk::CommandBuffer* out_command_buffers) const
+    vk::CommandBuffer VulkanRenderDevice::GetCurrentTransferCommandBuffer()
     {
-        return allocateCommandBuffer(m_device, present_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
-                                     out_command_buffers);
-    }
+		Frame& current_frame = m_frames[m_current_buffer];
 
-    vk::Result VulkanRenderDevice::AllocateTransferCommandBuffers(CommandBufferLevel level, uint32_t cmd_buffer_count,
-                                                                 vk::CommandBuffer* out_command_buffers) const
-    {
-        return allocateCommandBuffer(m_device, transfer_command_pool_, vk::CommandBufferLevel(level), cmd_buffer_count,
-                                     out_command_buffers);
+		return current_frame.transfer_cmd_buffer;
     }
 
     vk::Result VulkanRenderDevice::SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
@@ -779,4 +825,41 @@ namespace brr::render
 			 BRR_LogInfo("Separate Transfer CommandPool created.");
 		}
 	}
+
+    void VulkanRenderDevice::Init_Frames()
+    {
+		std::array<vk::CommandBuffer, FRAME_LAG> graphics_cmd_buffers;
+		std::array<vk::CommandBuffer, FRAME_LAG> transfer_cmd_buffers;
+
+		allocateCommandBuffer(m_device, graphics_command_pool_, vk::CommandBufferLevel::ePrimary, FRAME_LAG, graphics_cmd_buffers.data());
+		allocateCommandBuffer(m_device, transfer_command_pool_, vk::CommandBufferLevel::ePrimary, FRAME_LAG, transfer_cmd_buffers.data());
+
+		for (size_t idx = 0; idx < FRAME_LAG; ++idx)
+		{
+		    m_frames[idx].graphics_cmd_buffer = graphics_cmd_buffers[idx];
+		    m_frames[idx].transfer_cmd_buffer = transfer_cmd_buffers[idx];
+
+			// Render finished semaphores
+		    {
+		        auto createRenderFinishedSempahoreResult = m_device.createSemaphore(vk::SemaphoreCreateInfo{});
+		        if (createRenderFinishedSempahoreResult.result != vk::Result::eSuccess)
+		        {
+		            BRR_LogError("Could not create Render Finished Semaphore for swapchain! Result code: {}.", vk::to_string(createRenderFinishedSempahoreResult.result).c_str());
+		            exit(1);
+		        }
+
+		        m_frames[idx].render_finished_semaphore = createRenderFinishedSempahoreResult.value;
+		    }
+			// Transfer finished semaphores
+		    {
+		        auto createTransferFinishedSempahoreResult = m_device.createSemaphore(vk::SemaphoreCreateInfo{});
+		        if (createTransferFinishedSempahoreResult.result != vk::Result::eSuccess)
+		        {
+		            BRR_LogError("Could not create Transfer Finished Semaphore for swapchain! Result code: {}.", vk::to_string(createTransferFinishedSempahoreResult.result).c_str());
+		            exit(1);
+		        }
+		        m_frames[idx].transfer_finished_semaphore = createTransferFinishedSempahoreResult.value;
+		    }
+		}
+    }
 }
