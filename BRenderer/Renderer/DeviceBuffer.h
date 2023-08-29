@@ -1,8 +1,7 @@
 #ifndef BRR_BUFFER_H
 #define BRR_BUFFER_H
-#include <Renderer/VulkanInc.h>
-
-#include "VulkanRenderDevice.h"
+#include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 
 namespace brr
 {

@@ -1,6 +1,6 @@
 #include "SceneRenderer.h"
 
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Scene/Components/Transform3DComponent.h>
 #include <Core/LogSystem.h>
@@ -352,7 +352,7 @@ namespace brr::vis
 		BRR_LogInfo("Destroying Staging Buffer.");
     }
 
-    void SceneRenderer::UpdateBufferData(render::DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset)
+    void SceneRenderer::UpdateBufferData(render::DeviceBuffer& buffer, void* data, size_t size, uint32_t offset)
     {
 		BRR_LogInfo("Updating buffer data.");
         render::StagingBufferHandle staging_buffer = CreateStagingBuffer(size, data);

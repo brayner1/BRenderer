@@ -1,6 +1,6 @@
 #ifndef BRR_STAGINALLOCATOR_H
 #define BRR_STAGINALLOCATOR_H
-#include <Renderer/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanInc.h>
 
 namespace brr::render
 {
@@ -48,7 +48,7 @@ namespace brr::render
 
 		void InsertStagingBlock();
 		void ClearProcessedBlocks(uint32_t current_frame_id);
-		void AllocateInBlock(uint32_t block_index, uint32_t size, StagingBufferHandle* out_staging_handle);
+		void AllocateInBlock(uint32_t block_index, size_t size, StagingBufferHandle* out_staging_handle);
 
 		void InitVmaPool();
 		void DestroystagingBlocks();

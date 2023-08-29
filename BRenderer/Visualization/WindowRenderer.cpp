@@ -2,7 +2,7 @@
 
 #include <Visualization/SceneRenderer.h>
 #include <Visualization/Window.h>
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/Swapchain.h>
 #include <Renderer/Shader.h>
 #include <Core/LogSystem.h>

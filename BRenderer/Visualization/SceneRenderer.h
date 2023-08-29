@@ -1,8 +1,8 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
 #include <Geometry/Geometry.h>
-#include <Renderer/VulkanInc.h>
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/RenderDefs.h>
 #include <Renderer/Descriptors.h>
@@ -63,7 +63,7 @@ namespace brr::vis
             bool m_vertices_dirty = true;
             bool m_indices_dirty  = true;
 
-            size_t num_vertices = 0, num_indices = 0;
+            uint32_t num_vertices = 0, num_indices = 0;
 
             render::DescriptorLayout m_descriptor_layout;
             std::array<bool, render::FRAME_LAG> m_uniform_dirty { true };
@@ -75,7 +75,7 @@ namespace brr::vis
 
         void CreateVertexBuffer(std::vector<Vertex3_PosColor>& vertex_buffer, RenderData& render_data);
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
-        void UpdateBufferData(render::DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset);
+        void UpdateBufferData(render::DeviceBuffer& buffer, void* data, size_t size, uint32_t offset);
 
         render::StagingBufferHandle CreateStagingBuffer(size_t buffer_size, void* buffer_data);
 

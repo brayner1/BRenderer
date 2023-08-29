@@ -2,7 +2,7 @@
 
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/RenderDefs.h>
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 
 namespace brr::render
 {
@@ -42,7 +42,7 @@ namespace brr::render
             {
                 // Not enough space in current block. Find another one.
                 bool found = false;
-                for (size_t i = 0; i < m_staging_blocks.size(); i++)
+                for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                 {
                     StagingBlock& block = m_staging_blocks[i];
                     if (block.frame_id <= frame_id - FRAME_LAG)
@@ -80,7 +80,7 @@ namespace brr::render
                         // There is not enough space to allocate new block.
                         // We need to wait for previous frames to finish processing.
                         m_render_device->WaitIdle(); // TODO: is this the best approach?
-                        for (size_t i = 0; i < m_staging_blocks.size(); i++)
+                        for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                         {
                             StagingBlock& block = m_staging_blocks[i];
                             if (block.frame_id != frame_id)
@@ -113,7 +113,7 @@ namespace brr::render
         else
         {
             bool found = false;
-            for (size_t i = 0; i < m_staging_blocks.size(); i++)
+            for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
             {
                 StagingBlock& block = m_staging_blocks[i];
                 if (block.frame_id <= frame_id - FRAME_LAG)
@@ -151,7 +151,7 @@ namespace brr::render
                     // There is not enough space to allocate new block.
                     // We need to wait for previous frames to finish processing.
                     m_render_device->WaitIdle(); // TODO: is this the best approach?
-                    for (size_t i = 0; i < m_staging_blocks.size(); i++)
+                    for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                     {
                         StagingBlock& block = m_staging_blocks[i];
                         if (block.frame_id != frame_id)
@@ -266,7 +266,7 @@ namespace brr::render
         }
     }
 
-    void StagingAllocator::AllocateInBlock(uint32_t block_index, uint32_t size, StagingBufferHandle* out_staging_handle)
+    void StagingAllocator::AllocateInBlock(uint32_t block_index, size_t size, StagingBufferHandle* out_staging_handle)
     {
         out_staging_handle->m_block_index = block_index;
         out_staging_handle->m_offset = m_staging_blocks[block_index].m_filled_bytes;

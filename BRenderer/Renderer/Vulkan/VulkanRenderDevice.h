@@ -3,8 +3,8 @@
 #include <Renderer/RenderDefs.h>
 #include <Renderer/Descriptors.h>
 #include <Renderer/Shader.h>
-#include <Renderer/VkInitializerHelper.h>
-#include <Renderer/VulkanInc.h>
+#include <Renderer/Vulkan/VkInitializerHelper.h>
+#include <Renderer/Vulkan/VulkanInc.h>
 
 namespace brr::render
 {

@@ -1,7 +1,7 @@
 #include "Swapchain.h"
 
-#include <Renderer/VkInitializerHelper.h>
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VkInitializerHelper.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Visualization/Window.h>
 #include <Core/LogSystem.h>
 

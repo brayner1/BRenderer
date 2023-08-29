@@ -1,7 +1,7 @@
 #ifndef BRR_GEOMETRY_H
 #define BRR_GEOMETRY_H
 #include <Core/thirdpartiesInc.h>
-#include <Renderer/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanInc.h>
 
 namespace brr
 {
