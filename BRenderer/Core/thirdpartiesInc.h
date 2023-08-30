@@ -1,8 +1,6 @@
 #ifndef VKR_ThirdpartiesInc_H
 #define VKR_ThirdpartiesInc_H
 
-#define NOMINMAX
-
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_vulkan.h"
 

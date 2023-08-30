@@ -112,6 +112,7 @@ set(BRenderer_HEADER_FILES
     
     "Importer/Importer.h"
     
+    "Renderer/Allocators/ResourceAllocator.h"
     "Renderer/Allocators/StagingAllocator.h"
     "Renderer/Vulkan/VkInitializerHelper.h"
     "Renderer/Vulkan/VulkanInc.h"
@@ -120,6 +121,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/DeviceBuffer.h"
     "Renderer/DevicePipeline.h"
     "Renderer/RenderDefs.h"
+    "Renderer/ResourcesHandles.h"
     "Renderer/Shader.h"
     "Renderer/Swapchain.h"
    
@@ -147,6 +149,7 @@ endif()
 if (WIN32)
     # Add any required preprocessor definitions here
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+    add_definitions(-DNOMINMAX)
 endif()
 
 target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )

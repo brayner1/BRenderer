@@ -3,6 +3,7 @@
 #include <Renderer/RenderDefs.h>
 #include <Renderer/Descriptors.h>
 #include <Renderer/Shader.h>
+#include <Renderer/Allocators/ResourceAllocator.h>
 #include <Renderer/Vulkan/VkInitializerHelper.h>
 #include <Renderer/Vulkan/VulkanInc.h>
 
