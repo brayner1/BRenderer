@@ -78,7 +78,7 @@ namespace brr::vis
         cmd_buffer.endRenderPass();
 	}
 
-    void WindowRenderer::Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer, vk::CommandBuffer transfer_cmd_buffer)
+    void WindowRenderer::Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
 	{
 		m_scene_renderer->UpdateDirtyInstances();
 
@@ -107,12 +107,11 @@ namespace brr::vis
 
 		uint32_t current_buffer_index = swapchain_->GetCurrentBufferIndex();
 
-		vk::CommandBuffer current_transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
+		m_scene_renderer->BeginRender(current_buffer_index, m_frame_count);
+
         vk::CommandBuffer current_graphics_cmd_buffer = m_render_device->GetCurrentGraphicsCommandBuffer();
 
-		m_scene_renderer->BeginRender(current_buffer_index, m_frame_count, current_graphics_cmd_buffer, current_transfer_cmd_buffer);
-
-		Record_CommandBuffer(current_graphics_cmd_buffer, current_transfer_cmd_buffer);
+		Record_CommandBuffer(current_graphics_cmd_buffer);
 
 		return;
 	}

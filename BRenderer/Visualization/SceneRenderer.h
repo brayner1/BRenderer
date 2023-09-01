@@ -26,12 +26,12 @@ namespace brr::vis
 
         SceneRenderer(Scene* scene);
 
+        ~SceneRenderer();
+
         SurfaceId CreateNewSurface(Mesh3DComponent::SurfaceData& surface, const Entity& owner_entity);
-        void UpdateSurfaceVertexBuffer(SurfaceId surface_id, std::vector<Vertex3_PosColor>& vertex_buffer, uint32_t buffer_offset = 0);
-        void UpdateSurfaceIndexBuffer(SurfaceId surface_id, std::vector<uint32_t>& index_buffer, uint32_t buffer_offset = 0);
         //TODO: Add RemoveSurface function. It should add the render data to a delete-list in the current buffer, and delete it only when this buffer is rendering again (means the resources are not used anymore).
 
-        void BeginRender(uint32_t buffer_index, size_t current_frame, vk::CommandBuffer graphics_command_buffer, vk::CommandBuffer transfer_command_buffer);
+        void BeginRender(uint32_t buffer_index, size_t current_frame);
 
         void UpdateDirtyInstances();
 
@@ -58,8 +58,8 @@ namespace brr::vis
 
             NodeComponent* m_owner_node;
 
-            render::DeviceBuffer m_vertex_buffer{};
-            render::DeviceBuffer m_index_buffer{};
+            render::VertexBufferHandle m_vertex_buffer_handle {};
+            render::IndexBufferHandle m_index_buffer_handle {};
             bool m_vertices_dirty = true;
             bool m_indices_dirty  = true;
 
@@ -75,16 +75,11 @@ namespace brr::vis
 
         void CreateVertexBuffer(std::vector<Vertex3_PosColor>& vertex_buffer, RenderData& render_data);
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
-        void UpdateBufferData(render::DeviceBuffer& buffer, void* data, size_t size, uint32_t offset);
-
-        render::StagingBufferHandle CreateStagingBuffer(size_t buffer_size, void* buffer_data);
 
         void Init_UniformBuffers(RenderData& render_data);
 
         Scene* m_scene;
         render::VulkanRenderDevice* m_render_device = nullptr;
-
-        render::StagingAllocator m_staging_allocator;
 
         uint32_t m_current_buffer = 0;
         size_t m_current_frame = 0;

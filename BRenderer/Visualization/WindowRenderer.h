@@ -54,7 +54,7 @@ namespace brr{
 			void Init_DescriptorLayouts();
 
 			void BeginRenderPass(vk::CommandBuffer cmd_buffer) const;
-			void Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer, vk::CommandBuffer transfer_cmd_buffer);
+			void Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer);
 			void EndRenderPass(vk::CommandBuffer cmd_buffer) const;
 
 			void Recreate_Swapchain();

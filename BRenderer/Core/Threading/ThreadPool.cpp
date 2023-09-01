@@ -68,7 +68,7 @@ namespace brr::threading
 			m_workReadyCondition.notify_all();
 		}
 
-		// TODO: If there are other works in the queue, the main thread may end up running all the work. Is this the best approach?
+		// TODO: If there are other works in the queue, the main thread may end up running all the work. Is this the best approach? Maybe better than waiting for other works to finish
 		while (!work->Finished())
 		{
 			work->Execute();

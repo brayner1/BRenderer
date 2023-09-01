@@ -12,14 +12,15 @@ namespace brr::render
     {
     public:
 
-        ResourceAllocator()
-        {}
+        ResourceAllocator() = default;
 
         ResourceHandle CreateResource();
 
         bool DestroyResource(const ResourceHandle& handle);
 
-        T* GetResource(const ResourceHandle& handle) const;
+        T* GetResource(const ResourceHandle& handle);
+
+        bool OwnsResource(const ResourceHandle& handle) const;
 
     private:
 
@@ -33,6 +34,23 @@ namespace brr::render
         std::set<uint32_t> free_set;
     };
 
+    namespace
+    {
+        class ValidatorGen
+        {
+        public:
+            static uint32_t GetNextValidation()
+            {
+                return curr_validation++;
+            }
+
+        private:
+            static std::atomic<uint32_t> curr_validation;
+        };
+
+        std::atomic<uint32_t> ValidatorGen::curr_validation = 0;
+    }
+
     template <typename T>
     ResourceHandle ResourceAllocator<T>::CreateResource()
     {
@@ -40,9 +58,9 @@ namespace brr::render
 
         if (free_set.empty())
         {
-            m_resources.emplace();
+            m_resources.push_back({});
             handle.index =  m_resources.size() - 1;
-            handle.validation = 0;
+            handle.validation = m_validation.emplace_back(ValidatorGen::GetNextValidation());
         }
         else
         {
@@ -51,11 +69,7 @@ namespace brr::render
 
             handle.index = free_idx;
 
-            uint32_t& validation = m_validation[free_idx];
-            validation &= ~INVALID_BIT;
-
-            handle.validation = validation;
-            ++handle.validation;
+            handle.validation = m_validation[free_idx] = ValidatorGen::GetNextValidation();
 
             m_resources[handle.index] = T();
         }
@@ -78,7 +92,7 @@ namespace brr::render
     }
 
     template <typename T>
-    T* ResourceAllocator<T>::GetResource(const ResourceHandle& handle) const
+    T* ResourceAllocator<T>::GetResource(const ResourceHandle& handle)
     {
         if (!ValidateHandle(handle))
         {
@@ -89,23 +103,39 @@ namespace brr::render
     }
 
     template <typename T>
+    bool ResourceAllocator<T>::OwnsResource(const ResourceHandle& handle) const
+    {
+        if (handle.index >= m_resources.size() 
+         || handle.validation != m_validation[handle.index])
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    template <typename T>
     bool ResourceAllocator<T>::ValidateHandle(const ResourceHandle& handle) const
     {
         if (handle.index >= m_resources.size())
         {
-            BRR_LogError("Invalid resource handle. Index points to non-existent position.");
+            BRR_LogError(
+                "Invalid resource handle. Index points to non-existent resource.\n\tHandle index:\t{}\n\tResources count:\t{}",
+                handle.index, m_resources.size());
             return false;
         }
 
         if (handle.validation & INVALID_BIT)
         {
-            BRR_LogError("Invalid handle. Referencing a deleted resource.");
+            BRR_LogError("Invalid handle. Handle References a deleted resource.");
             return false;
         }
 
         if (handle.validation != m_validation[handle.index])
         {
-            BRR_LogError("Invalid handle. Handle validation does not match.");
+            BRR_LogError(
+                "Invalid handle. Handle validation does not match.\n\tHandle validation:\t{}\n\tResource validation\t{}",
+                handle.validation, m_validation[handle.index]);
             return false;
         }
 

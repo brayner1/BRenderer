@@ -4,16 +4,19 @@
 #include <Renderer/Descriptors.h>
 #include <Renderer/Shader.h>
 #include <Renderer/Allocators/ResourceAllocator.h>
+#include <Renderer/Allocators/StagingAllocator.h>
 #include <Renderer/Vulkan/VkInitializerHelper.h>
 #include <Renderer/Vulkan/VulkanInc.h>
 
 namespace brr::render
 {
+	//TODO: Inherit from a base class RenderDevice. Support multiple APIs in the future.
 	class VulkanRenderDevice
 	{
 	public:
 
 		static void CreateRenderDevice(vis::Window* window);
+		static void DestroyRenderDevice();
 
         static VulkanRenderDevice* GetSingleton();
 
@@ -41,7 +44,9 @@ namespace brr::render
 		FORCEINLINE [[nodiscard]] vk::PhysicalDevice Get_PhysicalDevice() const { return phys_device_; }
 		FORCEINLINE [[nodiscard]] vk::Device Get_VkDevice() const { return m_device; }
 
-		
+		/**********
+		 * Queues *
+		 **********/
 
 		FORCEINLINE [[nodiscard]] VkHelpers::QueueFamilyIndices GetQueueFamilyIndices() const { return queue_family_indices_; }
 
@@ -65,6 +70,131 @@ namespace brr::render
 		vk::CommandBuffer GetCurrentGraphicsCommandBuffer();
 		vk::CommandBuffer GetCurrentTransferCommandBuffer();
 
+		/***************
+		 * Descriptors *
+		 ***************/
+
+		[[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
+		[[nodiscard]] DescriptorSetBuilder<FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
+
+		/**********
+		 * Memory *
+		 **********/
+
+		enum MemoryUsage : int
+		{
+		    AUTO,
+			AUTO_PREFER_DEVICE,
+			AUTO_PREFER_HOST
+		};
+
+		/***********
+		 * Buffers *
+		 ***********/
+
+		enum BufferUsage : int
+		{
+            TransferSrc                             = 1 << 0,
+            TransferDst                             = 1 << 1,
+            UniformTexelBuffer                      = 1 << 2,
+            StorageTexelBuffer                      = 1 << 3,
+            UniformBuffer                           = 1 << 4,
+            StorageBuffer                           = 1 << 5,
+            //IndexBuffer                             = 1 << 6,
+            //VertexBuffer                            = 1 << 7,
+            //IndirectBuffer                          = 1 << 8,
+            //ShaderDeviceAddress                     = 1 << 9,
+            //VideoDecodeSrc                          = 1 << 10,
+            //VideoDecodeDst                          = 1 << 11,
+            //TransformFeedbackBuffer                 = 1 << 12,
+            //TransformFeedbackCounterBuffer          = 1 << 13,
+            //ConditionalRendering                    = 1 << 14,
+            //AccelerationStructureBuildInputReadOnly = 1 << 15,
+            //AccelerationStructureStorage            = 1 << 16,
+            //ShaderBindingTable                      = 1 << 17,
+            //RayTracingNV                            = 1 << 18
+		};
+
+        BufferHandle CreateBuffer(size_t buffer_size, BufferUsage buffer_usage,
+                                  MemoryUsage memory_usage, VmaAllocationCreateFlags buffer_allocation_flags);
+
+		bool DestroyBuffer(BufferHandle buffer_handle);
+
+		void* MapBuffer(BufferHandle buffer_handle);
+		void UnmapBuffer(BufferHandle buffer_handle);
+
+		bool UploadBufferData(BufferHandle dst_buffer_handle, void* data, size_t size, uint32_t offset);
+
+        bool CopyBuffer(BufferHandle src_buffer_handle, BufferHandle dst_buffer_handle, size_t size,
+                        uint32_t src_buffer_offset = 0, uint32_t dst_buffer_offset = 0, bool use_transfer_queue = true);
+
+        bool CopyBuffer_Immediate(BufferHandle src_buffer, BufferHandle dst_buffer, size_t size,
+                                  uint32_t src_buffer_offset = 0, uint32_t dst_buffer_offset = 0);
+
+		[[nodiscard]] vk::DescriptorBufferInfo GetBufferDescriptorInfo(BufferHandle buffer_handle, vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
+
+		/******************
+		 * Vertex Buffers *
+		 ******************/
+
+		enum class VertexFormatFlags : int
+		{
+            NORMAL    = 1 << 0,
+            TANGENT   = 1 << 1,
+            BITANGENT = 1 << 2,
+            COLOR     = 1 << 3,
+            UV0       = 1 << 4,
+            UV1       = 1 << 5,
+            ALL       = NORMAL | TANGENT | BITANGENT | COLOR | UV0 | UV1
+		};
+
+		VertexBufferHandle CreateVertexBuffer(void* data, size_t buffer_size, VertexFormatFlags format);
+
+		bool DestroyVertexBuffer(VertexBufferHandle vertex_buffer_handle);
+
+		bool UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data, size_t data_size, uint32_t offset);
+
+		bool BindVertexBuffer(VertexBufferHandle vertex_buffer_handle);
+
+		/*****************
+		 * Index Buffers *
+		 *****************/
+
+		enum class IndexType : int
+		{
+            UINT8,
+			UINT16,
+			UINT32
+		};
+
+		IndexBufferHandle CreateIndexBuffer(void* data, size_t buffer_size, IndexType format);
+
+		bool DestroyIndexBuffer(IndexBufferHandle index_buffer_handle);
+
+		bool UpdateIndexBufferData(IndexBufferHandle index_buffer_handle, void* data, size_t data_size, uint32_t offset);
+
+		bool BindIndexBuffer(IndexBufferHandle index_buffer_handle);
+
+	private: // Initialization functions
+
+		VulkanRenderDevice(vis::Window* main_window);
+
+		/****************************
+		 * Initialization Functions *
+		 ****************************/
+
+		void Init_VkInstance(vis::Window* window);
+		void Init_PhysDevice(vk::SurfaceKHR surface);
+		void Init_Queues_Indices(vk::SurfaceKHR surface);
+		void Init_Device();
+		void Init_Allocator();
+		void Init_CommandPool();
+		void Init_Frames();
+
+		/********************
+		 * Submit Functions *
+		 ********************/
+
 		[[nodiscard]] vk::Result SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
                                                               vk::PipelineStageFlags* wait_dst_stages, uint32_t signal_semaphore_count,
@@ -82,69 +212,51 @@ namespace brr::render
                                                               uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
 			                                                  vk::Fence submit_fence);
 
-		/***************
-		 * Descriptors *
-		 ***************/
+	private: // Resources
 
-		[[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
-		[[nodiscard]] DescriptorSetBuilder<FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
-
-		/**********
-		 * Memory *
-		 **********/
-
-		[[nodiscard]] VmaAllocator GetAllocator() const { return m_vma_allocator; }
-
-		/***********
-		 * Buffers *
-		 ***********/
-
-		enum BufferUsage : int
+		struct Buffer
 		{
-		    TransferSrc = 1 << 0,
-		    TransferDst = 1 << 1,
-		    UniformTexelBuffer = 1 << 2,
-		    StorageTexelBuffer = 1 << 3,
-		    UniformBuffer = 1 << 4,
-		    StorageBuffer = 1 << 5,
-		    IndexBuffer = 1 << 6,
-		    VertexBuffer = 1 << 7,
-		    IndirectBuffer = 1 << 8,
-		    ShaderDeviceAddress = 1 << 9,
-		    VideoDecodeSrc = 1 << 10,
-		    VideoDecodeDst = 1 << 11,
-		    TransformFeedbackBuffer = 1 << 12,
-		    TransformFeedbackCounterBuffer = 1 << 13,
-		    ConditionalRendering = 1 << 14,
-		    AccelerationStructureBuildInputReadOnly = 1 << 15,
-		    AccelerationStructureStorage = 1 << 16,
-		    ShaderBindingTable = 1 << 17,
-		    RayTracingNV = 1 << 18
+		    vk::Buffer buffer {};
+			VmaAllocation buffer_allocation {};
+			VmaAllocationInfo allocation_info {};
+
+			void* mapped = nullptr;
+
+			vk::DeviceSize buffer_size {};
+			vk::BufferUsageFlags buffer_usage {};
+			VmaMemoryUsage memory_usage {};
 		};
 
-        void Create_Buffer(size_t buffer_size, BufferUsage buffer_usage,
-                           VmaMemoryUsage memory_usage, vk::Buffer& buffer, VmaAllocation& buffer_allocation,
-                           VmaAllocationCreateFlags buffer_allocation_flags);
+		ResourceAllocator<Buffer> m_buffer_alloc;
 
-		void Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
-			vk::DeviceSize src_buffer_offset = 0, vk::DeviceSize dst_buffer_offset = 0);
+		struct VertexBuffer
+		{
+		    vk::Buffer buffer {};
+			VmaAllocation buffer_allocation {};
+			VmaAllocationInfo allocation_info {};
 
-	private:
+			vk::DeviceSize buffer_size {};
+			VertexFormatFlags buffer_format {};
+		};
 
-		VulkanRenderDevice(vis::Window* main_window);
+		ResourceAllocator<VertexBuffer> m_vertex_buffer_alloc;
 
-		/****************************
-		 * Initialization Functions *
-		 ****************************/
+		struct IndexBuffer
+		{
+		    vk::Buffer buffer {};
+			VmaAllocation buffer_allocation {};
+			VmaAllocationInfo allocation_info {};
 
-		void Init_VkInstance(vis::Window* window);
-		void Init_PhysDevice(vk::SurfaceKHR surface);
-		void Init_Queues_Indices(vk::SurfaceKHR surface);
-		void Init_Device();
-		void Init_Allocator();
-		void Init_CommandPool();
-		void Init_Frames();
+			vk::DeviceSize buffer_size {};
+			IndexType buffer_format {};
+		};
+
+		ResourceAllocator<IndexBuffer> m_index_buffer_alloc;
 		
+	private: // Data
+
+		friend class StagingAllocator;
+
 		// Singleton Device
 		static std::unique_ptr<VulkanRenderDevice> device_;
 
@@ -159,8 +271,12 @@ namespace brr::render
 
 		vk::Device m_device {};
 
-		// Allocator
+		// Memory Allocator
 		VmaAllocator m_vma_allocator {};
+
+		// Staging Allocator
+
+		StagingAllocator m_staging_allocator;
 
 		// Command Buffers Pools
 
@@ -175,7 +291,11 @@ namespace brr::render
 
 			vk::Semaphore transfer_finished_semaphore {};
 			vk::Semaphore render_finished_semaphore {};
+
+			std::vector<std::pair<vk::Buffer, VmaAllocation>> buffer_delete_list;
 		};
+
+		void Free_FramePendingResources(Frame& frame);
 
 		std::array<Frame, FRAME_LAG> m_frames {};
 
@@ -199,6 +319,11 @@ namespace brr::render
 	inline VulkanRenderDevice::BufferUsage operator|(VulkanRenderDevice::BufferUsage a, VulkanRenderDevice::BufferUsage b)
     {
         return static_cast<VulkanRenderDevice::BufferUsage>(static_cast<int>(a) | static_cast<int>(b));
+    }
+
+	inline VulkanRenderDevice::VertexFormatFlags operator|(VulkanRenderDevice::VertexFormatFlags a, VulkanRenderDevice::VertexFormatFlags b)
+    {
+        return static_cast<VulkanRenderDevice::VertexFormatFlags>(static_cast<int>(a) | static_cast<int>(b));
     }
 
 #define VKRD VulkanRenderDevice

@@ -31,6 +31,8 @@ namespace brr::vis
 
 		m_pMainWindow.reset();
 
+		render::VKRD::DestroyRenderDevice();
+
 		SDL_Quit();
 	}
 

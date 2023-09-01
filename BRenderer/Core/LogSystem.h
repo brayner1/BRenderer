@@ -117,6 +117,11 @@ namespace brr
 }
 
 #ifdef USE_SPDLOG
+
+#ifdef _DEBUG
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#endif
+
 #include <spdlog/spdlog.h>
 
 #define BRR_LogTrace(...)       (SPDLOG_TRACE(__VA_ARGS__))

@@ -42,59 +42,74 @@ namespace brr::render
 		{
 			output |= vk::BufferUsageFlagBits::eStorageBuffer;
 		}
-		if (buffer_usage & BufferUsage::IndexBuffer)
-		{
-			output |= vk::BufferUsageFlagBits::eIndexBuffer;
-		}
-		if (buffer_usage & BufferUsage::VertexBuffer)
-		{
-			output |= vk::BufferUsageFlagBits::eVertexBuffer;
-		}
-		if (buffer_usage & BufferUsage::IndirectBuffer)
-		{
-			output |= vk::BufferUsageFlagBits::eIndirectBuffer;
-		}
-		if (buffer_usage & BufferUsage::ShaderDeviceAddress)
-		{
-			output |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
-		}
-		if (buffer_usage & BufferUsage::VideoDecodeSrc)
-		{
-			output |= vk::BufferUsageFlagBits::eVideoDecodeSrcKHR;
-		}
-		if (buffer_usage & BufferUsage::VideoDecodeDst)
-		{
-			output |= vk::BufferUsageFlagBits::eVideoDecodeDstKHR;
-		}
-		if (buffer_usage & BufferUsage::TransformFeedbackBuffer)
-		{
-			output |= vk::BufferUsageFlagBits::eTransformFeedbackBufferEXT;
-		}
-		if (buffer_usage & BufferUsage::TransformFeedbackCounterBuffer)
-		{
-			output |= vk::BufferUsageFlagBits::eTransformFeedbackCounterBufferEXT;
-		}
-		if (buffer_usage & BufferUsage::ConditionalRendering)
-		{
-			output |= vk::BufferUsageFlagBits::eConditionalRenderingEXT;
-		}
-		if (buffer_usage & BufferUsage::AccelerationStructureBuildInputReadOnly)
-		{
-			output |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
-		}
-		if (buffer_usage & BufferUsage::AccelerationStructureStorage)
-		{
-			output |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
-		}
-		if (buffer_usage & BufferUsage::ShaderBindingTable)
-		{
-			output |= vk::BufferUsageFlagBits::eShaderBindingTableKHR;
-		}
-		if (buffer_usage & BufferUsage::RayTracingNV)
-		{
-			output |= vk::BufferUsageFlagBits::eRayTracingNV;
-		}
+		//if (buffer_usage & BufferUsage::IndexBuffer)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eIndexBuffer;
+		//}
+		//if (buffer_usage & BufferUsage::VertexBuffer)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eVertexBuffer;
+		//}
+		//if (buffer_usage & BufferUsage::IndirectBuffer)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eIndirectBuffer;
+		//}
+		//if (buffer_usage & BufferUsage::ShaderDeviceAddress)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eShaderDeviceAddress;
+		//}
+		//if (buffer_usage & BufferUsage::VideoDecodeSrc)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eVideoDecodeSrcKHR;
+		//}
+		//if (buffer_usage & BufferUsage::VideoDecodeDst)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eVideoDecodeDstKHR;
+		//}
+		//if (buffer_usage & BufferUsage::TransformFeedbackBuffer)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eTransformFeedbackBufferEXT;
+		//}
+		//if (buffer_usage & BufferUsage::TransformFeedbackCounterBuffer)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eTransformFeedbackCounterBufferEXT;
+		//}
+		//if (buffer_usage & BufferUsage::ConditionalRendering)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eConditionalRenderingEXT;
+		//}
+		//if (buffer_usage & BufferUsage::AccelerationStructureBuildInputReadOnly)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR;
+		//}
+		//if (buffer_usage & BufferUsage::AccelerationStructureStorage)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eAccelerationStructureStorageKHR;
+		//}
+		//if (buffer_usage & BufferUsage::ShaderBindingTable)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eShaderBindingTableKHR;
+		//}
+		//if (buffer_usage & BufferUsage::RayTracingNV)
+		//{
+		//	output |= vk::BufferUsageFlagBits::eRayTracingNV;
+		//}
 		return output;
+	}
+
+	VmaMemoryUsage VmaMemoryUsageFromDeviceMemoryUsage(VulkanRenderDevice::MemoryUsage memory_usage)
+	{
+        switch (memory_usage)
+        {
+        case VulkanRenderDevice::AUTO:
+			return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO;
+        case VulkanRenderDevice::AUTO_PREFER_DEVICE:
+			return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        case VulkanRenderDevice::AUTO_PREFER_HOST:
+			return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+        default:
+			return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO;
+        }
 	}
 
 	static vk::ShaderModule Create_ShaderModule(VulkanRenderDevice* device, std::vector<char>& code)
@@ -108,7 +123,7 @@ namespace brr::render
 		if (createShaderModuleResult.result != vk::Result::eSuccess)
 		{
 			BRR_LogError("Could not create ShaderModule! Result code: {}.", vk::to_string(createShaderModuleResult.result).c_str());
-			exit(1);
+			return VK_NULL_HANDLE;
 		}
 		return createShaderModuleResult.value;
 	}
@@ -121,6 +136,11 @@ namespace brr::render
 		device_.reset(new VulkanRenderDevice(window));
 	}
 
+    void VulkanRenderDevice::DestroyRenderDevice()
+    {
+		device_.reset();
+    }
+
     VulkanRenderDevice* VulkanRenderDevice::GetSingleton()
 	{
 		assert(device_ && "Can't get non-initialized VulkanRenderDevice. Run `VKRD::CreateRenderDevice(Window* window)` before this function.");
@@ -129,37 +149,54 @@ namespace brr::render
 
     VulkanRenderDevice::~VulkanRenderDevice()
     {
-		WaitIdle();
+		BRR_LogDebug("Starting VulkanRenderDevice destruction.");
 
-		for (size_t idx = 0; idx < FRAME_LAG; ++idx)
+		BRR_LogTrace("Waiting device idle.");
+        WaitIdle();
+        BRR_LogTrace("Device idle. Starting destroy process");
+
+        for (size_t idx = 0; idx < FRAME_LAG; ++idx)
 		{
+			Free_FramePendingResources(m_frames[idx]);
 		    m_device.destroySemaphore(m_frames[idx].render_finished_semaphore);
 		    m_device.destroySemaphore(m_frames[idx].transfer_finished_semaphore);
 		}
+		BRR_LogTrace("Destroyed frame sync semaphores.");
+
+		m_staging_allocator.DestroyAllocator();
+		BRR_LogTrace("Destroyed staging allocator.");
 
 		vmaDestroyAllocator(m_vma_allocator);
+		BRR_LogTrace("Destroyed VMA allocator.");
 
 		m_pDescriptorLayoutCache.reset();
-		m_pDescriptorAllocator.reset();
+		BRR_LogTrace("Destroyed descriptor layout cache.");
+        m_pDescriptorAllocator.reset();
+        BRR_LogTrace("Destroyed descriptor allocator.");
 
-		if (graphics_command_pool_)
+        if (graphics_command_pool_)
 		{
 			m_device.destroyCommandPool(graphics_command_pool_);
 			graphics_command_pool_ = VK_NULL_HANDLE;
+			BRR_LogTrace("Destroyed graphics command pool.");
 		}
 		if (present_command_pool_)
 		{
 			m_device.destroyCommandPool(present_command_pool_);
 			present_command_pool_ = VK_NULL_HANDLE;
+			BRR_LogTrace("Destroyed present command pool.");
 		}
 		if (transfer_command_pool_)
 		{
 			m_device.destroyCommandPool(transfer_command_pool_);
 			transfer_command_pool_ = VK_NULL_HANDLE;
+			BRR_LogTrace("Destroyed transfer command pool.");
 		}
 
 		m_device.destroy();
-		std::cout << "Vulkan Renderer Destroyed";
+		BRR_LogTrace("Destroyed Vulkan device.");
+
+		BRR_LogInfo("VulkanRenderDevice destroyed.");
     }
 
     uint32_t VulkanRenderDevice::BeginFrame()
@@ -167,6 +204,8 @@ namespace brr::render
 		vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
 
 		Frame& current_frame = m_frames[m_current_buffer];
+
+		Free_FramePendingResources(current_frame);
 
 		const vk::Result transf_reset_result = current_frame.graphics_cmd_buffer.reset();
 		if (transf_reset_result != vk::Result::eSuccess)
@@ -185,6 +224,8 @@ namespace brr::render
 		current_frame.graphics_cmd_buffer.begin(cmd_buffer_begin_info);
 		current_frame.transfer_cmd_buffer.begin(cmd_buffer_begin_info);
 
+		BRR_LogTrace("Begin frame {}", m_current_frame);
+
 		return m_current_frame;
     }
 
@@ -196,11 +237,15 @@ namespace brr::render
 		current_frame.transfer_cmd_buffer.end();
 
 		vk::Result transfer_result = SubmitTransferCommandBuffers(1, &current_frame.transfer_cmd_buffer, 0, nullptr, nullptr, 1, &current_frame.transfer_finished_semaphore, nullptr);
+	BRR_LogTrace("Transfer command buffer submitted. Buffer: {:#x}. Frame {}. Buffer Index: {}", size_t(VkCommandBuffer((current_frame.transfer_cmd_buffer))), m_current_frame, m_current_buffer);
 
 		std::array<vk::Semaphore, 2> wait_semaphores { wait_semaphore, current_frame.transfer_finished_semaphore };
 		std::array<vk::PipelineStageFlags, 2> wait_stages { vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eVertexInput };
 
 		vk::Result result = SubmitGraphicsCommandBuffers(1, &current_frame.graphics_cmd_buffer, 2, wait_semaphores.data(), wait_stages.data(), 1, &current_frame.render_finished_semaphore, wait_fence);
+		BRR_LogTrace("Graphics command buffer submitted. Buffer: {:#x}. Frame {}. Buffer Index: {}", size_t(VkCommandBuffer(current_frame.graphics_cmd_buffer)), m_current_frame, m_current_buffer);
+
+		BRR_LogTrace("Frame ended. Frame {}. Buffer: {}", m_current_frame, m_current_buffer);
 
 		++m_current_frame;
 		m_current_buffer = (m_current_frame % FRAME_LAG);
@@ -210,6 +255,7 @@ namespace brr::render
 
     VulkanRenderDevice::VulkanRenderDevice(vis::Window* main_window)
 	{
+		BRR_LogInfo("Constructing VulkanRenderDevice");
 		Init_VkInstance(main_window);
 		vk::SurfaceKHR surface = main_window->GetVulkanSurface(vulkan_instance_);
 		Init_PhysDevice(surface);
@@ -219,8 +265,12 @@ namespace brr::render
 		Init_CommandPool();
 		Init_Frames();
 
+		m_staging_allocator.Init(this);
+
 		m_pDescriptorLayoutCache.reset(new DescriptorLayoutCache(m_device));
 		m_pDescriptorAllocator.reset(new DescriptorAllocator(m_device));
+
+		BRR_LogInfo("VulkanRenderDevice {:#x} constructed", (size_t)this);
 	}
 
     Shader VulkanRenderDevice::CreateShaderFromFiles(std::string vertex_file_name, std::string frag_file_name)
@@ -233,18 +283,25 @@ namespace brr::render
 			std::filesystem::path file_path{ vertex_file_name + ".spv" };
 			if (!file_path.has_filename())
 			{
-				BRR_LogInfo("'{}' is not a valid file path.", file_path.string());
+				BRR_LogWarn("Can't load shader file. '{}' is not a valid file path.", file_path.string());
 				return Shader{};
 			}
 
 			std::vector<char> vertex_shader_code = files::ReadFile(file_path.string());
 
 			vertex_shader_module = Create_ShaderModule(this, vertex_shader_code);
+			if (!vertex_shader_module)
+			{
+			    BRR_LogError("Could not create vertex shader module. Shader file: '{}'", file_path.string());
+				return Shader{};
+			}
 
 			shader.pipeline_stage_infos_.push_back(vk::PipelineShaderStageCreateInfo()
 				.setStage(vk::ShaderStageFlagBits::eVertex)
 				.setModule(vertex_shader_module)
 				.setPName("main"));
+
+			BRR_LogTrace("Created vertex shader. Shader file: '{}'", file_path.string());
 		}
 
 		// Load Fragment Shader
@@ -259,11 +316,18 @@ namespace brr::render
 			std::vector<char> fragment_shader_code = files::ReadFile(file_path.string());
 
 			fragment_shader_module = Create_ShaderModule(this, fragment_shader_code);
+			if (!fragment_shader_module)
+			{
+			    BRR_LogError("Could not create fragment shader module. Shader file: '{}'", file_path.string());
+				return Shader{};
+			}
 
 			shader.pipeline_stage_infos_.push_back(vk::PipelineShaderStageCreateInfo()
 				.setStage(vk::ShaderStageFlagBits::eFragment)
 				.setModule(fragment_shader_module)
 				.setPName("main"));
+
+			BRR_LogTrace("Created fragment shader. Shader file: '{}'", file_path.string());
 		}
 
 		shader.m_isValid = true;
@@ -274,11 +338,14 @@ namespace brr::render
 		shader.vertex_input_binding_description_ = Vertex3_PosColor::GetBindingDescription();
 		shader.vertex_input_attribute_descriptions_ = Vertex3_PosColor::GetAttributeDescriptions();
 
+		BRR_LogDebug("Created graphics shader object.\nVertex shader file:\t'{}'\nFragment shader file:\t'{}'", vertex_file_name, frag_file_name);
+
 		return std::move(shader);
     }
 
     void VulkanRenderDevice::WaitIdle() const
     {
+		BRR_LogTrace("Waiting for device idle.");
 		m_device.waitIdle();
 	}
 
@@ -381,6 +448,15 @@ namespace brr::render
 		return GetTransferQueue().submit(submit_info, submit_fence);
     }
 
+    void VulkanRenderDevice::Free_FramePendingResources(Frame& frame)
+    {
+		for (auto& buffer_alloc_pair : frame.buffer_delete_list)
+		{
+		    vmaDestroyBuffer(m_vma_allocator, buffer_alloc_pair.first, buffer_alloc_pair.second);
+		}
+		frame.buffer_delete_list.clear();
+    }
+
     DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
     {
 		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache.get());
@@ -392,18 +468,18 @@ namespace brr::render
 		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator.get());
     }
 
-    void VulkanRenderDevice::Create_Buffer(size_t buffer_size, BufferUsage buffer_usage,
-                                           VmaMemoryUsage memory_usage, vk::Buffer& buffer,
-                                           VmaAllocation& buffer_allocation,
-                                           VmaAllocationCreateFlags buffer_allocation_flags)
+    BufferHandle VulkanRenderDevice::CreateBuffer(size_t buffer_size, BufferUsage buffer_usage,
+                                                   MemoryUsage memory_usage,
+                                                   VmaAllocationCreateFlags buffer_allocation_flags)
     {
+		BufferHandle buffer_handle;
 		// Create Buffer
 		{
+            const ResourceHandle resource_handle = m_buffer_alloc.CreateResource();
+			buffer_handle.index = resource_handle.index; buffer_handle.validation = resource_handle.validation;
+			Buffer* buffer = m_buffer_alloc.GetResource(buffer_handle);
+
 			vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eExclusive : vk::SharingMode::eExclusive;
-			std::vector<uint32_t> indices{
-				GetQueueFamilyIndices().m_graphicsFamily.value(),
-				GetQueueFamilyIndices().m_transferFamily.value()
-			};
 
             const vk::BufferUsageFlags vk_buffer_usage = VkBufferUsageFromDeviceBufferUsage(buffer_usage);
 
@@ -414,12 +490,17 @@ namespace brr::render
 				.setSize(buffer_size);
 			if (sharing_mode == vk::SharingMode::eConcurrent)
 			{
-
+				std::array<uint32_t, 2> indices{
+				    GetQueueFamilyIndices().m_graphicsFamily.value(),
+				    GetQueueFamilyIndices().m_transferFamily.value()
+			    };
 				buffer_create_info.setQueueFamilyIndices(indices);
 			}
 
+			VmaMemoryUsage vma_memory_usage = VmaMemoryUsageFromDeviceMemoryUsage(memory_usage);
+
 			VmaAllocationCreateInfo allocInfo = {};
-			allocInfo.usage = memory_usage;
+			allocInfo.usage = vma_memory_usage;
 			allocInfo.flags = buffer_allocation_flags;
 			allocInfo.requiredFlags = 0;
 			allocInfo.preferredFlags = 0;
@@ -437,20 +518,166 @@ namespace brr::render
 			if (createBufferResult != vk::Result::eSuccess)
 			{
 				BRR_LogError("Could not create Buffer! Result code: {}.", vk::to_string(createBufferResult).c_str());
-				exit(1);
+				return BufferHandle();
 			}
-			buffer = new_buffer;
-			buffer_allocation = allocation;
+			buffer->buffer = new_buffer;
+			buffer->buffer_allocation = allocation;
+			buffer->allocation_info = allocation_info;
+			buffer->buffer_size = buffer_size;
+			buffer->buffer_usage = vk_buffer_usage;
 
-			BRR_LogInfo("Buffer created.");
+			BRR_LogDebug("Buffer created. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
 		}
 
-		return;
+		return buffer_handle;
     }
 
-    void VulkanRenderDevice::Copy_Buffer_Immediate(vk::Buffer src_buffer, vk::Buffer dst_buffer, vk::DeviceSize size,
-        vk::DeviceSize src_buffer_offset, vk::DeviceSize dst_buffer_offset)
+    bool VulkanRenderDevice::DestroyBuffer(BufferHandle buffer_handle)
     {
+		Buffer* buffer = m_buffer_alloc.GetResource(buffer_handle);
+		if (!buffer)
+		{
+		    return false;
+		}
+
+		Frame& current_frame = m_frames[m_current_buffer];
+		current_frame.buffer_delete_list.emplace_back(buffer->buffer, buffer->buffer_allocation);
+
+		m_buffer_alloc.DestroyResource(buffer_handle);
+
+		BRR_LogDebug("Buffer destroyed. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
+		return true;
+    }
+
+    void* VulkanRenderDevice::MapBuffer(BufferHandle buffer_handle)
+    {
+		Buffer* buffer = m_buffer_alloc.GetResource(buffer_handle);
+
+		if (buffer->mapped)
+		{
+		    return buffer->mapped;
+		}
+
+		vk::Result result = (vk::Result)vmaMapMemory(m_vma_allocator, buffer->buffer_allocation, &buffer->mapped);
+	    if (result != vk::Result::eSuccess)
+	    {
+		    BRR_LogError("Could not map buffer memory! Result code: {}.", vk::to_string(result).c_str());
+			buffer->mapped = nullptr;
+	    }
+
+		BRR_LogDebug("Mapped buffer. Buffer: {:#x}. Mapped adress: {:#x}.", size_t(VkBuffer(buffer->buffer)), (size_t)buffer->mapped);
+
+		return buffer->mapped;
+    }
+
+    void VulkanRenderDevice::UnmapBuffer(BufferHandle buffer_handle)
+    {
+		Buffer* buffer = m_buffer_alloc.GetResource(buffer_handle);
+
+		if (!buffer->mapped)
+		{
+		    return;
+		}
+
+		vmaUnmapMemory(m_vma_allocator, buffer->buffer_allocation);
+		buffer->mapped = nullptr;
+
+		BRR_LogDebug("Unmapped buffer. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
+    }
+
+    bool VulkanRenderDevice::UploadBufferData(BufferHandle dst_buffer_handle, void* data, size_t size, uint32_t offset)
+    {
+		render::StagingBufferHandle staging_buffer{};
+		m_staging_allocator.AllocateStagingBuffer(m_current_frame, size, &staging_buffer);
+
+		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, size);
+
+		Buffer* dst_buffer = m_buffer_alloc.GetResource(dst_buffer_handle);
+
+		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer->buffer, size);
+
+		return true;
+    }
+
+    bool VulkanRenderDevice::CopyBuffer(BufferHandle src_buffer_handle, BufferHandle dst_buffer_handle, size_t size,
+                                        uint32_t src_buffer_offset, uint32_t dst_buffer_offset, bool use_transfer_queue)
+    {
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		vk::CommandBuffer cmd_buffer = use_transfer_queue? current_frame.transfer_cmd_buffer : current_frame.graphics_cmd_buffer;
+
+		Buffer* src_buffer = m_buffer_alloc.GetResource(src_buffer_handle);
+		Buffer* dst_buffer = m_buffer_alloc.GetResource(dst_buffer_handle);
+
+		vk::BufferCopy copy_region{};
+		copy_region
+			.setSrcOffset(src_buffer_offset)
+			.setDstOffset(dst_buffer_offset)
+			.setSize(size);
+
+		cmd_buffer.copyBuffer(src_buffer->buffer, dst_buffer->buffer, copy_region);
+
+		//TODO: Check if src buffer is on CPU or GPU to decide if uses transfer queue or no.
+		if (use_transfer_queue)
+		{
+		    {
+		        vk::BufferMemoryBarrier2 src_buffer_memory_barrier;
+		        src_buffer_memory_barrier
+                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                    .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
+                    .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
+                    .setBuffer(dst_buffer->buffer)
+                    .setSize(size);
+
+		        vk::DependencyInfo dependency_info;
+		        dependency_info
+                    .setBufferMemoryBarriers(src_buffer_memory_barrier);
+
+		        current_frame.transfer_cmd_buffer.pipelineBarrier2(dependency_info);
+		    }
+
+		    {
+		        vk::BufferMemoryBarrier2 dst_buffer_memory_barrier {};
+		        dst_buffer_memory_barrier
+                    .setBuffer(dst_buffer->buffer)
+                    .setSize(size)
+                    .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
+                    .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
+                    .setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
+                    .setDstAccessMask(vk::AccessFlagBits2::eVertexAttributeRead);
+
+		        vk::DependencyInfo dependency_info {};
+		        dependency_info
+                    .setBufferMemoryBarriers(dst_buffer_memory_barrier);
+
+		        current_frame.graphics_cmd_buffer.pipelineBarrier2(dependency_info);
+		    }
+		}
+		else
+		{
+			//TODO: Select DstAccessMask and DstStageMask based on buffer usage.
+		    vk::MemoryBarrier memory_barrier;
+            memory_barrier
+                .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead);
+
+            current_frame.graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                                              vk::PipelineStageFlagBits::eVertexInput,
+                                                              vk::DependencyFlags(), 1, &memory_barrier, 0,
+                                                              nullptr, 0, nullptr);
+		}
+
+		return true;
+    }
+
+    bool VulkanRenderDevice::CopyBuffer_Immediate(BufferHandle src_buffer_handle, BufferHandle dst_buffer_handle,
+                                                  size_t size,
+                                                  uint32_t src_buffer_offset, uint32_t dst_buffer_offset)
+    {
+		Buffer* src_buffer = m_buffer_alloc.GetResource(src_buffer_handle);
+		Buffer* dst_buffer = m_buffer_alloc.GetResource(dst_buffer_handle);
+
 		const vk::CommandPool transfer_cmd_pool = (IsDifferentTransferQueue()) ? transfer_command_pool_ : graphics_command_pool_;
 
 		vk::CommandBufferAllocateInfo cmd_buffer_alloc_info{};
@@ -463,7 +690,7 @@ namespace brr::render
 		if (allocCmdBuffersResult.result != vk::Result::eSuccess)
 		{
 			BRR_LogError("ERROR: Could not allocate CommandBuffer! Result code: {}.", vk::to_string(allocCmdBuffersResult.result).c_str());
-			exit(1);
+			return false;
 		}
 		vk::CommandBuffer cmd_buffer = allocCmdBuffersResult.value[0];
 
@@ -479,12 +706,10 @@ namespace brr::render
 			.setDstOffset(dst_buffer_offset)
 			.setSize(size);
 
-		cmd_buffer.copyBuffer(src_buffer, dst_buffer, copy_region);
+		cmd_buffer.copyBuffer(src_buffer->buffer, dst_buffer->buffer, copy_region);
 
 		cmd_buffer.end();
 
-		// For now, waiting the device to finish everything before copying data to a potentially used buffer.
-		// TODO: Do correct synchronization (add copies to a setup command buffer)
 		WaitIdle();
 
 		SubmitTransferCommandBuffers(1, &cmd_buffer, 0, nullptr, nullptr, 0, nullptr, VK_NULL_HANDLE);
@@ -492,9 +717,288 @@ namespace brr::render
 		GetTransferQueue().waitIdle();
 
 		m_device.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
+
+		BRR_LogDebug("Immeadite copy buffers. Src buffer: {:#x}. Dst Buffer: {:#x}. Copy size: {}", size_t(VkBuffer(src_buffer->buffer)), size_t(VkBuffer(dst_buffer->buffer)), size);
+
+		return true;
     }
 
-	void VulkanRenderDevice::Init_VkInstance(vis::Window* window)
+    vk::DescriptorBufferInfo VulkanRenderDevice::GetBufferDescriptorInfo(BufferHandle buffer_handle, vk::DeviceSize size, vk::DeviceSize offset)
+    {
+		Buffer* buffer = m_buffer_alloc.GetResource(buffer_handle);
+
+		return vk::DescriptorBufferInfo{buffer->buffer, offset, size};
+    }
+
+    VertexBufferHandle VulkanRenderDevice::CreateVertexBuffer(void* data, size_t buffer_size, VertexFormatFlags format)
+    {
+		VertexBufferHandle vertex_buffer_handle;
+		VertexBuffer* vertex_buffer;
+		// Create Vertex Buffer
+		{
+            const ResourceHandle resource_handle = m_vertex_buffer_alloc.CreateResource();
+			if (!resource_handle)
+			{
+			    return {};
+			}
+			vertex_buffer_handle.index = resource_handle.index; vertex_buffer_handle.validation = resource_handle.validation;
+			vertex_buffer = m_vertex_buffer_alloc.GetResource(vertex_buffer_handle);
+			assert(vertex_buffer && "VertexBuffer not initialized. Something is very wrong.");
+
+			vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eExclusive : vk::SharingMode::eExclusive;
+
+            const vk::BufferUsageFlags vk_buffer_usage = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+
+			vk::BufferCreateInfo buffer_create_info;
+			buffer_create_info
+				.setUsage(vk_buffer_usage)
+				.setSharingMode(sharing_mode)
+				.setSize(buffer_size);
+			if (sharing_mode == vk::SharingMode::eConcurrent)
+			{
+				std::array<uint32_t, 2> indices{
+				    GetQueueFamilyIndices().m_graphicsFamily.value(),
+				    GetQueueFamilyIndices().m_transferFamily.value()
+			    };
+				buffer_create_info.setQueueFamilyIndices(indices);
+			}
+
+			VmaMemoryUsage vma_memory_usage = VMA_MEMORY_USAGE_AUTO;
+
+			VmaAllocationCreateInfo allocInfo = {};
+			allocInfo.usage = vma_memory_usage;
+			allocInfo.flags = 0;
+			allocInfo.requiredFlags = 0;
+			allocInfo.preferredFlags = 0;
+			allocInfo.memoryTypeBits = 0;
+			allocInfo.pool = VK_NULL_HANDLE;
+			allocInfo.pUserData = nullptr;
+			allocInfo.priority = 1.0;
+
+			VkBuffer new_buffer;
+			VmaAllocation allocation;
+			VmaAllocationInfo allocation_info;
+            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &allocInfo,
+                                                                             &new_buffer, &allocation, &allocation_info));
+
+			if (createBufferResult != vk::Result::eSuccess)
+			{
+				m_vertex_buffer_alloc.DestroyResource(vertex_buffer_handle);
+				BRR_LogError("Could not create VertexBuffer! Result code: {}.", vk::to_string(createBufferResult).c_str());
+				return {};
+			}
+			vertex_buffer->buffer = new_buffer;
+			vertex_buffer->buffer_allocation = allocation;
+			vertex_buffer->allocation_info = allocation_info;
+			vertex_buffer->buffer_size = buffer_size;
+			vertex_buffer->buffer_format = format;
+
+			BRR_LogDebug("Created vertex buffer. Buffer: {:#x}", (size_t)new_buffer);
+		}
+
+		render::StagingBufferHandle staging_buffer{};
+		m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
+
+		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
+
+		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, vertex_buffer->buffer, buffer_size);
+
+		return vertex_buffer_handle;
+    }
+
+    bool VulkanRenderDevice::DestroyVertexBuffer(VertexBufferHandle vertex_buffer_handle)
+    {
+		VertexBuffer* vertex_buffer = m_vertex_buffer_alloc.GetResource(vertex_buffer_handle);
+		if (!vertex_buffer)
+		{
+		    return false;
+		}
+
+		Frame& current_frame = m_frames[m_current_buffer];
+		current_frame.buffer_delete_list.emplace_back(vertex_buffer->buffer, vertex_buffer->buffer_allocation);
+
+		BRR_LogDebug("Destroyed vertex buffer. Buffer: {:#x}", (size_t)(static_cast<VkBuffer>(vertex_buffer->buffer)));
+
+		return m_vertex_buffer_alloc.DestroyResource(vertex_buffer_handle);
+    }
+
+    bool VulkanRenderDevice::UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data, size_t data_size, uint32_t offset)
+    {
+        const VertexBuffer* vertex_buffer = m_vertex_buffer_alloc.GetResource(vertex_buffer_handle);
+		if (!vertex_buffer)
+		{
+		    return false;
+		}
+
+		render::StagingBufferHandle staging_buffer{};
+		m_staging_allocator.AllocateStagingBuffer(m_current_frame, data_size, &staging_buffer);
+
+		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, data_size);
+
+		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, vertex_buffer->buffer, data_size, 0, offset);
+
+		return true;
+    }
+
+    bool VulkanRenderDevice::BindVertexBuffer(VertexBufferHandle vertex_buffer_handle)
+    {
+		const VertexBuffer* vertex_buffer = m_vertex_buffer_alloc.GetResource(vertex_buffer_handle);
+		if (!vertex_buffer)
+		{
+		    return false;
+		}
+		vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
+
+		uint32_t offset = 0;
+
+		command_buffer.bindVertexBuffers(0, vertex_buffer->buffer, offset);
+		return true;
+    }
+
+    IndexBufferHandle VulkanRenderDevice::CreateIndexBuffer(void* data, size_t buffer_size, IndexType format)
+    {
+		IndexBufferHandle index_buffer_handle;
+		IndexBuffer* index_buffer;
+		// Create Vertex Buffer
+		{
+            const ResourceHandle resource_handle = m_index_buffer_alloc.CreateResource();
+			if (!resource_handle)
+			{
+			    return {};
+			}
+			index_buffer_handle.index = resource_handle.index; index_buffer_handle.validation = resource_handle.validation;
+			index_buffer = m_index_buffer_alloc.GetResource(index_buffer_handle);
+			assert(index_buffer && "VertexBuffer not initialized. Something is very wrong.");
+
+			vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eExclusive : vk::SharingMode::eExclusive;
+
+            const vk::BufferUsageFlags vk_buffer_usage = vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
+
+			vk::BufferCreateInfo buffer_create_info;
+			buffer_create_info
+				.setUsage(vk_buffer_usage)
+				.setSharingMode(sharing_mode)
+				.setSize(buffer_size);
+			if (sharing_mode == vk::SharingMode::eConcurrent)
+			{
+				std::array<uint32_t, 2> indices{
+				    GetQueueFamilyIndices().m_graphicsFamily.value(),
+				    GetQueueFamilyIndices().m_transferFamily.value()
+			    };
+				buffer_create_info.setQueueFamilyIndices(indices);
+			}
+
+			VmaMemoryUsage vma_memory_usage = VMA_MEMORY_USAGE_AUTO;
+
+			VmaAllocationCreateInfo allocInfo = {};
+			allocInfo.usage = vma_memory_usage;
+			allocInfo.flags = 0;
+			allocInfo.requiredFlags = 0;
+			allocInfo.preferredFlags = 0;
+			allocInfo.memoryTypeBits = 0;
+			allocInfo.pool = VK_NULL_HANDLE;
+			allocInfo.pUserData = nullptr;
+			allocInfo.priority = 1.0;
+
+			VkBuffer new_buffer;
+			VmaAllocation allocation;
+			VmaAllocationInfo allocation_info;
+            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &allocInfo,
+                                                                             &new_buffer, &allocation, &allocation_info));
+
+			if (createBufferResult != vk::Result::eSuccess)
+			{
+				m_index_buffer_alloc.DestroyResource(index_buffer_handle);
+				BRR_LogError("Could not create VertexBuffer! Result code: {}.", vk::to_string(createBufferResult).c_str());
+				return {};
+			}
+			index_buffer->buffer = new_buffer;
+			index_buffer->buffer_allocation = allocation;
+			index_buffer->allocation_info = allocation_info;
+			index_buffer->buffer_size = buffer_size;
+			index_buffer->buffer_format = format;
+
+			BRR_LogDebug("Created index buffer. Buffer: {:#x}", (size_t)new_buffer);
+		}
+
+		render::StagingBufferHandle staging_buffer{};
+		m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
+
+		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
+
+		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, index_buffer->buffer, buffer_size);
+
+		return index_buffer_handle;
+    }
+
+    bool VulkanRenderDevice::DestroyIndexBuffer(IndexBufferHandle index_buffer_handle)
+    {
+		IndexBuffer* index_buffer = m_index_buffer_alloc.GetResource(index_buffer_handle);
+		if (!index_buffer)
+		{
+		    return false;
+		}
+
+		Frame& current_frame = m_frames[m_current_buffer];
+		current_frame.buffer_delete_list.emplace_back(index_buffer->buffer, index_buffer->buffer_allocation);
+
+		BRR_LogDebug("Destroyed index buffer. Buffer: {:#x}", (size_t)(static_cast<VkBuffer>(index_buffer->buffer)));
+
+		return m_index_buffer_alloc.DestroyResource(index_buffer_handle);
+    }
+
+    bool VulkanRenderDevice::UpdateIndexBufferData(IndexBufferHandle index_buffer_handle, void* data, size_t data_size,
+                                                   uint32_t offset)
+    {
+		const IndexBuffer* index_buffer = m_index_buffer_alloc.GetResource(index_buffer_handle);
+		if (!index_buffer)
+		{
+		    return false;
+		}
+
+		render::StagingBufferHandle staging_buffer{};
+		m_staging_allocator.AllocateStagingBuffer(m_current_frame, data_size, &staging_buffer);
+
+		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, data_size);
+
+		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, index_buffer->buffer, data_size, 0, offset);
+
+		return true;
+    }
+
+    bool VulkanRenderDevice::BindIndexBuffer(IndexBufferHandle index_buffer_handle)
+    {
+		const IndexBuffer* index_buffer = m_index_buffer_alloc.GetResource(index_buffer_handle);
+		if (!index_buffer)
+		{
+		    return false;
+		}
+
+		vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
+
+		vk::IndexType index_type;
+        switch (index_buffer->buffer_format)
+        {
+        case IndexType::UINT8: 
+			index_type = vk::IndexType::eUint8EXT;
+			break;
+        case IndexType::UINT16: 
+			index_type = vk::IndexType::eUint16;
+			break;
+        case IndexType::UINT32: 
+			index_type = vk::IndexType::eUint32;
+			break;
+        default: 
+			index_type = vk::IndexType::eNoneKHR;
+			break;
+        }
+
+		command_buffer.bindIndexBuffer(index_buffer->buffer, 0, index_type);
+
+		return true;
+    }
+
+    void VulkanRenderDevice::Init_VkInstance(vis::Window* window)
 	{
 		// Dynamic load of the library
 	    {
@@ -506,27 +1010,28 @@ namespace brr::render
 				exit(1);
 			}
 	        VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
-			BRR_LogInfo("Loaded 'vkGetInstanceProcAddr' function address. Proceeding to create vkInstance.");
+			BRR_LogDebug("Loaded 'vkGetInstanceProcAddr' function address. Proceeding to create vkInstance.");
 	    }
 
-		//TODO: Do validation layers
+		std::vector<char const*> instance_layers;
 		// Check for validation layers support
 #ifdef NDEBUG
 		constexpr bool use_validation_layers = false;
 #else
 		constexpr bool use_validation_layers = true;
+		instance_layers.emplace_back("VK_LAYER_KHRONOS_validation");
+		BRR_LogDebug("Using validation layers.");
 #endif
 
-		std::vector<char const*> instance_validation_layers = { "VK_LAYER_KHRONOS_validation" };
-		std::vector<char const*> enabled_validation_layers;
+		std::vector<char const*> enabled_layers;
 		if (use_validation_layers)
 		{
 			auto enumInstLayerPropsResult = vk::enumerateInstanceLayerProperties();
 			std::vector<vk::LayerProperties> layers = enumInstLayerPropsResult.value;
 			std::vector<char const*> acceptedLayers;
-			if (VkHelpers::Check_ValidationLayers(instance_validation_layers, layers, acceptedLayers))
+			if (VkHelpers::CheckLayers(instance_layers, layers, acceptedLayers))
 			{
-				enabled_validation_layers = acceptedLayers;
+				enabled_layers = acceptedLayers;
 			}
 			else
 			{
@@ -535,7 +1040,7 @@ namespace brr::render
 			}
 
 			{
-				LogStreamBuffer log_msg = BRR_InfoStrBuff();
+				LogStreamBuffer log_msg = BRR_DebugStrBuff();
 				log_msg << "Available Layers:";
 				for (vk::LayerProperties& layer : layers)
 				{
@@ -555,7 +1060,7 @@ namespace brr::render
 			std::vector<vk::ExtensionProperties> extension_properties = enumInstExtPropsResult.value;
 
 		    {
-		        LogStreamBuffer log_msg = BRR_InfoStrBuff();
+		        LogStreamBuffer log_msg = BRR_DebugStrBuff();
 				log_msg << "Available Instance Extensions:";
 			    for (vk::ExtensionProperties& extension : extension_properties)
 			    {
@@ -573,7 +1078,7 @@ namespace brr::render
 		inst_create_info
 			.setPApplicationInfo(&app_info)
 			.setPEnabledExtensionNames(extensions)
-			.setPEnabledLayerNames(enabled_validation_layers);
+			.setPEnabledLayerNames(enabled_layers);
 
 		 auto createInstanceResult = vk::createInstance(inst_create_info);
 		 if (createInstanceResult.result != vk::Result::eSuccess)
@@ -588,7 +1093,7 @@ namespace brr::render
 			BRR_LogInfo("Loaded instance specific vulkan functions addresses.");
 	    }
 
-		 BRR_LogInfo("Instance Created");
+		 BRR_LogDebug("Instance Created");
 	}
 
 	void VulkanRenderDevice::Init_PhysDevice(vk::SurfaceKHR surface)
@@ -603,7 +1108,7 @@ namespace brr::render
 		}
 
 	    {
-			LogStreamBuffer log_msg = BRR_InfoStrBuff();
+			LogStreamBuffer log_msg = BRR_DebugStrBuff();
 			log_msg << "Available devices:";
 		    for (vk::PhysicalDevice& device : devices)
 		    {
@@ -617,7 +1122,7 @@ namespace brr::render
 		auto device_extensions = phys_device_.enumerateDeviceExtensionProperties();
 		if (device_extensions.result == vk::Result::eSuccess)
 		{
-			LogStreamBuffer log_msg = BRR_InfoStrBuff();
+			LogStreamBuffer log_msg = BRR_DebugStrBuff();
 			log_msg << "Available Device Extensions (" << device_name << "):";
 		    for (vk::ExtensionProperties& extension : device_extensions.value)
 		    {
@@ -660,13 +1165,13 @@ namespace brr::render
 		const uint32_t presentation_family_idx = queue_family_indices_.m_presentFamily.value();
 		const uint32_t transfer_family_idx = queue_family_indices_.m_transferFamily.has_value() ? queue_family_indices_.m_transferFamily.value() : graphics_family_idx;
 
-		BRR_LogInfo("Selected Queue Families:\n"
-			        "\tGraphics Queue Family:\t {}\n"
-		            "\tPresent Queue Family:\t {}\n"
-			        "\tTransfer Queue Family:\t {}", 
-			        graphics_family_idx, 
-			        presentation_family_idx, 
-			        transfer_family_idx);
+        BRR_LogDebug("Selected Queue Families:\n"
+                     "\tGraphics Queue Family:\t {}\n"
+                     "\tPresent Queue Family:\t {}\n"
+                     "\tTransfer Queue Family:\t {}",
+                     graphics_family_idx,
+                     presentation_family_idx,
+                     transfer_family_idx);
 
 		float priorities = 1.0;
 		std::vector<vk::DeviceQueueCreateInfo> queues;
@@ -717,7 +1222,7 @@ namespace brr::render
 		m_device = createDeviceResult.value;
 	    {
 	        VULKAN_HPP_DEFAULT_DISPATCHER.init(m_device);
-			BRR_LogInfo("Loaded Device specific Vulkan functions addresses.");
+			BRR_LogDebug("Loaded Device specific Vulkan functions addresses.");
 	    }
 
 		graphics_queue_ = m_device.getQueue(graphics_family_idx, 0);
@@ -726,12 +1231,12 @@ namespace brr::render
 
 		transfer_queue_ = (different_transfer_queue_) ? m_device.getQueue(transfer_family_idx, 0) : graphics_queue_;
 
-		BRR_LogInfo("Device Created");
+		BRR_LogDebug("VkDevice Created");
 	}
 
 	void VulkanRenderDevice::Init_Allocator()
 	{
-		VmaVulkanFunctions vulkan_functions{};
+		VmaVulkanFunctions vulkan_functions;
 		// Initialize function pointers
 		{
 			vulkan_functions.vkGetInstanceProcAddr = VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr;
@@ -770,6 +1275,8 @@ namespace brr::render
 		vma_alloc_create_info.pVulkanFunctions = &vulkan_functions;
 
 		vmaCreateAllocator(&vma_alloc_create_info, &m_vma_allocator);
+
+		BRR_LogDebug("Initialized VMA allocator. Allocator: {:#x}.", (size_t)m_vma_allocator);
 	}
 
 	void VulkanRenderDevice::Init_CommandPool()
