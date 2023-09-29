@@ -12,17 +12,17 @@ namespace brr::render
         constexpr ResourceHandle() : index(std::numeric_limits<uint32_t>::max()), validation(std::numeric_limits<uint32_t>::max())
         {}
 
-        bool operator ==(const ResourceHandle& other) const
+        constexpr bool operator ==(const ResourceHandle& other) const
         {
             return index == other.index && validation == other.validation;
         }
 
-        bool IsValid() const
+        constexpr bool IsValid() const
         {
             return *this != ResourceHandle();
         }
 
-        operator bool() const
+        constexpr operator bool() const
         {
             return IsValid();
         }
@@ -37,16 +37,40 @@ namespace brr::render
     };
 
     struct BufferHandle : public ResourceHandle
-    {};
+    {
+        BufferHandle() = default;
+
+        BufferHandle(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
 
     struct VertexBufferHandle : public ResourceHandle
-    {};
+    {
+        VertexBufferHandle() = default;
+
+        VertexBufferHandle(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
 
     struct IndexBufferHandle : public ResourceHandle
-    {};
+    {
+        IndexBufferHandle() = default;
+
+        IndexBufferHandle(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
 
     struct Texture2DHandle : public ResourceHandle
-    {};
+    {
+        Texture2DHandle() = default;
+
+        Texture2DHandle(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
 
     static constexpr ResourceHandle null_handle = ResourceHandle{};
 }

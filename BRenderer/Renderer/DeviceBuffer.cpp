@@ -21,23 +21,31 @@ namespace brr
 		}
 
 		DeviceBuffer::DeviceBuffer(DeviceBuffer&& device_buffer) noexcept
-	    : m_render_device(device_buffer.m_render_device),
-          m_buffer_handle(device_buffer.m_buffer_handle),
-		  m_buffer_size(device_buffer.m_buffer_size)
         {
-			device_buffer.m_buffer_handle = {};
+			if (IsInitialized())
+			{
+				DestroyBuffer();
+			}
+			m_render_device = device_buffer.m_render_device;
+            m_buffer_handle = device_buffer.m_buffer_handle;
+		    m_buffer_size = device_buffer.m_buffer_size;
+
+			device_buffer.m_buffer_handle = null_handle;
 			device_buffer.m_buffer_size = 0;
 		}
 
 		DeviceBuffer& DeviceBuffer::operator=(DeviceBuffer&& device_buffer) noexcept
 		{
+			if (IsInitialized())
+			{
+				DestroyBuffer();
+			}
 			m_render_device = device_buffer.m_render_device;
-
 			m_buffer_handle = device_buffer.m_buffer_handle;
 			m_buffer_size = device_buffer.m_buffer_size;
 
-			device_buffer.m_buffer_handle = {};
-			device_buffer.m_buffer_size = {};
+			device_buffer.m_buffer_handle = null_handle;
+			device_buffer.m_buffer_size = 0;
 
 			return *this;
 		}
@@ -50,7 +58,7 @@ namespace brr
 			}
 		}
 
-		void DeviceBuffer::Reset(size_t buffer_size, VulkanRenderDevice::BufferUsage buffer_usage,
+		void DeviceBuffer::Reset(size_t buffer_size, VKRD::BufferUsage buffer_usage,
                                  VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
 		{
 			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {} ]", buffer_size);
@@ -107,6 +115,8 @@ namespace brr
 			m_render_device->UnmapBuffer(m_buffer_handle);
 
 			m_render_device->DestroyBuffer(m_buffer_handle);
+
+			m_buffer_handle = null_handle;
 
 			BRR_LogInfo("Buffer Destroyed");
 		}

@@ -7,13 +7,6 @@
 
 namespace brr::vis
 {
-	
-	static SurfaceId GetNewSurfaceId()
-	{
-		static std::atomic<uint64_t> current_surface_id = 0;
-		return static_cast<SurfaceId>(current_surface_id++);
-	}
-
     SceneRenderer::SceneRenderer(Scene* scene)
     : m_scene(scene),
       m_render_device(render::VKRD::GetSingleton())
@@ -32,21 +25,21 @@ namespace brr::vis
     {
 		for (RenderData& render_data : m_render_data)
 		{
-		    m_render_device->DestroyVertexBuffer(render_data.m_vertex_buffer_handle);
-		    m_render_device->DestroyIndexBuffer(render_data.m_index_buffer_handle);
+            DestroyBuffers(render_data);
 		}
     }
 
     SurfaceId SceneRenderer::CreateNewSurface(Mesh3DComponent::SurfaceData& surface,
                                               const Entity& owner_entity)
 	{
-		SurfaceId surface_id = GetNewSurfaceId();
+		NodeComponent& owner_node = owner_entity.GetComponent<NodeComponent>();
+        const ContiguousPool<RenderData>::ObjectId render_data_id = m_render_data.AddNewObject({&owner_node});
+
+		SurfaceId surface_id = static_cast<SurfaceId>(render_data_id);
 		surface.SetRenderSurfaceID(static_cast<uint64_t>(surface_id));
 		BRR_LogInfo("Adding new RenderData for Surface with ID: {}", static_cast<uint64_t>(surface_id));
 		
-		m_surfId_idx_map.emplace(surface_id, m_render_data.size());
-		NodeComponent& owner_node = owner_entity.GetComponent<NodeComponent>();
-		RenderData& render_data = m_render_data.emplace_back(&owner_node);
+		RenderData& render_data = m_render_data.Get(render_data_id);
 
 		auto& vertices = const_cast<std::vector<Vertex3_PosColor>&> (surface.GetVertices());
 		auto& indices = const_cast<std::vector<uint32_t>&> (surface.GetIndices());
@@ -56,6 +49,16 @@ namespace brr::vis
 
 		return surface_id;
 	}
+
+    void SceneRenderer::RemoveSurface(SurfaceId surface_id)
+    {
+		ContiguousPool<RenderData>::ObjectId object_id = static_cast<ContiguousPool<RenderData>::ObjectId>(surface_id);
+		RenderData& render_data = m_render_data.Get(object_id);
+
+		DestroyBuffers(render_data);
+
+		m_render_data.RemoveObject(object_id);
+    }
 
     void SceneRenderer::BeginRender(uint32_t buffer_index, size_t current_frame)
     {
@@ -80,8 +83,9 @@ namespace brr::vis
 				Mesh3DComponent::SurfaceData& surface = mesh_component.m_surfaces[index];
 			    if (surface.isDirty())
 			    {
-					SurfaceId surface_id = static_cast<SurfaceId>(surface.GetRenderSurfaceID());
-					if (!m_surfId_idx_map.contains(surface_id) || surface_id == SurfaceId::NULL_ID)
+					const SurfaceId surface_id = static_cast<SurfaceId>(surface.GetRenderSurfaceID());
+                    const ContiguousPool<RenderData>::ObjectId object_id = static_cast<ContiguousPool<RenderData>::ObjectId>(surface_id);
+					if (surface_id == SurfaceId::NULL_ID || !m_render_data.Contains(object_id))
 					{
 						Entity owner_entity{ entity, m_scene };
 						CreateNewSurface(surface, owner_entity);
@@ -95,9 +99,7 @@ namespace brr::vis
 					    auto& vertices = const_cast<std::vector<Vertex3_PosColor>&> (surface.GetVertices());
                         auto& indices = const_cast<std::vector<uint32_t>&> (surface.GetIndices());
 
-						uint32_t surf_index = m_surfId_idx_map.at(surface_id);
-		                assert(m_surfId_idx_map.contains(surface_id) && "Surface is not in the render data map. Something went wrong.");
-		                RenderData& render_data = m_render_data[surf_index];
+						RenderData& render_data = m_render_data.Get(object_id);
 
 						m_render_device->UpdateVertexBufferData(render_data.m_vertex_buffer_handle, vertices.data(), vertices.size() * sizeof(Vertex3_PosColor), 0);
 						m_render_device->UpdateIndexBufferData(render_data.m_index_buffer_handle, indices.data(), indices.size() * sizeof(uint32_t), 0);
@@ -250,6 +252,12 @@ namespace brr::vis
         render_data.m_index_buffer_handle = m_render_device->CreateIndexBuffer(index_buffer.data(), buffer_size, index_type);
 
 		render_data.num_indices = index_buffer.size();
+    }
+
+    void SceneRenderer::DestroyBuffers(RenderData& render_data)
+    {
+		m_render_device->DestroyVertexBuffer(render_data.m_vertex_buffer_handle);
+		m_render_device->DestroyIndexBuffer(render_data.m_index_buffer_handle);
     }
 
     void SceneRenderer::Init_UniformBuffers(RenderData& render_data)
