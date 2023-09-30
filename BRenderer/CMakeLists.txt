@@ -194,3 +194,5 @@ add_custom_command(TARGET BRenderer POST_BUILD
 add_custom_command(TARGET BRenderer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/frag.spv" $<TARGET_FILE_DIR:BRenderer>
 )
+
+add_subdirectory("Tests")
