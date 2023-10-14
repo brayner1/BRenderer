@@ -39,23 +39,23 @@ namespace brr::render
 
 		/* Vulkan Objects (Instance, Device, CommandPools and Queues) */
 
-		FORCEINLINE [[nodiscard]] vk::Instance Get_Instance() const { return vulkan_instance_; }
+		FORCEINLINE [[nodiscard]] vk::Instance Get_VkInstance() const { return m_vulkan_instance; }
 
-		FORCEINLINE [[nodiscard]] vk::PhysicalDevice Get_PhysicalDevice() const { return phys_device_; }
+		FORCEINLINE [[nodiscard]] vk::PhysicalDevice Get_VkPhysicalDevice() const { return m_phys_device; }
 		FORCEINLINE [[nodiscard]] vk::Device Get_VkDevice() const { return m_device; }
 
 		/**********
 		 * Queues *
 		 **********/
 
-		FORCEINLINE [[nodiscard]] VkHelpers::QueueFamilyIndices GetQueueFamilyIndices() const { return queue_family_indices_; }
+		FORCEINLINE [[nodiscard]] VkHelpers::QueueFamilyIndices GetQueueFamilyIndices() const { return m_queue_family_indices; }
 
-		FORCEINLINE [[nodiscard]] vk::Queue GetGraphicsQueue() const { return graphics_queue_; }
-		FORCEINLINE [[nodiscard]] vk::Queue GetPresentQueue() const { return presentation_queue_; }
-		FORCEINLINE [[nodiscard]] vk::Queue GetTransferQueue() const { return transfer_queue_; }
+		FORCEINLINE [[nodiscard]] vk::Queue GetGraphicsQueue() const { return m_graphics_queue; }
+		FORCEINLINE [[nodiscard]] vk::Queue GetPresentQueue() const { return m_presentation_queue; }
+		FORCEINLINE [[nodiscard]] vk::Queue GetTransferQueue() const { return m_transfer_queue; }
 
-		FORCEINLINE [[nodiscard]] bool IsDifferentPresentQueue() const { return different_present_queue_; }
-		FORCEINLINE [[nodiscard]] bool IsDifferentTransferQueue() const { return different_transfer_queue_; }
+		FORCEINLINE [[nodiscard]] bool IsDifferentPresentQueue() const { return m_different_present_queue; }
+		FORCEINLINE [[nodiscard]] bool IsDifferentTransferQueue() const { return m_different_transfer_queue; }
 
 		/*******************
 		 * Command Buffers *
@@ -191,9 +191,12 @@ namespace brr::render
 		void Init_CommandPool();
 		void Init_Frames();
 
-		/********************
-		 * Submit Functions *
-		 ********************/
+		/***************************
+		 * CommandBuffer Functions *
+		 ***************************/
+
+		[[nodiscard]] vk::Result BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer);
+		[[nodiscard]] vk::Result BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer);
 
 		[[nodiscard]] vk::Result SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
@@ -258,15 +261,15 @@ namespace brr::render
 		friend class StagingAllocator;
 
 		// Singleton Device
-		static std::unique_ptr<VulkanRenderDevice> device_;
+		static std::unique_ptr<VulkanRenderDevice> device_instance;
 
 		// Vulkan Instance
 
-		vk::Instance vulkan_instance_ {};
+		vk::Instance m_vulkan_instance {};
 
 		// Physical and Logical Devices
 
-		vk::PhysicalDevice phys_device_ {};
+		vk::PhysicalDevice m_phys_device {};
 		vk::PhysicalDeviceProperties2 m_device_properties {};
 
 		vk::Device m_device {};
@@ -280,9 +283,9 @@ namespace brr::render
 
 		// Command Buffers Pools
 
-		vk::CommandPool graphics_command_pool_ {};
-		vk::CommandPool present_command_pool_ {};
-		vk::CommandPool transfer_command_pool_ {};
+		vk::CommandPool m_graphics_command_pool {};
+		vk::CommandPool m_present_command_pool {};
+		vk::CommandPool m_transfer_command_pool {};
 
 		struct Frame
 		{
@@ -293,6 +296,9 @@ namespace brr::render
 			vk::Semaphore render_finished_semaphore {};
 
 			std::vector<std::pair<vk::Buffer, VmaAllocation>> buffer_delete_list;
+
+			bool graphics_cmd_buffer_begin = false;
+			bool transfer_cmd_buffer_begin = false;
 		};
 
 		void Free_FramePendingResources(Frame& frame);
@@ -304,15 +310,15 @@ namespace brr::render
 
 		// Queue families indices and queues
 
-		VkHelpers::QueueFamilyIndices queue_family_indices_{};
-		vk::Queue graphics_queue_{};
-		vk::Queue presentation_queue_{};
-		vk::Queue transfer_queue_{};
-		bool different_present_queue_ = false;
-		bool different_transfer_queue_ = false;
+		VkHelpers::QueueFamilyIndices m_queue_family_indices{};
+		vk::Queue m_graphics_queue{};
+		vk::Queue m_presentation_queue{};
+		vk::Queue m_transfer_queue{};
+		bool m_different_present_queue = false;
+		bool m_different_transfer_queue = false;
 
-		std::unique_ptr<DescriptorAllocator> m_pDescriptorAllocator = nullptr;
-		std::unique_ptr<DescriptorLayoutCache> m_pDescriptorLayoutCache = nullptr;
+		std::unique_ptr<DescriptorAllocator> m_descriptor_allocator = nullptr;
+		std::unique_ptr<DescriptorLayoutCache> m_descriptor_layout_cache = nullptr;
 
 	};
 

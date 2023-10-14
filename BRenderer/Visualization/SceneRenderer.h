@@ -38,8 +38,6 @@ namespace brr::vis
 
         void Render3D(const render::DevicePipeline& render_pipeline);
 
-        struct MeshDirty {};
-
     private:
 
         struct UniformBufferObject
@@ -99,6 +97,7 @@ namespace brr::vis
         } m_camera_uniform_info;
 
         ContiguousPool<RenderData> m_render_data;
+        entt::basic_storage<uint32_t, RenderData> m_entt_render_data;
     };
 
 }

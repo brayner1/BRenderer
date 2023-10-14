@@ -14,10 +14,6 @@ namespace brr::vis
 		assert(m_render_device && "Can't create SceneRenderer without VulkanRenderDevice.");
 		BRR_LogInfo("Creating SceneRenderer");
 
-		auto dirty_meshes_group = m_scene->m_registry_.group<Mesh3DComponent, MeshDirty>();
-
-		auto mesh_view = m_scene->m_registry_.view<Mesh3DComponent>();
-
 		SetupCameraUniforms();
     }
 
@@ -36,7 +32,6 @@ namespace brr::vis
         const ContiguousPool<RenderData>::ObjectId render_data_id = m_render_data.AddNewObject({&owner_node});
 
 		SurfaceId surface_id = static_cast<SurfaceId>(render_data_id);
-		surface.SetRenderSurfaceID(static_cast<uint64_t>(surface_id));
 		BRR_LogInfo("Adding new RenderData for Surface with ID: {}", static_cast<uint64_t>(surface_id));
 		
 		RenderData& render_data = m_render_data.Get(render_data_id);
@@ -71,46 +66,6 @@ namespace brr::vis
     void SceneRenderer::UpdateDirtyInstances()
     {
 		assert(m_render_device && "VulkanRenderDevice must be initialized on construction.");
-
-		bool updated_render_data = false;
-
-		auto dirty_meshes_group = m_scene->m_registry_.group<Mesh3DComponent, MeshDirty>();
-		dirty_meshes_group.each([&](auto entity, Mesh3DComponent& mesh_component)
-		{
-			BRR_LogInfo("Updating Dirty Mesh Component of entity {}", (uint64_t)entity);
-			for (const uint32_t& index : mesh_component.m_dirty_surfaces)
-			{
-				Mesh3DComponent::SurfaceData& surface = mesh_component.m_surfaces[index];
-			    if (surface.isDirty())
-			    {
-					const SurfaceId surface_id = static_cast<SurfaceId>(surface.GetRenderSurfaceID());
-                    const ContiguousPool<RenderData>::ObjectId object_id = static_cast<ContiguousPool<RenderData>::ObjectId>(surface_id);
-					if (surface_id == SurfaceId::NULL_ID || !m_render_data.Contains(object_id))
-					{
-						Entity owner_entity{ entity, m_scene };
-						CreateNewSurface(surface, owner_entity);
-					}
-					else
-					{
-						if (!updated_render_data)
-						{
-							m_render_device->GetGraphicsQueue().waitIdle();
-						}
-					    auto& vertices = const_cast<std::vector<Vertex3_PosColor>&> (surface.GetVertices());
-                        auto& indices = const_cast<std::vector<uint32_t>&> (surface.GetIndices());
-
-						RenderData& render_data = m_render_data.Get(object_id);
-
-						m_render_device->UpdateVertexBufferData(render_data.m_vertex_buffer_handle, vertices.data(), vertices.size() * sizeof(Vertex3_PosColor), 0);
-						m_render_device->UpdateIndexBufferData(render_data.m_index_buffer_handle, indices.data(), indices.size() * sizeof(uint32_t), 0);
-					}
-					surface.SetIsDirty(false);
-			    }
-			}
-			mesh_component.m_dirty_surfaces.clear();
-		});
-
-		m_scene->m_registry_.clear<MeshDirty>();
 
 		for (RenderData& render_data : m_render_data)
 		{

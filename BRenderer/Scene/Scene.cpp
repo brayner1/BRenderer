@@ -10,19 +10,19 @@ namespace brr
 	Scene::Scene()
 	{}
 
-	Scene::Scene(PerspectiveCamera* camera) : m_camera_(camera)
+	Scene::Scene(PerspectiveCamera* camera) : m_camera(camera)
 	{
 	}
 
 	Scene::~Scene()
 	{
-		m_registry_.clear();
+		m_registry.clear();
 	}
 
 	Entity Scene::Add3DEntity(Entity parent)
 	{
 		BRR_LogInfo("Adding new 3D Entity");
-		entt::entity new_entity = m_registry_.create();
+		entt::entity new_entity = m_registry.create();
 
 		Entity new_entity_struct(new_entity, this);
 
@@ -32,7 +32,7 @@ namespace brr
 
 		if (parent)
 		{
-			assert(m_registry_.valid(parent.entity_) && "Parent Entity must be valid.");
+			assert(m_registry.valid(parent.m_entity) && "Parent Entity must be valid.");
 			transform.SetParent(&parent.GetComponent<Transform3DComponent>());
 		}
 

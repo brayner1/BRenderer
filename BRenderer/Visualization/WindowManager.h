@@ -19,19 +19,19 @@ namespace brr::vis
 		// Process a window event
 		void ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent);
 
-		[[nodiscard]] bool IsMainWindowClosed() const { return m_pMainWindowClosed; }
+		[[nodiscard]] bool IsMainWindowClosed() const { return m_main_window_closed; }
 
-		WindowId GetMainWindowID() const { return m_pMainWindowID; }
-		Window* GetMainWindow() const { return m_pMainWindow.get(); }
+		WindowId GetMainWindowID() const { return m_main_window_ID; }
+		Window* GetMainWindow() const { return m_main_window.get(); }
 
 	private:
-		WindowId m_pMainWindowID = 0;
-		std::unique_ptr<Window> m_pMainWindow{};
-		bool m_pMainWindowClosed = true;
+		WindowId m_main_window_ID = 0;
+		std::unique_ptr<Window> m_main_window{};
+		bool m_main_window_closed = true;
 
 		//TODO: Here for posterior support for multiple windows
-		std::unordered_map<WindowId, uint32_t> m_pSecondaryWindows_Id_Index_Map{};
-		std::vector<std::unique_ptr<Window>> m_pSecondaryWindows{};
+		std::unordered_map<WindowId, uint32_t> m_secondaryWindowsID_index_map{};
+		std::vector<std::unique_ptr<Window>> m_secondary_windows{};
 	};
 }
 

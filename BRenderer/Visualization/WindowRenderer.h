@@ -42,8 +42,6 @@ namespace brr{
 
 			[[nodiscard]] const render::DevicePipeline* GetGraphicsPipeline() const { return m_graphics_pipeline.get(); }
 
-			void Reset();
-
 		private:
 			friend class WindowManager;
 
@@ -59,23 +57,20 @@ namespace brr{
 
 			void Recreate_Swapchain();
 
-			struct UniformBufferObject
-			{
-				glm::mat4 projection_view{ 1.f };
-			};
+			void Destroy();
 
 			// Window
-			Window* m_pOwnerWindow{};
+			Window* m_owner_window{};
 
 			// Descriptor Sets
-			vk::DescriptorSetLayout m_pDescriptorSetLayout {};
+			vk::DescriptorSetLayout m_descriptor_set_layout {};
 
 			// DevicePipeline
 
 			std::unique_ptr<render::DevicePipeline> m_graphics_pipeline {};
 
 			// Swapchain
-			std::unique_ptr<render::Swapchain> swapchain_{};
+			std::unique_ptr<render::Swapchain> m_swapchain{};
 			size_t m_frame_count = 0;
 
             vk::Semaphore m_current_image_available_semaphore {};

@@ -128,23 +128,23 @@ namespace brr::render
 		return createShaderModuleResult.value;
 	}
 
-	std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_ {};
+	std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_instance {};
 
 	void VulkanRenderDevice::CreateRenderDevice(vis::Window* window)
 	{
-		assert(!device_ && "VulkanRenderDevice is already created. You can only create one.");
-		device_.reset(new VulkanRenderDevice(window));
+		assert(!device_instance && "VulkanRenderDevice is already created. You can only create one.");
+		device_instance.reset(new VulkanRenderDevice(window));
 	}
 
     void VulkanRenderDevice::DestroyRenderDevice()
     {
-		device_.reset();
+		device_instance.reset();
     }
 
     VulkanRenderDevice* VulkanRenderDevice::GetSingleton()
 	{
-		assert(device_ && "Can't get non-initialized VulkanRenderDevice. Run `VKRD::CreateRenderDevice(Window* window)` before this function.");
-	    return device_.get();
+		assert(device_instance && "Can't get non-initialized VulkanRenderDevice. Run `VKRD::CreateRenderDevice(Window* window)` before this function.");
+	    return device_instance.get();
 	}
 
     VulkanRenderDevice::~VulkanRenderDevice()
@@ -169,27 +169,27 @@ namespace brr::render
 		vmaDestroyAllocator(m_vma_allocator);
 		BRR_LogTrace("Destroyed VMA allocator.");
 
-		m_pDescriptorLayoutCache.reset();
+		m_descriptor_layout_cache.reset();
 		BRR_LogTrace("Destroyed descriptor layout cache.");
-        m_pDescriptorAllocator.reset();
+        m_descriptor_allocator.reset();
         BRR_LogTrace("Destroyed descriptor allocator.");
 
-        if (graphics_command_pool_)
+        if (m_graphics_command_pool)
 		{
-			m_device.destroyCommandPool(graphics_command_pool_);
-			graphics_command_pool_ = VK_NULL_HANDLE;
+			m_device.destroyCommandPool(m_graphics_command_pool);
+			m_graphics_command_pool = VK_NULL_HANDLE;
 			BRR_LogTrace("Destroyed graphics command pool.");
 		}
-		if (present_command_pool_)
+		if (m_present_command_pool)
 		{
-			m_device.destroyCommandPool(present_command_pool_);
-			present_command_pool_ = VK_NULL_HANDLE;
+			m_device.destroyCommandPool(m_present_command_pool);
+			m_present_command_pool = VK_NULL_HANDLE;
 			BRR_LogTrace("Destroyed present command pool.");
 		}
-		if (transfer_command_pool_)
+		if (m_transfer_command_pool)
 		{
-			m_device.destroyCommandPool(transfer_command_pool_);
-			transfer_command_pool_ = VK_NULL_HANDLE;
+			m_device.destroyCommandPool(m_transfer_command_pool);
+			m_transfer_command_pool = VK_NULL_HANDLE;
 			BRR_LogTrace("Destroyed transfer command pool.");
 		}
 
@@ -201,28 +201,21 @@ namespace brr::render
 
     uint32_t VulkanRenderDevice::BeginFrame()
     {
-		vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
-
 		Frame& current_frame = m_frames[m_current_buffer];
 
 		Free_FramePendingResources(current_frame);
 
-		const vk::Result transf_reset_result = current_frame.graphics_cmd_buffer.reset();
-		if (transf_reset_result != vk::Result::eSuccess)
+		if (!current_frame.graphics_cmd_buffer_begin)
 		{
-			BRR_LogError("Could not reset current transfer command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(transf_reset_result).c_str());
-			exit(1);
+		    vk::Result graph_begin_result = BeginGraphicsCommandBuffer(current_frame.graphics_cmd_buffer);
+			current_frame.graphics_cmd_buffer_begin = true;
 		}
 
-		const vk::Result graph_reset_result = current_frame.transfer_cmd_buffer.reset();
-		if (graph_reset_result != vk::Result::eSuccess)
+		if (!current_frame.transfer_cmd_buffer_begin)
 		{
-			BRR_LogError("Could not reset current graphics command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(graph_reset_result).c_str());
-			exit(1);
+		    vk::Result transf_begin_result = BeginTransferCommandBuffer(current_frame.transfer_cmd_buffer);
+			current_frame.transfer_cmd_buffer_begin = true;
 		}
-
-		current_frame.graphics_cmd_buffer.begin(cmd_buffer_begin_info);
-		current_frame.transfer_cmd_buffer.begin(cmd_buffer_begin_info);
 
 		BRR_LogTrace("Begin frame {}", m_current_frame);
 
@@ -236,8 +229,11 @@ namespace brr::render
 		current_frame.graphics_cmd_buffer.end();
 		current_frame.transfer_cmd_buffer.end();
 
+		current_frame.graphics_cmd_buffer_begin = false;
+		current_frame.transfer_cmd_buffer_begin = false;
+
 		vk::Result transfer_result = SubmitTransferCommandBuffers(1, &current_frame.transfer_cmd_buffer, 0, nullptr, nullptr, 1, &current_frame.transfer_finished_semaphore, nullptr);
-	BRR_LogTrace("Transfer command buffer submitted. Buffer: {:#x}. Frame {}. Buffer Index: {}", size_t(VkCommandBuffer((current_frame.transfer_cmd_buffer))), m_current_frame, m_current_buffer);
+	    BRR_LogTrace("Transfer command buffer submitted. Buffer: {:#x}. Frame {}. Buffer Index: {}", size_t(VkCommandBuffer((current_frame.transfer_cmd_buffer))), m_current_frame, m_current_buffer);
 
 		std::array<vk::Semaphore, 2> wait_semaphores { wait_semaphore, current_frame.transfer_finished_semaphore };
 		std::array<vk::PipelineStageFlags, 2> wait_stages { vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eVertexInput };
@@ -257,7 +253,7 @@ namespace brr::render
 	{
 		BRR_LogInfo("Constructing VulkanRenderDevice");
 		Init_VkInstance(main_window);
-		vk::SurfaceKHR surface = main_window->GetVulkanSurface(vulkan_instance_);
+		vk::SurfaceKHR surface = main_window->GetVulkanSurface(m_vulkan_instance);
 		Init_PhysDevice(surface);
 		Init_Queues_Indices(surface);
 		Init_Device();
@@ -267,8 +263,8 @@ namespace brr::render
 
 		m_staging_allocator.Init(this);
 
-		m_pDescriptorLayoutCache.reset(new DescriptorLayoutCache(m_device));
-		m_pDescriptorAllocator.reset(new DescriptorAllocator(m_device));
+		m_descriptor_layout_cache.reset(new DescriptorLayoutCache(m_device));
+		m_descriptor_allocator.reset(new DescriptorAllocator(m_device));
 
 		BRR_LogInfo("VulkanRenderDevice {:#x} constructed", (size_t)this);
 	}
@@ -380,92 +376,15 @@ namespace brr::render
 		return current_frame.transfer_cmd_buffer;
     }
 
-    vk::Result VulkanRenderDevice::SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
-                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
-                                                                vk::PipelineStageFlags* wait_dst_stages,
-                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
-                                                                vk::Fence submit_fence)
-    {
-		vk::SubmitInfo submit_info{};
-		submit_info
-			.setPCommandBuffers(cmd_buffers)
-			.setCommandBufferCount(cmd_buffer_count)
-			.setPWaitSemaphores(wait_semaphores)
-		    .setWaitSemaphoreCount(wait_semaphore_count)
-			.setPWaitDstStageMask(wait_dst_stages)
-			.setPSignalSemaphores(signal_semaphores)
-	        .setSignalSemaphoreCount(signal_semaphore_count);
-
-		/*vk::CommandBufferSubmitInfo cmd_buffer_submit_info {cmd_buffer};
-
-		vk::SemaphoreSubmitInfo image_available_semaphore_info {};
-		image_available_semaphore_info
-			.setDeviceIndex(0)
-			.setSemaphore(m_current_image_available_semaphore)
-			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
-
-		vk::SemaphoreSubmitInfo render_finished_semaphore_info {};
-		render_finished_semaphore_info
-			.setDeviceIndex(0)
-			.setSemaphore(current_render_finished_semaphore)
-			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
-
-		vk::SubmitInfo2 submit_info2 {};
-		submit_info2
-			.setCommandBufferInfos(cmd_buffer_submit_info)
-			.setWaitSemaphoreInfos(image_available_semaphore_info)
-			.setSignalSemaphoreInfos(render_finished_semaphore_info);*/
-
-		return GetGraphicsQueue().submit(submit_info, submit_fence);
-    }
-
-    vk::Result VulkanRenderDevice::SubmitPresentCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
-                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
-		                                                       vk::PipelineStageFlags* wait_dst_stages,
-                                                               uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
-                                                               vk::Fence submit_fence)
-    {
-		//TODO
-		return vk::Result::eErrorUnknown;
-    }
-
-    vk::Result VulkanRenderDevice::SubmitTransferCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
-                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
-		                                                        vk::PipelineStageFlags* wait_dst_stages,
-                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
-                                                                vk::Fence submit_fence)
-    {
-		vk::SubmitInfo submit_info{};
-		submit_info
-			.setPCommandBuffers(cmd_buffers)
-			.setCommandBufferCount(cmd_buffer_count)
-			.setPWaitSemaphores(wait_semaphores)
-			.setWaitSemaphoreCount(wait_semaphore_count)
-			.setPWaitDstStageMask(wait_dst_stages)
-			.setPSignalSemaphores(signal_semaphores)
-			.setSignalSemaphoreCount(signal_semaphore_count);
-
-		return GetTransferQueue().submit(submit_info, submit_fence);
-    }
-
-    void VulkanRenderDevice::Free_FramePendingResources(Frame& frame)
-    {
-		for (auto& buffer_alloc_pair : frame.buffer_delete_list)
-		{
-		    vmaDestroyBuffer(m_vma_allocator, buffer_alloc_pair.first, buffer_alloc_pair.second);
-		}
-		frame.buffer_delete_list.clear();
-    }
-
     DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
     {
-		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_pDescriptorLayoutCache.get());
+		return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_descriptor_layout_cache.get());
     }
 
     DescriptorSetBuilder<FRAME_LAG> VulkanRenderDevice::GetDescriptorSetBuilder(
         const DescriptorLayout& layout) const
     {
-		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_pDescriptorAllocator.get());
+		return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_descriptor_allocator.get());
     }
 
     BufferHandle VulkanRenderDevice::CreateBuffer(size_t buffer_size, BufferUsage buffer_usage,
@@ -678,7 +597,7 @@ namespace brr::render
 		Buffer* src_buffer = m_buffer_alloc.GetResource(src_buffer_handle);
 		Buffer* dst_buffer = m_buffer_alloc.GetResource(dst_buffer_handle);
 
-		const vk::CommandPool transfer_cmd_pool = (IsDifferentTransferQueue()) ? transfer_command_pool_ : graphics_command_pool_;
+		const vk::CommandPool transfer_cmd_pool = (IsDifferentTransferQueue()) ? m_transfer_command_pool : m_graphics_command_pool;
 
 		vk::CommandBufferAllocateInfo cmd_buffer_alloc_info{};
 		cmd_buffer_alloc_info
@@ -1086,10 +1005,10 @@ namespace brr::render
 			 BRR_LogError("Could not create Vulkan Instance! Result code: {}.", vk::to_string(createInstanceResult.result).c_str());
 			 exit(1);
 		 }
-		 vulkan_instance_ = createInstanceResult.value;
+		 m_vulkan_instance = createInstanceResult.value;
 
 	    {
-	        VULKAN_HPP_DEFAULT_DISPATCHER.init(vulkan_instance_);
+	        VULKAN_HPP_DEFAULT_DISPATCHER.init(m_vulkan_instance);
 			BRR_LogInfo("Loaded instance specific vulkan functions addresses.");
 	    }
 
@@ -1098,7 +1017,7 @@ namespace brr::render
 
 	void VulkanRenderDevice::Init_PhysDevice(vk::SurfaceKHR surface)
 	{
-		auto enumPhysDevicesResult = vulkan_instance_.enumeratePhysicalDevices();
+		auto enumPhysDevicesResult = m_vulkan_instance.enumeratePhysicalDevices();
 		std::vector<vk::PhysicalDevice> devices = enumPhysDevicesResult.value;
 
 		if (devices.size() == 0)
@@ -1116,10 +1035,10 @@ namespace brr::render
 		    }
 	    }
 
-		phys_device_ = VkHelpers::Select_PhysDevice(devices, surface);
-		std::string device_name = phys_device_.getProperties().deviceName;
+		m_phys_device = VkHelpers::Select_PhysDevice(devices, surface);
+		std::string device_name = m_phys_device.getProperties().deviceName;
 
-		auto device_extensions = phys_device_.enumerateDeviceExtensionProperties();
+		auto device_extensions = m_phys_device.enumerateDeviceExtensionProperties();
 		if (device_extensions.result == vk::Result::eSuccess)
 		{
 			LogStreamBuffer log_msg = BRR_DebugStrBuff();
@@ -1130,23 +1049,23 @@ namespace brr::render
 		    }
 		}
 
-		m_device_properties = phys_device_.getProperties2();
+		m_device_properties = m_phys_device.getProperties2();
 
-		BRR_LogInfo("Selected physical device: {}", phys_device_.getProperties().deviceName);
+		BRR_LogInfo("Selected physical device: {}", m_phys_device.getProperties().deviceName);
 	}
 
 	void VulkanRenderDevice::Init_Queues_Indices(vk::SurfaceKHR surface)
 	{
 		// Check for queue families
-		queue_family_indices_ = VkHelpers::Find_QueueFamilies(phys_device_, surface);
+		m_queue_family_indices = VkHelpers::Find_QueueFamilies(m_phys_device, surface);
 
-		if (!queue_family_indices_.m_graphicsFamily.has_value())
+		if (!m_queue_family_indices.m_graphicsFamily.has_value())
 		{
 			BRR_LogError("Failed to find graphics family queue. Exitting program.");
 			exit(1);
 		}
 
-		if (!queue_family_indices_.m_presentFamily.has_value())
+		if (!m_queue_family_indices.m_presentFamily.has_value())
 		{
 			BRR_LogError("Failed to find presentation family queue. Exitting program.");
 			exit(1);
@@ -1155,15 +1074,15 @@ namespace brr::render
 
 	void VulkanRenderDevice::Init_Device()
 	{
-		if (!queue_family_indices_.m_graphicsFamily.has_value())
+		if (!m_queue_family_indices.m_graphicsFamily.has_value())
 		{
 			BRR_LogError("Cannot create device without initializing at least the graphics queue.");
 			exit(1);
 		}
 
-		const uint32_t graphics_family_idx = queue_family_indices_.m_graphicsFamily.value();
-		const uint32_t presentation_family_idx = queue_family_indices_.m_presentFamily.value();
-		const uint32_t transfer_family_idx = queue_family_indices_.m_transferFamily.has_value() ? queue_family_indices_.m_transferFamily.value() : graphics_family_idx;
+		const uint32_t graphics_family_idx = m_queue_family_indices.m_graphicsFamily.value();
+		const uint32_t presentation_family_idx = m_queue_family_indices.m_presentFamily.value();
+		const uint32_t transfer_family_idx = m_queue_family_indices.m_transferFamily.has_value() ? m_queue_family_indices.m_transferFamily.value() : graphics_family_idx;
 
         BRR_LogDebug("Selected Queue Families:\n"
                      "\tGraphics Queue Family:\t {}\n"
@@ -1180,16 +1099,16 @@ namespace brr::render
 			.setQueueFamilyIndex(graphics_family_idx)
 			.setQueuePriorities(priorities));
 
-		different_present_queue_ = graphics_family_idx != presentation_family_idx;
-		if (different_present_queue_)
+		m_different_present_queue = graphics_family_idx != presentation_family_idx;
+		if (m_different_present_queue)
 		{
 			queues.push_back(vk::DeviceQueueCreateInfo{}
 				.setQueueFamilyIndex(presentation_family_idx)
 				.setQueuePriorities(priorities));
 		}
 
-		different_transfer_queue_ = graphics_family_idx != transfer_family_idx;
-		if (different_transfer_queue_)
+		m_different_transfer_queue = graphics_family_idx != transfer_family_idx;
+		if (m_different_transfer_queue)
 		{
 			queues.push_back(vk::DeviceQueueCreateInfo{}
 				.setQueueFamilyIndex(transfer_family_idx)
@@ -1213,7 +1132,7 @@ namespace brr::render
 			.setEnabledLayerCount(0)
 			.setPEnabledExtensionNames(device_extensions);
 
-        auto createDeviceResult = phys_device_.createDevice(device_create_info);
+        auto createDeviceResult = m_phys_device.createDevice(device_create_info);
         if (createDeviceResult.result != vk::Result::eSuccess)
         {
             BRR_LogError("Could not create Vulkan Device! Result code: {}.", vk::to_string(createDeviceResult.result).c_str());
@@ -1225,11 +1144,11 @@ namespace brr::render
 			BRR_LogDebug("Loaded Device specific Vulkan functions addresses.");
 	    }
 
-		graphics_queue_ = m_device.getQueue(graphics_family_idx, 0);
+		m_graphics_queue = m_device.getQueue(graphics_family_idx, 0);
 
-		presentation_queue_ = (different_present_queue_) ? m_device.getQueue(presentation_family_idx, 0) : graphics_queue_;
+		m_presentation_queue = (m_different_present_queue) ? m_device.getQueue(presentation_family_idx, 0) : m_graphics_queue;
 
-		transfer_queue_ = (different_transfer_queue_) ? m_device.getQueue(transfer_family_idx, 0) : graphics_queue_;
+		m_transfer_queue = (m_different_transfer_queue) ? m_device.getQueue(transfer_family_idx, 0) : m_graphics_queue;
 
 		BRR_LogDebug("VkDevice Created");
 	}
@@ -1269,8 +1188,8 @@ namespace brr::render
 
 		VmaAllocatorCreateInfo vma_alloc_create_info {};
 		vma_alloc_create_info.device = m_device;
-		vma_alloc_create_info.instance = vulkan_instance_;
-		vma_alloc_create_info.physicalDevice = phys_device_;
+		vma_alloc_create_info.instance = m_vulkan_instance;
+		vma_alloc_create_info.physicalDevice = m_phys_device;
 		vma_alloc_create_info.vulkanApiVersion = VK_API_VERSION_1_3;
 		vma_alloc_create_info.pVulkanFunctions = &vulkan_functions;
 
@@ -1284,7 +1203,7 @@ namespace brr::render
 		vk::CommandPoolCreateInfo command_pool_info{};
 		command_pool_info
 			.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-			.setQueueFamilyIndex(queue_family_indices_.m_graphicsFamily.value());
+			.setQueueFamilyIndex(m_queue_family_indices.m_graphicsFamily.value());
 
 		 auto createCmdPoolResult = m_device.createCommandPool(command_pool_info);
 		 if (createCmdPoolResult.result != vk::Result::eSuccess)
@@ -1292,16 +1211,16 @@ namespace brr::render
 			 BRR_LogError("Could not create CommandPool! Result code: {}.", vk::to_string(createCmdPoolResult.result).c_str());
 			 exit(1);
 		 }
-		 graphics_command_pool_ = createCmdPoolResult.value;
+		 m_graphics_command_pool = createCmdPoolResult.value;
 
 		 BRR_LogInfo("CommandPool created.");
 
-		if (different_present_queue_)
+		if (m_different_present_queue)
 		{
 			vk::CommandPoolCreateInfo present_pool_info{};
 			present_pool_info
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-				.setQueueFamilyIndex(queue_family_indices_.m_presentFamily.value());
+				.setQueueFamilyIndex(m_queue_family_indices.m_presentFamily.value());
 
 			 auto createPresentCmdPoolResult = m_device.createCommandPool(present_pool_info);
 			 if (createPresentCmdPoolResult.result != vk::Result::eSuccess)
@@ -1309,17 +1228,17 @@ namespace brr::render
 				 BRR_LogError("Could not create present CommandPool! Result code: {}.", vk::to_string(createPresentCmdPoolResult.result).c_str());
 				 exit(1);
 			 }
-			 present_command_pool_ = createPresentCmdPoolResult.value;
+			 m_present_command_pool = createPresentCmdPoolResult.value;
 
 			 BRR_LogInfo("Separate Present CommandPool created.");
 		}
 
-		if (different_transfer_queue_)
+		if (m_different_transfer_queue)
 		{
 			vk::CommandPoolCreateInfo transfer_pool_info{};
 			transfer_pool_info
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
-				.setQueueFamilyIndex(queue_family_indices_.m_transferFamily.value());
+				.setQueueFamilyIndex(m_queue_family_indices.m_transferFamily.value());
 
 			 auto createTransferCommandPoolResult = m_device.createCommandPool(transfer_pool_info);
 			 if (createTransferCommandPoolResult.result != vk::Result::eSuccess)
@@ -1327,7 +1246,7 @@ namespace brr::render
 				 BRR_LogError("Could not create transfer CommandPool! Result code: {}.", vk::to_string(createTransferCommandPoolResult.result).c_str());
 				 exit(1);
 			 }
-			 transfer_command_pool_ = createTransferCommandPoolResult.value;
+			 m_transfer_command_pool = createTransferCommandPoolResult.value;
 
 			 BRR_LogInfo("Separate Transfer CommandPool created.");
 		}
@@ -1338,8 +1257,8 @@ namespace brr::render
 		std::array<vk::CommandBuffer, FRAME_LAG> graphics_cmd_buffers;
 		std::array<vk::CommandBuffer, FRAME_LAG> transfer_cmd_buffers;
 
-		allocateCommandBuffer(m_device, graphics_command_pool_, vk::CommandBufferLevel::ePrimary, FRAME_LAG, graphics_cmd_buffers.data());
-		allocateCommandBuffer(m_device, transfer_command_pool_, vk::CommandBufferLevel::ePrimary, FRAME_LAG, transfer_cmd_buffers.data());
+		allocateCommandBuffer(m_device, m_graphics_command_pool, vk::CommandBufferLevel::ePrimary, FRAME_LAG, graphics_cmd_buffers.data());
+		allocateCommandBuffer(m_device, m_transfer_command_pool, vk::CommandBufferLevel::ePrimary, FRAME_LAG, transfer_cmd_buffers.data());
 
 		for (size_t idx = 0; idx < FRAME_LAG; ++idx)
 		{
@@ -1368,5 +1287,108 @@ namespace brr::render
 		        m_frames[idx].transfer_finished_semaphore = createTransferFinishedSempahoreResult.value;
 		    }
 		}
+    }
+
+    vk::Result VulkanRenderDevice::BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
+    {
+		const vk::Result graph_reset_result = graphics_cmd_buffer.reset();
+		if (graph_reset_result != vk::Result::eSuccess)
+		{
+			BRR_LogError("Could not reset current graphics command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(graph_reset_result).c_str());
+			return graph_reset_result;
+		}
+
+        const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
+		return graphics_cmd_buffer.begin(cmd_buffer_begin_info);
+    }
+
+    vk::Result VulkanRenderDevice::BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer)
+    {
+		const vk::Result transf_reset_result = transfer_cmd_buffer.reset();
+		if (transf_reset_result != vk::Result::eSuccess)
+		{
+			BRR_LogError("Could not reset current transfer command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(transf_reset_result).c_str());
+			return transf_reset_result;
+		}
+
+		const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
+		return transfer_cmd_buffer.begin(cmd_buffer_begin_info);
+    }
+
+	vk::Result VulkanRenderDevice::SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+                                                                vk::PipelineStageFlags* wait_dst_stages,
+                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                                vk::Fence submit_fence)
+    {
+		vk::SubmitInfo submit_info{};
+		submit_info
+			.setPCommandBuffers(cmd_buffers)
+			.setCommandBufferCount(cmd_buffer_count)
+			.setPWaitSemaphores(wait_semaphores)
+		    .setWaitSemaphoreCount(wait_semaphore_count)
+			.setPWaitDstStageMask(wait_dst_stages)
+			.setPSignalSemaphores(signal_semaphores)
+	        .setSignalSemaphoreCount(signal_semaphore_count);
+
+		/*vk::CommandBufferSubmitInfo cmd_buffer_submit_info {cmd_buffer};
+
+		vk::SemaphoreSubmitInfo image_available_semaphore_info {};
+		image_available_semaphore_info
+			.setDeviceIndex(0)
+			.setSemaphore(m_current_image_available_semaphore)
+			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		vk::SemaphoreSubmitInfo render_finished_semaphore_info {};
+		render_finished_semaphore_info
+			.setDeviceIndex(0)
+			.setSemaphore(current_render_finished_semaphore)
+			.setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+		vk::SubmitInfo2 submit_info2 {};
+		submit_info2
+			.setCommandBufferInfos(cmd_buffer_submit_info)
+			.setWaitSemaphoreInfos(image_available_semaphore_info)
+			.setSignalSemaphoreInfos(render_finished_semaphore_info);*/
+
+		return GetGraphicsQueue().submit(submit_info, submit_fence);
+    }
+
+    vk::Result VulkanRenderDevice::SubmitPresentCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+		                                                       vk::PipelineStageFlags* wait_dst_stages,
+                                                               uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                               vk::Fence submit_fence)
+    {
+		//TODO
+		return vk::Result::eErrorUnknown;
+    }
+
+    vk::Result VulkanRenderDevice::SubmitTransferCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+		                                                        vk::PipelineStageFlags* wait_dst_stages,
+                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                                vk::Fence submit_fence)
+    {
+		vk::SubmitInfo submit_info{};
+		submit_info
+			.setPCommandBuffers(cmd_buffers)
+			.setCommandBufferCount(cmd_buffer_count)
+			.setPWaitSemaphores(wait_semaphores)
+			.setWaitSemaphoreCount(wait_semaphore_count)
+			.setPWaitDstStageMask(wait_dst_stages)
+			.setPSignalSemaphores(signal_semaphores)
+			.setSignalSemaphoreCount(signal_semaphore_count);
+
+		return GetTransferQueue().submit(submit_info, submit_fence);
+    }
+
+    void VulkanRenderDevice::Free_FramePendingResources(Frame& frame)
+    {
+		for (auto& buffer_alloc_pair : frame.buffer_delete_list)
+		{
+		    vmaDestroyBuffer(m_vma_allocator, buffer_alloc_pair.first, buffer_alloc_pair.second);
+		}
+		frame.buffer_delete_list.clear();
     }
 }

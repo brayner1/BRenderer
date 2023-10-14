@@ -17,11 +17,13 @@ namespace brr::vis
 	};
 
     WindowRenderer::WindowRenderer(Window* window)
-    : m_pOwnerWindow(window),
+    : m_owner_window(window),
       m_render_device(render::VKRD::GetSingleton())
     {
-		swapchain_ = std::make_unique<render::Swapchain>(m_pOwnerWindow);
-		m_scene_renderer = std::make_unique<SceneRenderer>(m_pOwnerWindow->GetScene());
+		m_swapchain = std::make_unique<render::Swapchain>(m_owner_window);
+		m_scene_renderer = std::make_unique<SceneRenderer>(m_owner_window->GetScene());
+
+		m_owner_window->GetScene()->SetSceneRenderer(m_scene_renderer.get());
 
 		// Create DescriptorPool and the DescriptorSets
 		Init_DescriptorLayouts();
@@ -33,7 +35,7 @@ namespace brr::vis
 	{
 		if (m_render_device)
 			m_render_device->WaitIdle();
-		Reset();
+		Destroy();
 	}
 
 	void WindowRenderer::Window_Resized()
@@ -48,26 +50,28 @@ namespace brr::vis
 			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
         render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
-		m_pDescriptorSetLayout = descriptor_layout.m_descriptor_set_layout;
+		m_descriptor_set_layout = descriptor_layout.m_descriptor_set_layout;
 	}
 
 	void WindowRenderer::Init_GraphicsPipeline()
 	{
         render::Shader shader = m_render_device->CreateShaderFromFiles("vert", "frag");
 
-		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector{2, m_pDescriptorSetLayout}, shader,
-                                                                       swapchain_.get());
+		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector{2, m_descriptor_set_layout}, shader,
+                                                                       m_swapchain.get());
 	}
 
     void WindowRenderer::BeginRenderPass(vk::CommandBuffer cmd_buffer) const
     {
         vk::ClearValue clear_value(std::array<float, 4>({ {0.2f, 0.2f, 0.2f, 1.f} }));
 
+		glm::uvec2 extent = m_swapchain->GetSwapchainExtent();
+
         vk::RenderPassBeginInfo render_pass_begin_info{};
         render_pass_begin_info
-            .setRenderPass(swapchain_->GetRender_Pass())
-            .setFramebuffer(swapchain_->GetFramebuffer(swapchain_->GetCurrentImageIndex()))
-            .setRenderArea(vk::Rect2D{ {0, 0}, swapchain_->GetSwapchain_Extent() })
+            .setRenderPass(m_swapchain->GetRenderPass())
+            .setFramebuffer(m_swapchain->GetFramebuffer(m_swapchain->GetCurrentImageIndex()))
+            .setRenderArea(vk::Rect2D{ {0, 0},  {extent.x, extent.y}})
             .setClearValues(clear_value);
 
         cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
@@ -91,11 +95,11 @@ namespace brr::vis
 
     void WindowRenderer::BeginRenderWindow()
 	{
-		vk::Result result = swapchain_->AcquireNextImage(m_current_image_available_semaphore);
+		vk::Result result = m_swapchain->AcquireNextImage(m_current_image_available_semaphore);
 
 		if (result == vk::Result::eErrorOutOfDateKHR)
 		{
-			swapchain_->Recreate_Swapchain();
+			m_swapchain->Recreate_Swapchain();
 			return;
 		}
 		else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
@@ -105,7 +109,7 @@ namespace brr::vis
 
 		m_frame_count = m_render_device->BeginFrame();
 
-		uint32_t current_buffer_index = swapchain_->GetCurrentBufferIndex();
+		uint32_t current_buffer_index = m_swapchain->GetCurrentBufferIndex();
 
 		m_scene_renderer->BeginRender(current_buffer_index, m_frame_count);
 
@@ -118,25 +122,25 @@ namespace brr::vis
 
     void WindowRenderer::EndRenderWindow()
     {
-		vk::Fence in_flight_fence = swapchain_->GetCurrentInFlightFence();
+		vk::Fence in_flight_fence = m_swapchain->GetCurrentInFlightFence();
 
 		vk::Semaphore render_finished_semaphore = m_render_device->EndFrame(m_current_image_available_semaphore, in_flight_fence);
 
-		swapchain_->PresentCurrentImage(render_finished_semaphore);
+		m_swapchain->PresentCurrentImage(render_finished_semaphore);
     }
 
 	void WindowRenderer::Recreate_Swapchain()
 	{
 		m_render_device->WaitIdle();
 
-		swapchain_->Recreate_Swapchain();
+		m_swapchain->Recreate_Swapchain();
 	}
 
-	void WindowRenderer::Reset()
-	{
+    void WindowRenderer::Destroy()
+    {
 		// Destroy Windows Swapchain and its Resources
 		{
-		    swapchain_ = nullptr;
+		    m_swapchain = nullptr;
 		    m_scene_renderer.reset();
 		}
 
@@ -145,5 +149,5 @@ namespace brr::vis
 		m_render_device = nullptr;
 
 		BRR_LogInfo("WindowRenderer Destroyed");
-	}
+    }
 }

@@ -21,16 +21,21 @@ namespace brr
 
 		Entity Add3DEntity(Entity parent);
 
-		PerspectiveCamera* GetMainCamera() const { return m_camera_.get(); }
+		PerspectiveCamera* GetMainCamera() const { return m_camera.get(); }
+
+
+		void SetSceneRenderer(vis::SceneRenderer* scene_renderer) { m_scene_renderer = scene_renderer; }
+		vis::SceneRenderer* GetSceneRenderer() const { return m_scene_renderer; }
 
 	private:
 		
 		friend class Entity;
 		friend class vis::SceneRenderer;
 
-		entt::registry m_registry_ {};
+		entt::registry m_registry {};
 
-		std::unique_ptr<PerspectiveCamera> m_camera_ {};
+		vis::SceneRenderer* m_scene_renderer = nullptr;
+		std::unique_ptr<PerspectiveCamera> m_camera {};
 	};
 }
 
