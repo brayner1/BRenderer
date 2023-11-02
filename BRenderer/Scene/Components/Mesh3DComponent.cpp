@@ -4,19 +4,22 @@
 
 namespace brr
 {
-    Mesh3DComponent::SurfaceData::SurfaceData()
-    {}
-
-    Mesh3DComponent::SurfaceData::SurfaceData(const SurfaceData& surface)
-    : m_vertices(surface.m_vertices),
-      m_indices(surface.m_indices)
-    {}
-
     Mesh3DComponent::SurfaceData::SurfaceData(SurfaceData&& surface) noexcept
     : m_vertices(std::move(surface.m_vertices)),
       m_indices(std::move(surface.m_indices)),
       m_surfaceId(surface.m_surfaceId)
     {}
+
+    Mesh3DComponent::SurfaceData& Mesh3DComponent::SurfaceData::operator=(SurfaceData&& surface) noexcept
+    {
+        m_vertices = std::move(surface.m_vertices);
+        m_indices = std::move(surface.m_indices);
+        m_surfaceId = surface.m_surfaceId;
+
+        surface.m_surfaceId = -1;
+
+        return *this;
+    }
 
     Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor>&& vertices)
     : m_vertices(std::move(vertices))
@@ -37,15 +40,14 @@ namespace brr
     {}
 
     uint32_t Mesh3DComponent::AddSurface(const std::vector<Vertex3_PosColor>& vertices,
-        const std::vector<uint32_t>& indices)
+                                         const std::vector<uint32_t>& indices)
     {
         BRR_LogInfo("Adding new Surface");
-        m_dirty_surfaces.insert(m_surfaces.size());
         SurfaceData& new_surface = m_surfaces.emplace_back(vertices, indices);
-        if (!new_surface.GetVertices().empty()
-         && !GetEntity().HasAllComponents<vis::SceneRenderer::MeshDirty>())
+        if (!new_surface.GetVertices().empty())
         {
-            GetEntity().AddComponent<vis::SceneRenderer::MeshDirty>();
+            new_surface.m_surfaceId = static_cast<uint64_t>(GetScene()->GetSceneRenderer()->CreateNewSurface(
+                new_surface, GetEntity()));
         }
         return m_surfaces.size() - 1;
     }
@@ -53,13 +55,21 @@ namespace brr
     uint32_t Mesh3DComponent::AddSurface(SurfaceData&& surface)
     {
         BRR_LogInfo("Adding new Surface");
-        m_dirty_surfaces.insert(m_surfaces.size());
         SurfaceData& new_surface = m_surfaces.emplace_back(std::forward<SurfaceData&&>(surface));
-        if (!new_surface.GetVertices().empty()
-         && !GetEntity().HasAllComponents<vis::SceneRenderer::MeshDirty>())
+        if (!new_surface.GetVertices().empty())
         {
-            GetEntity().AddComponent<vis::SceneRenderer::MeshDirty>();
+            new_surface.m_surfaceId = static_cast<uint64_t>(GetScene()->GetSceneRenderer()->CreateNewSurface(
+                new_surface, GetEntity()));
         }
         return m_surfaces.size() - 1;
+    }
+
+    void Mesh3DComponent::RemoveSurface(uint32_t surface_index)
+    {
+        assert((surface_index > 0 && surface_index < m_surfaces.size() - 1) && "Invalid surface index");
+        BRR_LogInfo("Removing surface {}", surface_index);
+        GetScene()->GetSceneRenderer()->RemoveSurface(
+            static_cast<vis::SurfaceId>(m_surfaces[surface_index].GetRenderSurfaceID()));
+        m_surfaces.erase(m_surfaces.begin() + surface_index);
     }
 }

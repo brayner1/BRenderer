@@ -1,8 +1,10 @@
 #ifndef BRR_SWAPCHAIN_H
 #define BRR_SWAPCHAIN_H
 
-#include <Renderer/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanInc.h>
 #include <Renderer/RenderDefs.h>
+
+#include <Core/thirdpartiesInc.h>
 
 namespace brr::vis
 {
@@ -27,22 +29,19 @@ namespace brr::render
 		void Recreate_Swapchain();
 		void Cleanup_Swapchain();
 
-		FORCEINLINE [[nodiscard]] vk::SurfaceKHR GetSurface() const { return surface_; }
+        FORCEINLINE [[nodiscard]] glm::uvec2 GetSwapchainExtent() const
+        {
+            return {m_swapchain_extent.width, m_swapchain_extent.height};
+        }
 
-		FORCEINLINE [[nodiscard]] vk::Format GetSwapchain_Image_Format() const { return swapchain_image_format_; }
-
-		FORCEINLINE [[nodiscard]] vk::Extent2D GetSwapchain_Extent() const { return swapchain_extent_; }
-
-		FORCEINLINE [[nodiscard]] vk::SwapchainKHR GetSwapchain() const { return swapchain_; }
-
-		FORCEINLINE [[nodiscard]] vk::RenderPass GetRender_Pass() const { return render_pass_; }
+		FORCEINLINE [[nodiscard]] vk::RenderPass GetRenderPass() const { return m_render_pass; }
 
 		FORCEINLINE [[nodiscard]] uint32_t GetCurrentBufferIndex() const { return m_current_buffer_idx; }
 		FORCEINLINE [[nodiscard]] uint32_t GetCurrentImageIndex() const { return m_current_image_idx; }
 
-		FORCEINLINE [[nodiscard]] vk::Framebuffer GetFramebuffer(uint32_t image_index) const { return image_resources_[image_index].m_framebuffer; }
+		FORCEINLINE [[nodiscard]] vk::Framebuffer GetFramebuffer(uint32_t image_index) const { return m_image_resources[image_index].m_framebuffer; }
 
-		FORCEINLINE [[nodiscard]] vk::Fence GetCurrentInFlightFence() const { return in_flight_fences_[m_current_buffer_idx]; }
+		FORCEINLINE [[nodiscard]] vk::Fence GetCurrentInFlightFence() const { return m_in_flight_fences[m_current_buffer_idx]; }
 
 	private:
 
@@ -52,11 +51,11 @@ namespace brr::render
 		void Init_Framebuffers();
 		void Init_Synchronization();
 
-        vis::Window* window_ = nullptr;
+        vis::Window* m_window = nullptr;
 
 		// Device
 
-		VulkanRenderDevice* device_ = nullptr;
+		VulkanRenderDevice* m_render_device = nullptr;
 
 		// Swapchain
 
@@ -67,22 +66,21 @@ namespace brr::render
 			vk::Framebuffer m_framebuffer {};
 		};
 
-		vk::SurfaceKHR surface_ {};
-		vk::Format swapchain_image_format_ {};
-		vk::Extent2D swapchain_extent_ {};
+		vk::SurfaceKHR m_surface {};
+		vk::Format m_swapchain_image_format {};
+		vk::Extent2D m_swapchain_extent {};
 
-		vk::SwapchainKHR swapchain_ {};
-		std::vector<ImageResources> image_resources_ {};
+		vk::SwapchainKHR m_swapchain {};
+		std::vector<ImageResources> m_image_resources {};
 
 		// Render pass
 
-		vk::RenderPass render_pass_ {};
+		vk::RenderPass m_render_pass {};
 
 		// Synchronization
 
-		vk::Semaphore image_available_semaphores_[FRAME_LAG];
-		//vk::Semaphore render_finished_semaphores_[FRAME_LAG];
-		vk::Fence in_flight_fences_[FRAME_LAG];
+		vk::Semaphore m_image_available_semaphores[FRAME_LAG];
+		vk::Fence m_in_flight_fences[FRAME_LAG];
 
 	    uint32_t m_current_buffer_idx = 0;
 		uint32_t m_current_image_idx = 0;

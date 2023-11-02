@@ -2,7 +2,7 @@
 
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/RenderDefs.h>
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 
 namespace brr::render
 {
@@ -10,8 +10,16 @@ namespace brr::render
     constexpr uint32_t STAGING_MAX_SIZE_BYTES = STAGING_BUFFER_MAX_SIZE_MB * 1024 * 1024;
 
     StagingAllocator::StagingAllocator()
-    : m_render_device(VKRD::GetSingleton())
+    {}
+
+    StagingAllocator::~StagingAllocator()
     {
+        DestroyAllocator();
+    }
+
+    bool StagingAllocator::Init(VulkanRenderDevice* render_device)
+    {
+        m_render_device = render_device;
         BRR_LogInfo("Initializing StagingAllocator.");
         InitVmaPool();
         m_current_block = 0;
@@ -19,12 +27,19 @@ namespace brr::render
         {
             InsertStagingBlock();
         }
+
+        return true;
     }
 
-    StagingAllocator::~StagingAllocator()
+    void StagingAllocator::DestroyAllocator()
     {
+        BRR_LogInfo("Destroying StagingAllocator.");
         DestroystagingBlocks();
-        vmaDestroyPool(m_render_device->GetAllocator(), m_staging_pool);
+        if (m_staging_pool != VK_NULL_HANDLE)
+        {
+            vmaDestroyPool(m_render_device->m_vma_allocator, m_staging_pool);
+            m_staging_pool = VK_NULL_HANDLE;
+        }
     }
 
     void StagingAllocator::AllocateStagingBuffer(size_t frame_id, size_t size, StagingBufferHandle* out_staging_buffer)
@@ -42,7 +57,7 @@ namespace brr::render
             {
                 // Not enough space in current block. Find another one.
                 bool found = false;
-                for (size_t i = 0; i < m_staging_blocks.size(); i++)
+                for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                 {
                     StagingBlock& block = m_staging_blocks[i];
                     if (block.frame_id <= frame_id - FRAME_LAG)
@@ -80,7 +95,7 @@ namespace brr::render
                         // There is not enough space to allocate new block.
                         // We need to wait for previous frames to finish processing.
                         m_render_device->WaitIdle(); // TODO: is this the best approach?
-                        for (size_t i = 0; i < m_staging_blocks.size(); i++)
+                        for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                         {
                             StagingBlock& block = m_staging_blocks[i];
                             if (block.frame_id != frame_id)
@@ -113,7 +128,7 @@ namespace brr::render
         else
         {
             bool found = false;
-            for (size_t i = 0; i < m_staging_blocks.size(); i++)
+            for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
             {
                 StagingBlock& block = m_staging_blocks[i];
                 if (block.frame_id <= frame_id - FRAME_LAG)
@@ -151,7 +166,7 @@ namespace brr::render
                     // There is not enough space to allocate new block.
                     // We need to wait for previous frames to finish processing.
                     m_render_device->WaitIdle(); // TODO: is this the best approach?
-                    for (size_t i = 0; i < m_staging_blocks.size(); i++)
+                    for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                     {
                         StagingBlock& block = m_staging_blocks[i];
                         if (block.frame_id != frame_id)
@@ -179,19 +194,23 @@ namespace brr::render
         memcpy(static_cast<char*>(block.mapping) + staging_buffer.m_offset + staging_buffer_offset, data, data_size);
     }
 
-    void StagingAllocator::CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, DeviceBuffer& dst_buffer,
-                                                   vk::CommandBuffer transfer_cmd_buffer, size_t size,
+    void StagingAllocator::CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::Buffer dst_buffer,
+                                                   size_t size,
                                                    uint32_t src_offset, uint32_t dst_offset)
     {
         assert((dst_offset + size) <= staging_buffer.m_size && "Can't make transfer bigger than passed staging buffer.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
+
+        //VKRD::Buffer* dst_buffer = m_render_device->m_buffer_alloc.GetResource(dst_buffer_handle);
+
+        vk::CommandBuffer transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
         
         vk::BufferCopy buffer_copy;
         buffer_copy
             .setSrcOffset(staging_buffer.m_offset + src_offset)
             .setDstOffset(dst_offset)
             .setSize(size);
-        transfer_cmd_buffer.copyBuffer(block.m_buffer, dst_buffer.GetBuffer(), buffer_copy);
+        transfer_cmd_buffer.copyBuffer(block.m_buffer, dst_buffer, buffer_copy);
 
         if (m_render_device->IsDifferentTransferQueue())
         {
@@ -201,7 +220,7 @@ namespace brr::render
                 .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
                 .setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
                 .setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-                .setBuffer(dst_buffer.GetBuffer())
+                .setBuffer(dst_buffer)
                 .setSize(size);
 
             vk::DependencyInfo dependency_info;
@@ -225,7 +244,7 @@ namespace brr::render
         }
     }
 
-    void StagingAllocator::InsertStagingBlock()
+    bool StagingAllocator::InsertStagingBlock()
     {
         vk::BufferCreateInfo buffer_create_info;
         buffer_create_info
@@ -239,18 +258,29 @@ namespace brr::render
         VmaAllocationInfo alloc_info;
 
         StagingBlock block;
-
+        VkBuffer new_buffer;
         //TODO: Handle error
-        VkResult result = vmaCreateBuffer(m_render_device->GetAllocator(),
+        VkResult result = vmaCreateBuffer(m_render_device->m_vma_allocator,
                                           reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info),
                                           &allocation_create_info,
-                                          reinterpret_cast<VkBuffer*>(&block.m_buffer),
+                                          &new_buffer,
                                           &block.m_allocation,
                                           &alloc_info);
+        if (result != VK_SUCCESS)
+        {
+            BRR_LogError("Error allocating staging block of size: {} bytes;", STAGING_BLOCK_SIZE_BYTES);
+            return false;
+        }
 
+
+        block.m_buffer = new_buffer;
         block.mapping = alloc_info.pMappedData;
 
         m_staging_blocks.push_back(block);
+
+        BRR_LogInfo("Allocated staging block. Buffer: {:#x}, Size: {}", (size_t)new_buffer, STAGING_BLOCK_SIZE_BYTES);
+
+        return true;
     }
 
     void StagingAllocator::ClearProcessedBlocks(uint32_t current_frame_id)
@@ -266,13 +296,15 @@ namespace brr::render
         }
     }
 
-    void StagingAllocator::AllocateInBlock(uint32_t block_index, uint32_t size, StagingBufferHandle* out_staging_handle)
+    void StagingAllocator::AllocateInBlock(uint32_t block_index, size_t size, StagingBufferHandle* out_staging_handle)
     {
         out_staging_handle->m_block_index = block_index;
         out_staging_handle->m_offset = m_staging_blocks[block_index].m_filled_bytes;
         out_staging_handle->m_size = size;
 
         m_staging_blocks[block_index].m_filled_bytes += size;
+
+        BRR_LogInfo("Allocating {} bytes in staging block {}.", size, block_index);
     }
 
     void StagingAllocator::InitVmaPool()
@@ -294,7 +326,7 @@ namespace brr::render
 
 
         uint32_t mem_type_index;
-        VkResult result = vmaFindMemoryTypeIndexForBufferInfo(m_render_device->GetAllocator(),
+        VkResult result = vmaFindMemoryTypeIndexForBufferInfo(m_render_device->m_vma_allocator,
                                                               reinterpret_cast<VkBufferCreateInfo*>
                                                               (&sample_buff_create_info),
                                                               &sample_alloc_info, &mem_type_index);
@@ -311,7 +343,7 @@ namespace brr::render
         pool_create_info.minAllocationAlignment = 0;
         pool_create_info.priority = 1.0;
 
-        vmaCreatePool(m_render_device->GetAllocator(), &pool_create_info, &m_staging_pool);
+        vmaCreatePool(m_render_device->m_vma_allocator, &pool_create_info, &m_staging_pool);
 
         BRR_LogInfo("StagingAllocator VmaPool is created.\nPool properties:\n"
                     "\tMemory type index: {}\n"
@@ -325,7 +357,10 @@ namespace brr::render
     {
         for (StagingBlock& block : m_staging_blocks)
         {
-            vmaDestroyBuffer(m_render_device->GetAllocator(), block.m_buffer, block.m_allocation);
+            BRR_LogInfo("Destroying staging block. Buffer: {:#x}", (size_t)((VkBuffer)block.m_buffer));
+            vmaDestroyBuffer(m_render_device->m_vma_allocator, block.m_buffer, block.m_allocation);
         }
+
+        m_staging_blocks.clear();
     }
 }

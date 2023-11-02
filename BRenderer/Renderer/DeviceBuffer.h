@@ -1,8 +1,7 @@
 #ifndef BRR_BUFFER_H
 #define BRR_BUFFER_H
-#include <Renderer/VulkanInc.h>
-
-#include "VulkanRenderDevice.h"
+#include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 
 namespace brr
 {
@@ -26,19 +25,16 @@ namespace brr
 		public:
 
 			DeviceBuffer();
-			DeviceBuffer(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
+			DeviceBuffer(size_t buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
 			DeviceBuffer(DeviceBuffer&& device_buffer) noexcept;
 
 			DeviceBuffer& operator=(DeviceBuffer&& device_buffer) noexcept;
 
 			~DeviceBuffer();
 
-			void Reset(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
+			void Reset(size_t buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags = {});
 
-			void Map(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
-			void Unmap();
-
-			void WriteToBuffer(void* data, vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
+			void WriteToBuffer(void* data, size_t size = VK_WHOLE_SIZE, uint32_t offset = 0);
 
             /**
 			 * \brief Get this buffer DescriptorBufferInfo.
@@ -48,27 +44,28 @@ namespace brr
 			 */
 			[[nodiscard]] vk::DescriptorBufferInfo GetDescriptorInfo(vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0) const;
 
-			[[nodiscard]] vk::Buffer GetBuffer() const { return buffer_; }
+			[[nodiscard]] BufferHandle GetHandle() const { return m_buffer_handle; }
 
-			[[nodiscard]] vk::DeviceSize GetBufferSize() const { return buffer_size_; }
+			[[nodiscard]] void* Map();
+			void Unmap();
 
-			[[nodiscard]] bool IsInitialized() const { return device_ && buffer_; }
-            explicit [[nodiscard]] operator bool() const { return IsInitialized(); }
+			//[[nodiscard]] vk::Buffer GetBuffer() const { return buffer_; }
+
+			//[[nodiscard]] vk::DeviceSize GetBufferSize() const { return buffer_size_; }
+
+			[[nodiscard]] bool IsInitialized() const { return m_render_device && m_buffer_handle; }
+            //explicit [[nodiscard]] operator bool() const { return IsInitialized(); }
 
 		private:
 
 			void DestroyBuffer();
 
-			VulkanRenderDevice* device_ = nullptr;
+			VulkanRenderDevice* m_render_device = nullptr;
 
-			vk::Buffer buffer_ {};
-			VmaAllocation buffer_allocation_ {};
+			BufferHandle m_buffer_handle;
 
-			void* mapped_ = nullptr;
-
-			vk::DeviceSize buffer_size_ {};
-			VulkanRenderDevice::BufferUsage buffer_usage_ {};
-			VmaMemoryUsage memory_usage_ {};
+			size_t m_buffer_size = 0;
+			void* m_mapped_ptr = nullptr;
 		};
 	}
 }

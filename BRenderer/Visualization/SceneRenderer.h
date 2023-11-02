@@ -1,8 +1,9 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
+#include <Core/Storage/ContiguousPool.h>
 #include <Geometry/Geometry.h>
-#include <Renderer/VulkanInc.h>
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/RenderDefs.h>
 #include <Renderer/Descriptors.h>
@@ -26,18 +27,16 @@ namespace brr::vis
 
         SceneRenderer(Scene* scene);
 
-        SurfaceId CreateNewSurface(Mesh3DComponent::SurfaceData& surface, const Entity& owner_entity);
-        void UpdateSurfaceVertexBuffer(SurfaceId surface_id, std::vector<Vertex3_PosColor>& vertex_buffer, uint32_t buffer_offset = 0);
-        void UpdateSurfaceIndexBuffer(SurfaceId surface_id, std::vector<uint32_t>& index_buffer, uint32_t buffer_offset = 0);
-        //TODO: Add RemoveSurface function. It should add the render data to a delete-list in the current buffer, and delete it only when this buffer is rendering again (means the resources are not used anymore).
+        ~SceneRenderer();
 
-        void BeginRender(uint32_t buffer_index, size_t current_frame, vk::CommandBuffer graphics_command_buffer, vk::CommandBuffer transfer_command_buffer);
+        SurfaceId CreateNewSurface(Mesh3DComponent::SurfaceData& surface, const Entity& owner_entity);
+        void RemoveSurface(SurfaceId surface_id);
+
+        void BeginRender(uint32_t buffer_index, size_t current_frame);
 
         void UpdateDirtyInstances();
 
         void Render3D(const render::DevicePipeline& render_pipeline);
-
-        struct MeshDirty {};
 
     private:
 
@@ -53,17 +52,20 @@ namespace brr::vis
 
         struct RenderData
         {
+            RenderData() : m_owner_node(nullptr)
+            {}
+
             RenderData (NodeComponent* owner_node) : m_owner_node(owner_node)
             {}
 
             NodeComponent* m_owner_node;
 
-            render::DeviceBuffer m_vertex_buffer{};
-            render::DeviceBuffer m_index_buffer{};
+            render::VertexBufferHandle m_vertex_buffer_handle {};
+            render::IndexBufferHandle m_index_buffer_handle {};
             bool m_vertices_dirty = true;
             bool m_indices_dirty  = true;
 
-            size_t num_vertices = 0, num_indices = 0;
+            uint32_t num_vertices = 0, num_indices = 0;
 
             render::DescriptorLayout m_descriptor_layout;
             std::array<bool, render::FRAME_LAG> m_uniform_dirty { true };
@@ -75,16 +77,12 @@ namespace brr::vis
 
         void CreateVertexBuffer(std::vector<Vertex3_PosColor>& vertex_buffer, RenderData& render_data);
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
-        void UpdateBufferData(render::DeviceBuffer& buffer, void* data, uint32_t size, uint32_t offset);
-
-        render::StagingBufferHandle CreateStagingBuffer(size_t buffer_size, void* buffer_data);
+        void DestroyBuffers(RenderData& render_data);
 
         void Init_UniformBuffers(RenderData& render_data);
 
         Scene* m_scene;
         render::VulkanRenderDevice* m_render_device = nullptr;
-
-        render::StagingAllocator m_staging_allocator;
 
         uint32_t m_current_buffer = 0;
         size_t m_current_frame = 0;
@@ -98,8 +96,8 @@ namespace brr::vis
             std::array<vk::DescriptorSet, render::FRAME_LAG> m_descriptor_sets;
         } m_camera_uniform_info;
 
-        std::unordered_map<SurfaceId, uint32_t> m_surfId_idx_map;
-        std::vector<RenderData> m_render_data;
+        ContiguousPool<RenderData> m_render_data;
+        entt::basic_storage<uint32_t, RenderData> m_entt_render_data;
     };
 
 }

@@ -1,6 +1,6 @@
 #ifndef BRR_SHADER_H
 #define BRR_SHADER_H
-#include <Renderer/VulkanInc.h>
+#include <Renderer/Vulkan/VulkanInc.h>
 
 #include <vector>
 

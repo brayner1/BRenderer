@@ -1,6 +1,6 @@
 #include "DeviceBuffer.h"
 
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 
 #include <Core/LogSystem.h>
 
@@ -11,42 +11,41 @@ namespace brr
 	{
 		DeviceBuffer::DeviceBuffer() = default;
 
-		DeviceBuffer::DeviceBuffer(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage,
-		                           VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags) :
-		device_(VKRD::GetSingleton()), buffer_size_(buffer_size), buffer_usage_(buffer_usage), memory_usage_(memory_usage)
+		DeviceBuffer::DeviceBuffer(size_t buffer_size, VKRD::BufferUsage buffer_usage,
+		                           VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
+	    : m_render_device(VKRD::GetSingleton()),
+	      m_buffer_size(buffer_size)
 		{
 			BRR_LogInfo("Creating Buffer. New buffer: [ size: {} ]", buffer_size);
-			device_->Create_Buffer(buffer_size_, buffer_usage_, memory_usage_, buffer_, buffer_allocation_, allocation_create_flags);
+			m_buffer_handle = m_render_device->CreateBuffer(buffer_size, buffer_usage, memory_usage, allocation_create_flags);
 		}
 
 		DeviceBuffer::DeviceBuffer(DeviceBuffer&& device_buffer) noexcept
-	    : device_(device_buffer.device_),
-          buffer_(device_buffer.buffer_),
-          buffer_allocation_(device_buffer.buffer_allocation_),
-          mapped_(device_buffer.mapped_),
-          buffer_size_(device_buffer.buffer_size_),
-          buffer_usage_(device_buffer.buffer_usage_),
-		  memory_usage_(device_buffer.memory_usage_)
         {
-			device_buffer.buffer_ = VK_NULL_HANDLE;
-			device_buffer.buffer_allocation_ = VK_NULL_HANDLE;
-			device_buffer.mapped_ = nullptr;
+			if (IsInitialized())
+			{
+				DestroyBuffer();
+			}
+			m_render_device = device_buffer.m_render_device;
+            m_buffer_handle = device_buffer.m_buffer_handle;
+		    m_buffer_size = device_buffer.m_buffer_size;
+
+			device_buffer.m_buffer_handle = null_handle;
+			device_buffer.m_buffer_size = 0;
 		}
 
 		DeviceBuffer& DeviceBuffer::operator=(DeviceBuffer&& device_buffer) noexcept
 		{
-			device_ = device_buffer.device_;
-			buffer_size_ = device_buffer.buffer_size_;
-			buffer_usage_ = device_buffer.buffer_usage_;
-			buffer_ = device_buffer.buffer_;
-			buffer_allocation_ = device_buffer.buffer_allocation_;
-			mapped_ = device_buffer.mapped_;
-			memory_usage_ = device_buffer.memory_usage_;
+			if (IsInitialized())
+			{
+				DestroyBuffer();
+			}
+			m_render_device = device_buffer.m_render_device;
+			m_buffer_handle = device_buffer.m_buffer_handle;
+			m_buffer_size = device_buffer.m_buffer_size;
 
-			device_buffer.buffer_ = VK_NULL_HANDLE;
-			device_buffer.buffer_allocation_ = VK_NULL_HANDLE;
-			device_buffer.mapped_ = nullptr;
-			device_buffer.buffer_size_ = 0;
+			device_buffer.m_buffer_handle = null_handle;
+			device_buffer.m_buffer_size = 0;
 
 			return *this;
 		}
@@ -59,8 +58,8 @@ namespace brr
 			}
 		}
 
-		void DeviceBuffer::Reset(vk::DeviceSize buffer_size, VulkanRenderDevice::BufferUsage buffer_usage,
-                                 VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
+		void DeviceBuffer::Reset(size_t buffer_size, VKRD::BufferUsage buffer_usage,
+                                 VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
 		{
 			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {} ]", buffer_size);
 			if (IsInitialized())
@@ -68,54 +67,27 @@ namespace brr
 				DestroyBuffer();
 			}
 
-			device_ = VKRD::GetSingleton();
-			buffer_size_ = buffer_size;
-			buffer_usage_ = buffer_usage;
-			memory_usage_ = memory_usage;
-
-			device_->Create_Buffer(buffer_size, buffer_usage_, memory_usage, buffer_, buffer_allocation_, allocation_create_flags);
+			m_render_device = VKRD::GetSingleton();
+			m_buffer_handle = m_render_device->CreateBuffer(buffer_size, buffer_usage, memory_usage, allocation_create_flags);
+			m_buffer_size = buffer_size;
 		}
 
-		void DeviceBuffer::Map(vk::DeviceSize size, vk::DeviceSize offset)
-		{
-			assert(IsInitialized() && "DeviceBuffer must be initialized before being mapped.");
-
-			if (!mapped_)
-			{
-			    VmaAllocator vma_allocator = device_->GetAllocator();
-				vk::Result result = (vk::Result)vmaMapMemory(vma_allocator, buffer_allocation_, &mapped_);
-				if (result != vk::Result::eSuccess)
-				{
-					BRR_LogError("Could not create DeviceBuffer mapped memory! Result code: {}.", vk::to_string(result).c_str());
-					exit(1);
-				}
-			}
-		}
-
-		void DeviceBuffer::Unmap()
-		{
-			assert(IsInitialized() && "DeviceBuffer must be initialized before being unmapped.");
-
-			if (mapped_)
-			{
-				VmaAllocator vma_allocator = device_->GetAllocator();
-				vmaUnmapMemory(vma_allocator, buffer_allocation_);
-				mapped_ = nullptr;
-			}
-		}
-
-		void DeviceBuffer::WriteToBuffer(void* data, vk::DeviceSize size, vk::DeviceSize offset)
+		void DeviceBuffer::WriteToBuffer(void* data, size_t size, uint32_t offset)
 		{
 			assert(IsInitialized() && "DeviceBuffer must be initialized before being written.");
-			assert(mapped_ && "DeviceBuffer must be mapped before being written.");
+
+			if (!m_mapped_ptr)
+			{
+			    m_mapped_ptr = m_render_device->MapBuffer(m_buffer_handle);
+			}
 
 			if (size == VK_WHOLE_SIZE)
 			{
-				memcpy(mapped_, data, buffer_size_);
+				memcpy(m_mapped_ptr, data, m_buffer_size);
 			}
 			else
 			{
-				char* mem_start = (char*)mapped_;
+				char* mem_start = (char*)m_mapped_ptr;
 				mem_start += offset;
 				memcpy(mem_start, data, size);
 			}
@@ -124,19 +96,27 @@ namespace brr
 		vk::DescriptorBufferInfo DeviceBuffer::GetDescriptorInfo(vk::DeviceSize size, vk::DeviceSize offset) const
 		{
 			assert(IsInitialized() && "DeviceBuffer must be initialized before getting its DescriptorBufferInfo.");
-			assert((size == VK_WHOLE_SIZE || size <= buffer_size_) && "Parameter size must be either 'VK_WHOLE_SIZE' or <= DeviceBuffer size  ");
-			return vk::DescriptorBufferInfo{ buffer_, offset, size };
+			assert((size == VK_WHOLE_SIZE || size <= m_buffer_size) && "Parameter size must be either 'VK_WHOLE_SIZE' or <= DeviceBuffer size  ");
+			return m_render_device->GetBufferDescriptorInfo(m_buffer_handle, size, offset);
 		}
 
-		void DeviceBuffer::DestroyBuffer()
+        void* DeviceBuffer::Map()
+        {
+			return m_render_device->MapBuffer(m_buffer_handle);
+        }
+
+        void DeviceBuffer::Unmap()
+        {
+			m_render_device->UnmapBuffer(m_buffer_handle);
+        }
+
+        void DeviceBuffer::DestroyBuffer()
 		{
-			Unmap();
+			m_render_device->UnmapBuffer(m_buffer_handle);
 
-			VmaAllocator vma_allocator = device_->GetAllocator();
+			m_render_device->DestroyBuffer(m_buffer_handle);
 
-			vmaDestroyBuffer(vma_allocator, buffer_, buffer_allocation_);
-
-			buffer_size_ = 0;
+			m_buffer_handle = null_handle;
 
 			BRR_LogInfo("Buffer Destroyed");
 		}

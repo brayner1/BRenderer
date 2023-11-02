@@ -1,6 +1,6 @@
 #ifndef BRR_WINDOW_H
 #define BRR_WINDOW_H
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Scene/Scene.h>
 
 namespace brr::vis

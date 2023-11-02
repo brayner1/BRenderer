@@ -44,6 +44,7 @@ endif()
 set(BRenderer_SOURCE_FILES
     "BRenderer.cpp" 
     
+    
     "Core/App.cpp"
     "Core/LogSystem.cpp"
     "Core/PerspectiveCamera.cpp"
@@ -69,28 +70,30 @@ set(BRenderer_SOURCE_FILES
     "Importer/Importer.cpp"
     
     "Renderer/Allocators/StagingAllocator.cpp"
+    "Renderer/Vulkan/VkInitializerHelper.cpp" 
+    "Renderer/Vulkan/VmaImpl.cpp"
+    "Renderer/Vulkan/VulkanRenderDevice.cpp"
     "Renderer/Descriptors.cpp"
     "Renderer/DeviceBuffer.cpp"
     "Renderer/DevicePipeline.cpp"
-    "Renderer/VulkanRenderDevice.cpp"
     "Renderer/Shader.cpp" 
     "Renderer/Swapchain.cpp"
-    "Renderer/VkInitializerHelper.cpp" 
-    "Renderer/Vulkan/VmaImpl.cpp"
     
     "Files/FilesUtils.cpp" 
-  )
+   )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
     
-    "Core/App.h"
-    "Core/LogSystem.h"
-    "Core/PerspectiveCamera.h"
+    "Core/Storage/ContiguousPool.h"
     "Core/Threading/Barrier.h" 
     "Core/Threading/Threading.h" 
     "Core/Threading/ThreadPool.h" 
     "Core/Threading/Work.h"
+    "Core/App.h"
+    "Core/LogSystem.h"
+    "Core/PerspectiveCamera.h"
+    "Core/thirdpartiesInc.h"
     
     "Geometry/Geometry.h"
     
@@ -111,18 +114,22 @@ set(BRenderer_HEADER_FILES
     
     "Importer/Importer.h"
     
+    "Renderer/Allocators/ResourceAllocator.h"
     "Renderer/Allocators/StagingAllocator.h"
+    "Renderer/Vulkan/VkInitializerHelper.h"
+    "Renderer/Vulkan/VulkanInc.h"
+    "Renderer/Vulkan/VulkanRenderDevice.h"
     "Renderer/Descriptors.h"
     "Renderer/DeviceBuffer.h"
     "Renderer/DevicePipeline.h"
     "Renderer/RenderDefs.h"
-    "Renderer/VulkanRenderDevice.h"
+    "Renderer/ResourcesHandles.h"
     "Renderer/Shader.h"
     "Renderer/Swapchain.h"
-    "Renderer/VkInitializerHelper.h" 
+   
     
     "Files/FilesUtils.h"
-   "Core/thirdpartiesInc.h" "Renderer/VulkanInc.h") 
+ ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")
@@ -144,6 +151,7 @@ endif()
 if (WIN32)
     # Add any required preprocessor definitions here
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+    add_definitions(-DNOMINMAX)
 endif()
 
 target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )

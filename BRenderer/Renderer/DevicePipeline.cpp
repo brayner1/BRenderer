@@ -1,6 +1,6 @@
 #include "DevicePipeline.h"
 
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/Shader.h>
 #include <Renderer/Swapchain.h>
 
@@ -63,18 +63,18 @@ namespace brr::render
 			.setTopology(vk::PrimitiveTopology::eTriangleList)
 			.setPrimitiveRestartEnable(false);
 
-		vk::Extent2D swapchain_extent = swapchain->GetSwapchain_Extent();
+		glm::uvec2 swapchain_extent = swapchain->GetSwapchainExtent();
 
 		vk::Viewport viewport{};
 		viewport
 			.setX(0.f)
 			.setY(0.f)
-			.setWidth((float)swapchain_extent.width)
-			.setHeight((float)swapchain_extent.height)
+			.setWidth((float)swapchain_extent.x)
+			.setHeight((float)swapchain_extent.y)
 			.setMinDepth(0.f)
 			.setMaxDepth(1.f);
 
-		vk::Rect2D scissor{ {0, 0}, swapchain_extent };
+		vk::Rect2D scissor{ {0, 0}, {swapchain_extent.x, swapchain_extent.y} };
 
 		vk::PipelineViewportStateCreateInfo viewport_state_info{};
 		viewport_state_info
@@ -153,7 +153,7 @@ namespace brr::render
 			.setPColorBlendState(&color_blending_info);
 		graphics_pipeline_info
 			.setLayout(m_pipeline_layout)
-			.setRenderPass(swapchain->GetRender_Pass())
+			.setRenderPass(swapchain->GetRenderPass())
 			.setSubpass(0)
 			.setBasePipelineHandle(VK_NULL_HANDLE)
 			.setBasePipelineIndex(-1);

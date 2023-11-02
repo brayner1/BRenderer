@@ -13,68 +13,73 @@ namespace brr::vis
 		}
 		BRR_LogInfo("SDL Initialized.");
 
-		m_pMainWindow = std::make_unique<Window>("Vulkan Test", glm::uvec2{600, 600});
-		m_pMainWindowID = m_pMainWindow->GetWindowID();
-		m_pMainWindowClosed = false;
+		m_main_window = std::make_unique<Window>("Vulkan Test", glm::uvec2{600, 600});
+		m_main_window_ID = m_main_window->GetWindowID();
+		m_main_window_closed = false;
 
-		render::VKRD::CreateRenderDevice(m_pMainWindow.get());
+		render::VKRD::CreateRenderDevice(m_main_window.get());
 
-		m_pMainWindow->InitWindowRenderer();
+		// Begin frame earlier to initialize command buffers and start transferring data to GPU.
+		render::VKRD::GetSingleton()->BeginFrame(); 
+
+		m_main_window->InitWindowRenderer();
 
 		BRR_LogInfo("WindowManager initialized.");
 	}
 
 	WindowManager::~WindowManager()
 	{
-		m_pSecondaryWindows_Id_Index_Map.clear();
-		m_pSecondaryWindows.clear();
+		m_secondaryWindowsID_index_map.clear();
+		m_secondary_windows.clear();
 
-		m_pMainWindow.reset();
+		m_main_window.reset();
+
+		render::VKRD::DestroyRenderDevice();
 
 		SDL_Quit();
 	}
 
 	void WindowManager::Update()
 	{
-		if (!m_pMainWindowClosed)
+		if (!m_main_window_closed)
 		{
-			m_pMainWindow->RenderWindow();
+			m_main_window->RenderWindow();
 		}
 	}
 
 	void WindowManager::CloseWindow(WindowId pWindowID)
 	{
 		// If closing main window, close the application
-		if (pWindowID == m_pMainWindowID)
+		if (pWindowID == m_main_window_ID)
 		{
-			//m_pRenderer->Destroy_Window(m_pMainWindow.get());
-			m_pMainWindow->CloseWindow();
-			m_pMainWindowClosed = true;
+			//m_pRenderer->Destroy_Window(m_main_window.get());
+			m_main_window->CloseWindow();
+			m_main_window_closed = true;
 			return;
 		}
 
-		auto it = m_pSecondaryWindows_Id_Index_Map.find(pWindowID);
-		if (it == m_pSecondaryWindows_Id_Index_Map.end())
+		auto it = m_secondaryWindowsID_index_map.find(pWindowID);
+		if (it == m_secondaryWindowsID_index_map.end())
 			return;
 
 		const WindowId window_index = it->second;
-		m_pSecondaryWindows[window_index]->CloseWindow();
+		m_secondary_windows[window_index]->CloseWindow();
 
-		m_pSecondaryWindows_Id_Index_Map.erase(pWindowID);
-		m_pSecondaryWindows.erase(m_pSecondaryWindows.begin() + window_index);
+		m_secondaryWindowsID_index_map.erase(pWindowID);
+		m_secondary_windows.erase(m_secondary_windows.begin() + window_index);
 	}
 
 	void WindowManager::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)
 	{
 		Window* window;
-		if (pWindowEvent.windowID == m_pMainWindowID)
+		if (pWindowEvent.windowID == m_main_window_ID)
 		{
-			window = m_pMainWindow.get();
+			window = m_main_window.get();
 		}
 		else
 		{
-			const uint32_t window_index = m_pSecondaryWindows_Id_Index_Map[pWindowEvent.windowID];
-			window = m_pSecondaryWindows[window_index].get();
+			const uint32_t window_index = m_secondaryWindowsID_index_map[pWindowEvent.windowID];
+			window = m_secondary_windows[window_index].get();
 		}
 
 		window->ProcessWindowEvent(pWindowEvent);

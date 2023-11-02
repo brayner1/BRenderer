@@ -1,14 +1,14 @@
 #include "Swapchain.h"
 
-#include <Renderer/VkInitializerHelper.h>
-#include <Renderer/VulkanRenderDevice.h>
+#include <Renderer/Vulkan/VkInitializerHelper.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Visualization/Window.h>
 #include <Core/LogSystem.h>
 
 
 namespace brr::render
 {
-	Swapchain::Swapchain(vis::Window* window) : device_(VKRD::GetSingleton()), window_(window)
+	Swapchain::Swapchain(vis::Window* window) : m_render_device(VKRD::GetSingleton()), m_window(window)
 	{
 		Init_Swapchain(window);
 		Init_SwapchainResources();
@@ -19,18 +19,18 @@ namespace brr::render
 
 	vk::Result Swapchain::AcquireNextImage(vk::Semaphore& image_available_semaphore)
 	{
-		if (device_->Get_VkDevice().waitForFences(in_flight_fences_[m_current_buffer_idx], true, UINT64_MAX) != vk::Result::eSuccess)
+		if (m_render_device->Get_VkDevice().waitForFences(m_in_flight_fences[m_current_buffer_idx], true, UINT64_MAX) != vk::Result::eSuccess)
 		{
 			BRR_LogError("Error waiting for In Flight Fence");
 			exit(1);
 		}
 
-		device_->Get_VkDevice().resetFences(in_flight_fences_[m_current_buffer_idx]);
+		m_render_device->Get_VkDevice().resetFences(m_in_flight_fences[m_current_buffer_idx]);
 
-		vk::Result result = device_->Get_VkDevice().acquireNextImageKHR(swapchain_, UINT64_MAX,
-				image_available_semaphores_[m_current_buffer_idx], VK_NULL_HANDLE, &m_current_image_idx);
+		vk::Result result = m_render_device->Get_VkDevice().acquireNextImageKHR(m_swapchain, UINT64_MAX,
+				m_image_available_semaphores[m_current_buffer_idx], VK_NULL_HANDLE, &m_current_image_idx);
 
-		image_available_semaphore = image_available_semaphores_[m_current_buffer_idx];
+		image_available_semaphore = m_image_available_semaphores[m_current_buffer_idx];
 
 		return result;
 	}
@@ -40,10 +40,10 @@ namespace brr::render
 		vk::PresentInfoKHR present_info{};
 		present_info
 			.setWaitSemaphores(wait_semaphore)
-			.setSwapchains(swapchain_)
+			.setSwapchains(m_swapchain)
 			.setImageIndices(m_current_image_idx);
 
-		vk::Result result = device_->GetPresentQueue().presentKHR(present_info);
+		vk::Result result = m_render_device->GetPresentQueue().presentKHR(present_info);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		{
 			Recreate_Swapchain();
@@ -63,23 +63,23 @@ namespace brr::render
 	{
 		Cleanup_Swapchain();
 
-		device_->Get_VkDevice().destroyRenderPass(render_pass_);
+		m_render_device->Get_VkDevice().destroyRenderPass(m_render_pass);
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
-			device_->Get_VkDevice().destroySemaphore(image_available_semaphores_[i]);
-			device_->Get_VkDevice().destroyFence(in_flight_fences_[i]);
+			m_render_device->Get_VkDevice().destroySemaphore(m_image_available_semaphores[i]);
+			m_render_device->Get_VkDevice().destroyFence(m_in_flight_fences[i]);
 		}
 	}
 
 	void Swapchain::Init_Swapchain(vis::Window* window)
 	{
-		vk::SurfaceKHR surface = window->GetVulkanSurface(device_->Get_Instance());
-		VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(device_->Get_PhysicalDevice(), surface);
+		vk::SurfaceKHR surface = window->GetVulkanSurface(m_render_device->Get_VkInstance());
+		VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_render_device->Get_VkPhysicalDevice(), surface);
 
 		vk::SurfaceFormatKHR surface_format = VkHelpers::Select_SwapchainFormat(properties.m_surfFormats);
 		vk::PresentModeKHR present_mode = VkHelpers::Select_SwapchainPresentMode(properties.m_presentModes);
-		swapchain_extent_ = VkHelpers::Select_SwapchainExtent(window, properties.m_surfCapabilities);
-		swapchain_image_format_ = surface_format.format;
+		m_swapchain_extent = VkHelpers::Select_SwapchainExtent(window, properties.m_surfCapabilities);
+		m_swapchain_image_format = surface_format.format;
 
 		uint32_t imageCount = properties.m_surfCapabilities.minImageCount + 1;
 
@@ -114,32 +114,32 @@ namespace brr::render
 		swapchain_create_info
 			.setSurface(surface)
 			.setMinImageCount(imageCount)
-			.setImageFormat(swapchain_image_format_)
+			.setImageFormat(m_swapchain_image_format)
 			.setImageColorSpace(surface_format.colorSpace)
-			.setImageExtent(swapchain_extent_)
+			.setImageExtent(m_swapchain_extent)
 			.setImageArrayLayers(1)
 			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
 			.setPresentMode(present_mode)
 			.setClipped(true)
 			.setPreTransform(preTransform)
 			.setCompositeAlpha(compositeAlpha)
-			.setOldSwapchain(swapchain_);
+			.setOldSwapchain(m_swapchain);
 
-		if (!device_->IsDifferentPresentQueue())
+		if (!m_render_device->IsDifferentPresentQueue())
 		{
 			swapchain_create_info.setImageSharingMode(vk::SharingMode::eExclusive);
 		}
 		else
 		{
-			uint32_t graphics_family_queue = device_->GetQueueFamilyIndices().m_graphicsFamily.value();
-			uint32_t presentation_family_queue = device_->GetQueueFamilyIndices().m_presentFamily.value();
+			uint32_t graphics_family_queue = m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value();
+			uint32_t presentation_family_queue = m_render_device->GetQueueFamilyIndices().m_presentFamily.value();
 			std::vector<uint32_t> queue_family_indices{ graphics_family_queue, presentation_family_queue };
 			swapchain_create_info
 				.setImageSharingMode(vk::SharingMode::eConcurrent)
 				.setQueueFamilyIndices(queue_family_indices);
 		}
 
-		 auto createSwapchainResult = device_->Get_VkDevice().createSwapchainKHR(swapchain_create_info);
+		 auto createSwapchainResult = m_render_device->Get_VkDevice().createSwapchainKHR(swapchain_create_info);
 		 if (createSwapchainResult.result != vk::Result::eSuccess)
 		 {
 			 BRR_LogError("Could not create SwapchainKHR! Result code: {}.", vk::to_string(createSwapchainResult.result).c_str());
@@ -149,32 +149,32 @@ namespace brr::render
 		BRR_LogInfo("Swapchain created");
 
 		// If old swapchain is valid, destroy it. (It happens on swapchain recreation)
-		if (swapchain_)
+		if (m_swapchain)
 		{
 			BRR_LogInfo("Swapchain was recreated. Cleaning old swapchain.");
 			Cleanup_Swapchain();
 		}
 
 		// Assign the new swapchain to the window
-		swapchain_ = new_swapchain;
+		m_swapchain = new_swapchain;
 	}
 
 	void Swapchain::Init_SwapchainResources()
 	{
 		// Acquire swapchain images and create ImageViews
 		{
-			auto swapchainImagesKHRResult = device_->Get_VkDevice().getSwapchainImagesKHR(swapchain_);
+			auto swapchainImagesKHRResult = m_render_device->Get_VkDevice().getSwapchainImagesKHR(m_swapchain);
 			std::vector<vk::Image> swapchain_images = swapchainImagesKHRResult.value;
-			image_resources_.resize(swapchain_images.size());
-			for (uint32_t i = 0; i < image_resources_.size(); i++)
+			m_image_resources.resize(swapchain_images.size());
+			for (uint32_t i = 0; i < m_image_resources.size(); i++)
 			{
-				image_resources_[i].m_image = swapchain_images[i];
+				m_image_resources[i].m_image = swapchain_images[i];
 
 				vk::ImageViewCreateInfo image_view_create_info{};
 				image_view_create_info
 					.setImage(swapchain_images[i])
 					.setViewType(vk::ImageViewType::e2D)
-					.setFormat(swapchain_image_format_)
+					.setFormat(m_swapchain_image_format)
 					.setSubresourceRange(vk::ImageSubresourceRange{}
 						.setAspectMask(vk::ImageAspectFlagBits::eColor)
 						.setBaseMipLevel(0)
@@ -183,13 +183,13 @@ namespace brr::render
 						.setBaseArrayLayer(0)
 					);
 
-				 auto createImgViewResult = device_->Get_VkDevice().createImageView(image_view_create_info);
+				 auto createImgViewResult = m_render_device->Get_VkDevice().createImageView(image_view_create_info);
 				 if (createImgViewResult.result != vk::Result::eSuccess)
 				 {
 					 BRR_LogError("Could not create ImageView for swapchain! Result code: {}.", vk::to_string(createImgViewResult.result).c_str());
 					 exit(1);
 				 }
-				 image_resources_[i].m_image_view = createImgViewResult.value;
+				 m_image_resources[i].m_image_view = createImgViewResult.value;
 			}
 		}
 
@@ -200,7 +200,7 @@ namespace brr::render
 	{
 		vk::AttachmentDescription color_attachment{};
 		color_attachment
-			.setFormat(swapchain_image_format_)
+			.setFormat(m_swapchain_image_format)
 			.setSamples(vk::SampleCountFlagBits::e1)
 			.setLoadOp(vk::AttachmentLoadOp::eClear)
 			.setStoreOp(vk::AttachmentStoreOp::eStore)
@@ -243,36 +243,36 @@ namespace brr::render
 			.setSubpasses(subpass_description)
 			.setDependencies(subpass_dependency);
 
-		 auto createRenderPassResult = device_->Get_VkDevice().createRenderPass(render_pass_info);
+		 auto createRenderPassResult = m_render_device->Get_VkDevice().createRenderPass(render_pass_info);
 		 if (createRenderPassResult.result != vk::Result::eSuccess)
 		 {
 			 BRR_LogError("Could not create RenderPass for swapchain! Result code: {}.", vk::to_string(createRenderPassResult.result).c_str());
 			 exit(1);
 		 }
-		 render_pass_ = createRenderPassResult.value;
+		 m_render_pass = createRenderPassResult.value;
 
 		BRR_LogInfo("Render Pass Created");
 	}
 
 	void Swapchain::Init_Framebuffers()
 	{
-		for (size_t i = 0; i < image_resources_.size(); ++i)
+		for (size_t i = 0; i < m_image_resources.size(); ++i)
 		{
 			vk::FramebufferCreateInfo framebuffer_info;
 			framebuffer_info
-				.setAttachments(image_resources_[i].m_image_view)
-				.setRenderPass(render_pass_)
-				.setWidth(swapchain_extent_.width)
-				.setHeight(swapchain_extent_.height)
+				.setAttachments(m_image_resources[i].m_image_view)
+				.setRenderPass(m_render_pass)
+				.setWidth(m_swapchain_extent.width)
+				.setHeight(m_swapchain_extent.height)
 				.setLayers(1);
 
-			 auto createFramebufferResult = device_->Get_VkDevice().createFramebuffer(framebuffer_info);
+			 auto createFramebufferResult = m_render_device->Get_VkDevice().createFramebuffer(framebuffer_info);
 			 if (createFramebufferResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create Framebuffer for swapchain! Result code: {}.", vk::to_string(createFramebufferResult.result).c_str());
 				 exit(1);
 			 }
-			 image_resources_[i].m_framebuffer = createFramebufferResult.value;
+			 m_image_resources[i].m_framebuffer = createFramebufferResult.value;
 			BRR_LogInfo("Created Framebuffer for swapchain image number {}", i);
 		}
 	}
@@ -281,21 +281,21 @@ namespace brr::render
 	{
 		for (int i = 0; i < FRAME_LAG; i++)
 		{
-			 auto createImgAvailableSemaphoreResult = device_->Get_VkDevice().createSemaphore(vk::SemaphoreCreateInfo{});
+			 auto createImgAvailableSemaphoreResult = m_render_device->Get_VkDevice().createSemaphore(vk::SemaphoreCreateInfo{});
 			 if (createImgAvailableSemaphoreResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create Image Available Semaphore for swapchain! Result code: {}.", vk::to_string(createImgAvailableSemaphoreResult.result).c_str());
 				 exit(1);
 			 }
-			 image_available_semaphores_[i] = createImgAvailableSemaphoreResult.value;
+			 m_image_available_semaphores[i] = createImgAvailableSemaphoreResult.value;
 
-			 auto createInFlightFenceResult = device_->Get_VkDevice().createFence(vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled });
+			 auto createInFlightFenceResult = m_render_device->Get_VkDevice().createFence(vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled });
 			 if (createInFlightFenceResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create In Flight Fence for swapchain! Result code: {}.", vk::to_string(createInFlightFenceResult.result).c_str());
 				 exit(1);
 			 }
-			 in_flight_fences_[i] = createInFlightFenceResult.value;
+			 m_in_flight_fences[i] = createInFlightFenceResult.value;
 		}
 
 		BRR_LogInfo("Created Swapchain synchronization semaphores and fences");
@@ -303,35 +303,35 @@ namespace brr::render
 
 	void Swapchain::Recreate_Swapchain()
 	{
-		device_->WaitIdle();
+		m_render_device->WaitIdle();
 
-		Init_Swapchain(window_);
+		Init_Swapchain(m_window);
 		Init_SwapchainResources();
 		Init_Framebuffers();
 	}
 
 	void Swapchain::Cleanup_Swapchain()
 	{
-		for (int i = 0; i < image_resources_.size(); ++i)
+		for (int i = 0; i < m_image_resources.size(); ++i)
 		{
-			ImageResources& resource = image_resources_[i];
+			ImageResources& resource = m_image_resources[i];
 			if (resource.m_framebuffer)
 			{
-				device_->Get_VkDevice().destroyFramebuffer(resource.m_framebuffer);
+				m_render_device->Get_VkDevice().destroyFramebuffer(resource.m_framebuffer);
 				resource.m_framebuffer = VK_NULL_HANDLE;
 				BRR_LogInfo("Framebuffer of Swapchain Image {} Destroyed.", i);
 			}
 			if (resource.m_image_view)
 			{
-				device_->Get_VkDevice().destroyImageView(resource.m_image_view);
+				m_render_device->Get_VkDevice().destroyImageView(resource.m_image_view);
 				resource.m_image_view = VK_NULL_HANDLE;
 				BRR_LogInfo("ImageView of Swapchain Image {} Destroyed.", i);
 			}
 		}
-		if (swapchain_)
+		if (m_swapchain)
 		{
-			device_->Get_VkDevice().destroySwapchainKHR(swapchain_);
-			swapchain_ = VK_NULL_HANDLE;
+			m_render_device->Get_VkDevice().destroySwapchainKHR(m_swapchain);
+			m_swapchain = VK_NULL_HANDLE;
 			BRR_LogInfo("Swapchain Destroyed.");
 		}
 	}
