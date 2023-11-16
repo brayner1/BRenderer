@@ -148,7 +148,7 @@ namespace brr::render
             ALL       = NORMAL | TANGENT | BITANGENT | COLOR | UV0 | UV1
 		};
 
-		VertexBufferHandle CreateVertexBuffer(void* data, size_t buffer_size, VertexFormatFlags format);
+		VertexBufferHandle CreateVertexBuffer(size_t buffer_size, VertexFormatFlags format, void* data = nullptr);
 
 		bool DestroyVertexBuffer(VertexBufferHandle vertex_buffer_handle);
 
@@ -167,7 +167,7 @@ namespace brr::render
 			UINT32
 		};
 
-		IndexBufferHandle CreateIndexBuffer(void* data, size_t buffer_size, IndexType format);
+		IndexBufferHandle CreateIndexBuffer(size_t buffer_size, IndexType format, void* data = nullptr);
 
 		bool DestroyIndexBuffer(IndexBufferHandle index_buffer_handle);
 

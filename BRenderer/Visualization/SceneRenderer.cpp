@@ -188,7 +188,7 @@ namespace brr::vis
 
 		render::VulkanRenderDevice::VertexFormatFlags vertex_format = render::VulkanRenderDevice::VertexFormatFlags::COLOR;
 
-        render_data.m_vertex_buffer_handle = m_render_device->CreateVertexBuffer(vertex_buffer.data(), buffer_size, vertex_format);
+        render_data.m_vertex_buffer_handle = m_render_device->CreateVertexBuffer(buffer_size, vertex_format, vertex_buffer.data());
 
 		render_data.num_vertices = vertex_buffer.size();
     }
@@ -204,7 +204,7 @@ namespace brr::vis
 
         render::VulkanRenderDevice::IndexType index_type = render::VulkanRenderDevice::IndexType::UINT32;
 
-        render_data.m_index_buffer_handle = m_render_device->CreateIndexBuffer(index_buffer.data(), buffer_size, index_type);
+        render_data.m_index_buffer_handle = m_render_device->CreateIndexBuffer(buffer_size, index_type, index_buffer.data());
 
 		render_data.num_indices = index_buffer.size();
     }

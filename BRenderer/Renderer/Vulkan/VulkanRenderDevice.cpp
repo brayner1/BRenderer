@@ -649,7 +649,7 @@ namespace brr::render
 		return vk::DescriptorBufferInfo{buffer->buffer, offset, size};
     }
 
-    VertexBufferHandle VulkanRenderDevice::CreateVertexBuffer(void* data, size_t buffer_size, VertexFormatFlags format)
+    VertexBufferHandle VulkanRenderDevice::CreateVertexBuffer(size_t buffer_size, VertexFormatFlags format, void* data)
     {
 		VertexBufferHandle vertex_buffer_handle;
 		VertexBuffer* vertex_buffer;
@@ -715,12 +715,15 @@ namespace brr::render
 			BRR_LogDebug("Created vertex buffer. Buffer: {:#x}", (size_t)new_buffer);
 		}
 
-		render::StagingBufferHandle staging_buffer{};
-		m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
+		if (data != nullptr)
+	    {
+	        render::StagingBufferHandle staging_buffer{};
+		    m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
 
-		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
+		    m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
 
-		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, vertex_buffer->buffer, buffer_size);
+		    m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, vertex_buffer->buffer, buffer_size);
+	    }
 
 		return vertex_buffer_handle;
     }
@@ -774,7 +777,7 @@ namespace brr::render
 		return true;
     }
 
-    IndexBufferHandle VulkanRenderDevice::CreateIndexBuffer(void* data, size_t buffer_size, IndexType format)
+    IndexBufferHandle VulkanRenderDevice::CreateIndexBuffer(size_t buffer_size, IndexType format, void* data)
     {
 		IndexBufferHandle index_buffer_handle;
 		IndexBuffer* index_buffer;
@@ -840,12 +843,15 @@ namespace brr::render
 			BRR_LogDebug("Created index buffer. Buffer: {:#x}", (size_t)new_buffer);
 		}
 
-		render::StagingBufferHandle staging_buffer{};
-		m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
+		if (data != nullptr)
+		{
+		    render::StagingBufferHandle staging_buffer{};
+		    m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
 
-		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
+		    m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
 
-		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, index_buffer->buffer, buffer_size);
+		    m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, index_buffer->buffer, buffer_size);
+		}
 
 		return index_buffer_handle;
     }
