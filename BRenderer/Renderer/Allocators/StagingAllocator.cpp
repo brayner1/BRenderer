@@ -201,8 +201,6 @@ namespace brr::render
         assert((dst_offset + size) <= staging_buffer.m_size && "Can't make transfer bigger than passed staging buffer.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
 
-        //VKRD::Buffer* dst_buffer = m_render_device->m_buffer_alloc.GetResource(dst_buffer_handle);
-
         vk::CommandBuffer transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
         
         vk::BufferCopy buffer_copy;
@@ -211,37 +209,6 @@ namespace brr::render
             .setDstOffset(dst_offset)
             .setSize(size);
         transfer_cmd_buffer.copyBuffer(block.m_buffer, dst_buffer, buffer_copy);
-
-        if (m_render_device->IsDifferentTransferQueue())
-        {
-            vk::BufferMemoryBarrier2 buffer_memory_barrier;
-            buffer_memory_barrier
-                .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                .setSrcQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_transferFamily.value())
-                .setDstQueueFamilyIndex(m_render_device->GetQueueFamilyIndices().m_graphicsFamily.value())
-                .setBuffer(dst_buffer)
-                .setSize(size);
-
-            vk::DependencyInfo dependency_info;
-            dependency_info
-                .setBufferMemoryBarriers(buffer_memory_barrier);
-
-            transfer_cmd_buffer.pipelineBarrier2(dependency_info);
-        }
-        else
-        {
-            // TODO
-            vk::MemoryBarrier memory_barrier;
-            memory_barrier
-                .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead);
-
-            transfer_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                                                vk::PipelineStageFlagBits::eVertexInput,
-                                                vk::DependencyFlags(), 1, &memory_barrier, 0,
-                                                nullptr, 0, nullptr);
-        }
     }
 
     bool StagingAllocator::InsertStagingBlock()

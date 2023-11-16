@@ -717,12 +717,7 @@ namespace brr::render
 
 		if (data != nullptr)
 	    {
-	        render::StagingBufferHandle staging_buffer{};
-		    m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
-
-		    m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
-
-		    m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, vertex_buffer->buffer, buffer_size);
+	        UpdateBufferData(vertex_buffer->buffer, data, buffer_size, 0, 0);
 	    }
 
 		return vertex_buffer_handle;
@@ -744,7 +739,7 @@ namespace brr::render
 		return m_vertex_buffer_alloc.DestroyResource(vertex_buffer_handle);
     }
 
-    bool VulkanRenderDevice::UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data, size_t data_size, uint32_t offset)
+    bool VulkanRenderDevice::UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data, size_t data_size, uint32_t dst_offset)
     {
         const VertexBuffer* vertex_buffer = m_vertex_buffer_alloc.GetResource(vertex_buffer_handle);
 		if (!vertex_buffer)
@@ -752,12 +747,7 @@ namespace brr::render
 		    return false;
 		}
 
-		render::StagingBufferHandle staging_buffer{};
-		m_staging_allocator.AllocateStagingBuffer(m_current_frame, data_size, &staging_buffer);
-
-		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, data_size);
-
-		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, vertex_buffer->buffer, data_size, 0, offset);
+		UpdateBufferData(vertex_buffer->buffer, data, data_size, 0, dst_offset);
 
 		return true;
     }
@@ -845,12 +835,7 @@ namespace brr::render
 
 		if (data != nullptr)
 		{
-		    render::StagingBufferHandle staging_buffer{};
-		    m_staging_allocator.AllocateStagingBuffer(m_current_frame, buffer_size, &staging_buffer);
-
-		    m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, buffer_size);
-
-		    m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, index_buffer->buffer, buffer_size);
+			UpdateBufferData(index_buffer->buffer, data, buffer_size, 0, 0);
 		}
 
 		return index_buffer_handle;
@@ -873,7 +858,7 @@ namespace brr::render
     }
 
     bool VulkanRenderDevice::UpdateIndexBufferData(IndexBufferHandle index_buffer_handle, void* data, size_t data_size,
-                                                   uint32_t offset)
+                                                   uint32_t dst_offset)
     {
 		const IndexBuffer* index_buffer = m_index_buffer_alloc.GetResource(index_buffer_handle);
 		if (!index_buffer)
@@ -881,12 +866,7 @@ namespace brr::render
 		    return false;
 		}
 
-		render::StagingBufferHandle staging_buffer{};
-		m_staging_allocator.AllocateStagingBuffer(m_current_frame, data_size, &staging_buffer);
-
-		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, data_size);
-
-		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, index_buffer->buffer, data_size, 0, offset);
+		UpdateBufferData(index_buffer->buffer, data, data_size, 0, dst_offset);
 
 		return true;
     }
@@ -921,6 +901,64 @@ namespace brr::render
 		command_buffer.bindIndexBuffer(index_buffer->buffer, 0, index_type);
 
 		return true;
+    }
+
+    void VulkanRenderDevice::UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size,
+                                              uint32_t src_offset, uint32_t dst_offset)
+    {
+		render::StagingBufferHandle staging_buffer{};
+		m_staging_allocator.AllocateStagingBuffer(m_current_frame, size, &staging_buffer);
+
+		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, size);
+
+		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer, size, src_offset, dst_offset);
+
+		vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
+		vk::CommandBuffer grapics_cmd_buffer = GetCurrentGraphicsCommandBuffer();
+
+		if (IsDifferentTransferQueue())
+        {
+            vk::BufferMemoryBarrier2 buffer_memory_barrier;
+            buffer_memory_barrier
+                .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
+                .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
+                .setBuffer(dst_buffer)
+                .setSize(size);
+
+            vk::DependencyInfo dependency_info;
+            dependency_info
+                .setBufferMemoryBarriers(buffer_memory_barrier);
+
+            transfer_cmd_buffer.pipelineBarrier2(dependency_info);
+
+            buffer_memory_barrier
+                .setDstStageMask(vk::PipelineStageFlagBits2::eVertexInput)
+                .setDstAccessMask(vk::AccessFlagBits2::eVertexAttributeRead)
+                .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
+                .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
+                .setBuffer(dst_buffer)
+                .setSize(size);
+
+            dependency_info
+                .setBufferMemoryBarriers(buffer_memory_barrier);
+
+            grapics_cmd_buffer.pipelineBarrier2(dependency_info);
+        }
+        else
+        {
+            // TODO
+            vk::MemoryBarrier memory_barrier;
+            memory_barrier
+                .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
+                .setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead);
+
+            transfer_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+                                                vk::PipelineStageFlagBits::eVertexInput,
+                                                vk::DependencyFlags(), 1, &memory_barrier, 0,
+                                                nullptr, 0, nullptr);
+        }
     }
 
     void VulkanRenderDevice::Init_VkInstance(vis::Window* window)

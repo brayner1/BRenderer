@@ -152,7 +152,7 @@ namespace brr::render
 
 		bool DestroyVertexBuffer(VertexBufferHandle vertex_buffer_handle);
 
-		bool UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data, size_t data_size, uint32_t offset);
+		bool UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data, size_t data_size, uint32_t dst_offset);
 
 		bool BindVertexBuffer(VertexBufferHandle vertex_buffer_handle);
 
@@ -171,9 +171,13 @@ namespace brr::render
 
 		bool DestroyIndexBuffer(IndexBufferHandle index_buffer_handle);
 
-		bool UpdateIndexBufferData(IndexBufferHandle index_buffer_handle, void* data, size_t data_size, uint32_t offset);
+		bool UpdateIndexBufferData(IndexBufferHandle index_buffer_handle, void* data, size_t data_size, uint32_t dst_offset);
 
 		bool BindIndexBuffer(IndexBufferHandle index_buffer_handle);
+
+	protected:
+
+		void UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size, uint32_t src_offset, uint32_t dst_offset);
 
 	private: // Initialization functions
 
