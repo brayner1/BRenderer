@@ -59,8 +59,6 @@ namespace brr::vis
     {
 		m_current_buffer = buffer_index;
 		m_current_frame = current_frame;
-		m_current_graphics_cmd_buffer = m_render_device->GetCurrentGraphicsCommandBuffer();
-		m_current_transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
     }
 
     void SceneRenderer::UpdateDirtyInstances()
@@ -124,15 +122,14 @@ namespace brr::vis
 
     }
 
-    void SceneRenderer::Render3D(const render::DevicePipeline& render_pipeline)
+    void SceneRenderer::Render3D()
     {
-		m_current_graphics_cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipeline());
+		m_render_device->Bind_GraphicsPipeline();
 
-		m_current_graphics_cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 0, m_camera_uniform_info.m_descriptor_sets[m_current_buffer], {});
-
+		m_render_device->Bind_DescriptorSet(m_camera_uniform_info.m_descriptor_sets[m_current_buffer], 0);
 		for (RenderData& render_data : m_render_data)
 		{
-			m_current_graphics_cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, render_pipeline.GetPipelineLayout(), 1, render_data.m_descriptor_sets[m_current_buffer], {});
+			m_render_device->Bind_DescriptorSet(render_data.m_descriptor_sets[m_current_buffer], 1);
 
 			assert(render_data.m_vertex_buffer_handle.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
 			m_render_device->BindVertexBuffer(render_data.m_vertex_buffer_handle);
@@ -140,11 +137,11 @@ namespace brr::vis
 			if (render_data.m_index_buffer_handle.IsValid())
 			{
 				m_render_device->BindIndexBuffer(render_data.m_index_buffer_handle);
-				m_current_graphics_cmd_buffer.drawIndexed(render_data.num_indices, 1, 0, 0, 0);
+				m_render_device->DrawIndexed(render_data.num_indices, 1, 0, 0, 0);
 			}
 			else
 			{
-				m_current_graphics_cmd_buffer.draw( render_data.num_vertices, 1, 0, 0);
+				m_render_device->Draw(render_data.num_vertices, 1, 0, 0);
 			}
 		}
     }

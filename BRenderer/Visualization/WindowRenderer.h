@@ -34,22 +34,11 @@ namespace brr{
             void BeginRenderWindow();
 			void EndRenderWindow();
 
-			/*
-			 * Pipelines
-			 */
-
-			vk::Pipeline CreateGraphicsPipeline(const render::Shader& shader);
-
-			[[nodiscard]] const render::DevicePipeline* GetGraphicsPipeline() const { return m_graphics_pipeline.get(); }
-
 		private:
 			friend class WindowManager;
 
 			// Define DescriptorSetLayout and create the GraphicsPipeline
 			void Init_GraphicsPipeline();
-
-			// Create UniformBuffers and the DescriptorSets
-			void Init_DescriptorLayouts();
 
 			void BeginRenderPass(vk::CommandBuffer cmd_buffer) const;
 			void Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer);
@@ -61,13 +50,6 @@ namespace brr{
 
 			// Window
 			Window* m_owner_window{};
-
-			// Descriptor Sets
-			vk::DescriptorSetLayout m_descriptor_set_layout {};
-
-			// DevicePipeline
-
-			std::unique_ptr<render::DevicePipeline> m_graphics_pipeline {};
 
 			// Swapchain
 			std::unique_ptr<render::Swapchain> m_swapchain{};

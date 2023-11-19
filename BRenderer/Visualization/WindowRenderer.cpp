@@ -25,9 +25,6 @@ namespace brr::vis
 
 		m_owner_window->GetScene()->SetSceneRenderer(m_scene_renderer.get());
 
-		// Create DescriptorPool and the DescriptorSets
-		Init_DescriptorLayouts();
-
 		Init_GraphicsPipeline();
     }
 
@@ -43,22 +40,9 @@ namespace brr::vis
 		Recreate_Swapchain();
 	}
 
-	void WindowRenderer::Init_DescriptorLayouts()
-	{
-        render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
-		layoutBuilder
-			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
-
-        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
-		m_descriptor_set_layout = descriptor_layout.m_descriptor_set_layout;
-	}
-
 	void WindowRenderer::Init_GraphicsPipeline()
 	{
-        render::Shader shader = m_render_device->CreateShaderFromFiles("vert", "frag");
-
-		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector{2, m_descriptor_set_layout}, shader,
-                                                                       m_swapchain.get());
+        m_render_device->Create_GraphicsPipeline(m_swapchain.get());
 	}
 
     void WindowRenderer::BeginRenderPass(vk::CommandBuffer cmd_buffer) const
@@ -88,7 +72,7 @@ namespace brr::vis
 
 		BeginRenderPass(graphics_cmd_buffer);
 
-		m_scene_renderer->Render3D(*m_graphics_pipeline);
+		m_scene_renderer->Render3D();
 
 		EndRenderPass(graphics_cmd_buffer);
 	}
@@ -143,8 +127,6 @@ namespace brr::vis
 		    m_swapchain = nullptr;
 		    m_scene_renderer.reset();
 		}
-
-		m_graphics_pipeline->DestroyPipeline();
 
 		m_render_device = nullptr;
 

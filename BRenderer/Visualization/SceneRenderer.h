@@ -36,7 +36,7 @@ namespace brr::vis
 
         void UpdateDirtyInstances();
 
-        void Render3D(const render::DevicePipeline& render_pipeline);
+        void Render3D();
 
     private:
 
@@ -86,9 +86,6 @@ namespace brr::vis
 
         uint32_t m_current_buffer = 0;
         size_t m_current_frame = 0;
-
-        vk::CommandBuffer m_current_graphics_cmd_buffer = nullptr;
-        vk::CommandBuffer m_current_transfer_cmd_buffer = nullptr;
 
         struct CameraUniformInfo
         {

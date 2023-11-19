@@ -2,6 +2,7 @@
 #define BRR_RENDERDEVICE_H
 #include <Renderer/RenderDefs.h>
 #include <Renderer/Descriptors.h>
+#include <Renderer/DevicePipeline.h>
 #include <Renderer/Shader.h>
 #include <Renderer/Allocators/ResourceAllocator.h>
 #include <Renderer/Allocators/StagingAllocator.h>
@@ -175,6 +176,22 @@ namespace brr::render
 
 		bool BindIndexBuffer(IndexBufferHandle index_buffer_handle);
 
+		/*********************
+		 * Graphics Pipeline *
+		 *********************/
+
+		bool Create_GraphicsPipeline(Swapchain* swapchain);
+
+		void Bind_GraphicsPipeline();
+		void Bind_DescriptorSet(vk::DescriptorSet descriptor_set, uint32_t set_index);
+
+		/************
+		 * Commands *
+		 ************/
+
+		void Draw(uint32_t num_vertex, uint32_t num_instances, uint32_t first_vertex, uint32_t first_instance);
+		void DrawIndexed(uint32_t num_indices, uint32_t num_instances, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
+
 	protected:
 
 		void UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size, uint32_t src_offset, uint32_t dst_offset);
@@ -194,6 +211,7 @@ namespace brr::render
 		void Init_Allocator();
 		void Init_CommandPool();
 		void Init_Frames();
+		void Init_DescriptorLayouts();
 
 		/***************************
 		 * CommandBuffer Functions *
@@ -320,6 +338,12 @@ namespace brr::render
 		vk::Queue m_transfer_queue{};
 		bool m_different_present_queue = false;
 		bool m_different_transfer_queue = false;
+
+		// Descriptor Sets
+			vk::DescriptorSetLayout m_descriptor_set_layout {};
+
+		// DevicePipeline
+		std::unique_ptr<render::DevicePipeline> m_graphics_pipeline {};
 
 		std::unique_ptr<DescriptorAllocator> m_descriptor_allocator = nullptr;
 		std::unique_ptr<DescriptorLayoutCache> m_descriptor_layout_cache = nullptr;

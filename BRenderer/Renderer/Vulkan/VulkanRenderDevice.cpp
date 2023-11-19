@@ -169,6 +169,9 @@ namespace brr::render
 		vmaDestroyAllocator(m_vma_allocator);
 		BRR_LogTrace("Destroyed VMA allocator.");
 
+		m_graphics_pipeline->DestroyPipeline();
+		BRR_LogTrace("Destroyed Graphics Pipeline");
+
 		m_descriptor_layout_cache.reset();
 		BRR_LogTrace("Destroyed descriptor layout cache.");
         m_descriptor_allocator.reset();
@@ -265,6 +268,8 @@ namespace brr::render
 
 		m_descriptor_layout_cache.reset(new DescriptorLayoutCache(m_device));
 		m_descriptor_allocator.reset(new DescriptorAllocator(m_device));
+
+		Init_DescriptorLayouts();
 
 		BRR_LogInfo("VulkanRenderDevice {:#x} constructed", (size_t)this);
 	}
@@ -903,6 +908,45 @@ namespace brr::render
 		return true;
     }
 
+    bool VulkanRenderDevice::Create_GraphicsPipeline(Swapchain* swapchain)
+    {
+		render::Shader shader = CreateShaderFromFiles("vert", "frag");
+
+		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector{2, m_descriptor_set_layout}, shader,
+                                                                       swapchain);
+		return true;
+    }
+
+    void VulkanRenderDevice::Bind_GraphicsPipeline()
+    {
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		current_frame.graphics_cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphics_pipeline->GetPipeline());
+    }
+
+    void VulkanRenderDevice::Bind_DescriptorSet(vk::DescriptorSet descriptor_set, uint32_t set_index)
+    {
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		current_frame.graphics_cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_graphics_pipeline->GetPipelineLayout(), set_index, descriptor_set, {});
+    }
+
+    void VulkanRenderDevice::Draw(uint32_t num_vertex, uint32_t num_instances, uint32_t first_vertex,
+                                  uint32_t first_instance)
+    {
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		current_frame.graphics_cmd_buffer.draw(num_vertex, num_instances, first_vertex, first_instance);
+    }
+
+    void VulkanRenderDevice::DrawIndexed(uint32_t num_indices, uint32_t num_instances, uint32_t first_index,
+                                         uint32_t vertex_offset, uint32_t first_instance)
+    {
+		Frame& current_frame = m_frames[m_current_buffer];
+
+		current_frame.graphics_cmd_buffer.drawIndexed(num_indices, num_instances, first_index, vertex_offset, first_instance);
+    }
+
     void VulkanRenderDevice::UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size,
                                               uint32_t src_offset, uint32_t dst_offset)
     {
@@ -1331,6 +1375,16 @@ namespace brr::render
 		        m_frames[idx].transfer_finished_semaphore = createTransferFinishedSempahoreResult.value;
 		    }
 		}
+    }
+
+    void VulkanRenderDevice::Init_DescriptorLayouts()
+    {
+		render::DescriptorLayoutBuilder layoutBuilder = GetDescriptorLayoutBuilder();
+		layoutBuilder
+			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+
+        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+		m_descriptor_set_layout = descriptor_layout.m_descriptor_set_layout;
     }
 
     vk::Result VulkanRenderDevice::BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
