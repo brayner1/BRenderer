@@ -511,14 +511,20 @@ namespace brr::render
 
     bool VulkanRenderDevice::UploadBufferData(BufferHandle dst_buffer_handle, void* data, size_t size, uint32_t offset)
     {
-		render::StagingBufferHandle staging_buffer{};
-		m_staging_allocator.AllocateStagingBuffer(m_current_frame, size, &staging_buffer);
-
-		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, size);
-
 		Buffer* dst_buffer = m_buffer_alloc.GetResource(dst_buffer_handle);
 
-		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer->buffer, size);
+		uint32_t written_bytes = 0;
+		while (written_bytes != size)
+		{
+		    render::StagingBufferHandle staging_buffer{};
+            const uint32_t allocated = m_staging_allocator.AllocateStagingBuffer(m_current_frame, size - written_bytes, &staging_buffer);
+
+			m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
+
+	        m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer->buffer, allocated, 0, written_bytes);
+
+			written_bytes += allocated;
+		}
 
 		return true;
     }
@@ -950,12 +956,20 @@ namespace brr::render
     void VulkanRenderDevice::UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size,
                                               uint32_t src_offset, uint32_t dst_offset)
     {
-		render::StagingBufferHandle staging_buffer{};
-		m_staging_allocator.AllocateStagingBuffer(m_current_frame, size, &staging_buffer);
+	    { // Make transfer
+			uint32_t written_bytes = 0;
+		    while (written_bytes != size)
+		    {
+		        render::StagingBufferHandle staging_buffer{};
+                const uint32_t allocated = m_staging_allocator.AllocateStagingBuffer(m_current_frame, size - written_bytes, &staging_buffer);
 
-		m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, data, size);
+				m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
 
-		m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer, size, src_offset, dst_offset);
+	            m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer, allocated, src_offset, dst_offset + written_bytes);
+
+				written_bytes += allocated;
+		    }
+	    }
 
 		vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
 		vk::CommandBuffer grapics_cmd_buffer = GetCurrentGraphicsCommandBuffer();

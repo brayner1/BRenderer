@@ -34,8 +34,8 @@ namespace brr::render
 
 		void DestroyAllocator();
 
-        void AllocateStagingBuffer(size_t frame_id, size_t size,
-                                                     StagingBufferHandle* out_staging_buffer);
+        uint32_t AllocateStagingBuffer(int64_t frame_id, size_t size,
+                                       StagingBufferHandle* out_staging_buffer, bool can_segment = true);
 
 
         void WriteToStagingBuffer(StagingBufferHandle staging_buffer, uint32_t staging_buffer_offset, void* data, size_t data_size);
@@ -43,13 +43,13 @@ namespace brr::render
 
         void CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::Buffer dst_buffer,
                                      size_t size,
-                                     uint32_t src_offset = 0, uint32_t dst_offset = 0);
+                                     uint32_t staging_buffer_offset = 0, uint32_t dst_buffer_offset = 0);
 
     private:
 
 		struct StagingBlock
 		{
-			size_t frame_id = 0;
+			int64_t frame_id = 0;
 			size_t m_filled_bytes = 0;
 
 			void* mapping = nullptr;
@@ -57,9 +57,12 @@ namespace brr::render
 			VmaAllocation m_allocation {};
 		};
 
+		static constexpr uint32_t invalid_block = std::numeric_limits<uint32_t>::max();
+
         bool InsertStagingBlock();
-		void ClearProcessedBlocks(uint32_t current_frame_id);
-		void AllocateInBlock(uint32_t block_index, size_t size, StagingBufferHandle* out_staging_handle);
+		void ClearProcessedBlocks(int64_t current_frame_id);
+        uint32_t AllocateInBlock(uint32_t block_index, size_t size, StagingBufferHandle* out_staging_handle);
+		uint32_t FindAvailableBlock(int64_t frame_id, size_t size, bool can_segment);
 
 		void InitVmaPool();
 		void DestroystagingBlocks();

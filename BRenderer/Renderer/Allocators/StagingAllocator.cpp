@@ -8,6 +8,7 @@ namespace brr::render
 {
     constexpr uint32_t STAGING_BLOCK_SIZE_BYTES = STAGING_BLOCK_SIZE_KB * 1024;
     constexpr uint32_t STAGING_MAX_SIZE_BYTES = STAGING_BUFFER_MAX_SIZE_MB * 1024 * 1024;
+    constexpr int64_t NULL_FRAME_ID = -FRAME_LAG - 1;
 
     StagingAllocator::StagingAllocator()
     {}
@@ -42,7 +43,8 @@ namespace brr::render
         }
     }
 
-    void StagingAllocator::AllocateStagingBuffer(size_t frame_id, size_t size, StagingBufferHandle* out_staging_buffer)
+    uint32_t StagingAllocator::AllocateStagingBuffer(int64_t frame_id, size_t size,
+                                                     StagingBufferHandle* out_staging_buffer, bool can_segment)
     {
         assert(out_staging_buffer && "StagingBufferHandle pointer must be valid to allocate a new staging buffer.");
         if (m_staging_blocks[m_current_block].frame_id == frame_id)
@@ -51,50 +53,31 @@ namespace brr::render
             if (m_staging_blocks[m_current_block].m_filled_bytes + size < STAGING_BLOCK_SIZE_BYTES)
             {
                 // Block has enough space. Allocate memory in it.
-                AllocateInBlock(m_current_block, size, out_staging_buffer);
+                return AllocateInBlock(m_current_block, size, out_staging_buffer);
             }
             else
             {
                 // Not enough space in current block. Find another one.
-                bool found = false;
-                for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
+                uint32_t found_index = FindAvailableBlock(frame_id, size, can_segment);
+                bool found           = found_index != invalid_block;
+                if (found)
                 {
-                    StagingBlock& block = m_staging_blocks[i];
-                    if (block.frame_id <= frame_id - FRAME_LAG)
-                    {
-                        // Clear already processed staging buffers
-                        block.m_filled_bytes = 0;
-                        block.frame_id = 0;
-                        if (!found)
-                        {
-                            found = true;
-                            m_current_block = i;
-                            block.frame_id = frame_id;
-                        }
-                    }
-                    else if (block.frame_id == frame_id && (block.m_filled_bytes + size) < STAGING_BLOCK_SIZE_BYTES)
-                    {
-                        // Block already used in this frame still has free space. Use it.
-                        if (!found)
-                        {
-                            found = true;
-                            m_current_block = i;
-                        }
-                    }
+                    m_current_block = found_index;
                 }
-                if (!found)
+                else
                 {
                     // Problem here. There is no block available. Let's try to create a new one.
                     if (((m_staging_blocks.size() + 1) * STAGING_BLOCK_SIZE_BYTES) <= STAGING_MAX_SIZE_BYTES)
                     {
                         InsertStagingBlock();
                         m_current_block = m_staging_blocks.size() - 1;
+                        m_staging_blocks[m_current_block].frame_id = frame_id;
                     }
                     else
                     {
                         // There is not enough space to allocate new block.
                         // We need to wait for previous frames to finish processing.
-                        m_render_device->WaitIdle(); // TODO: is this the best approach?
+                        m_render_device->WaitIdle(); // TODO: If already used all blocks on this frame, need to flush.
                         for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                         {
                             StagingBlock& block = m_staging_blocks[i];
@@ -102,7 +85,7 @@ namespace brr::render
                             {
                                 // Clear already processed staging buffers
                                 block.m_filled_bytes = 0;
-                                block.frame_id = 0;
+                                block.frame_id = NULL_FRAME_ID;
                                 if (!found)
                                 {
                                     found = true;
@@ -114,7 +97,7 @@ namespace brr::render
                     }
                 }
                 // Allocate memory in new block.
-                AllocateInBlock(m_current_block, size, out_staging_buffer);
+                return AllocateInBlock(m_current_block, size, out_staging_buffer);
             }
         }
         else if (m_staging_blocks[m_current_block].frame_id <= frame_id - FRAME_LAG)
@@ -123,49 +106,30 @@ namespace brr::render
             StagingBlock& block = m_staging_blocks[m_current_block];
             block.m_filled_bytes = 0;
             block.frame_id = frame_id;
-            AllocateInBlock(m_current_block, size, out_staging_buffer);
+            return AllocateInBlock(m_current_block, size, out_staging_buffer);
         }
         else
         {
-            bool found = false;
-            for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
+            uint32_t found_index = FindAvailableBlock(frame_id, size, can_segment);
+            bool found           = found_index != invalid_block;
+            if (found)
             {
-                StagingBlock& block = m_staging_blocks[i];
-                if (block.frame_id <= frame_id - FRAME_LAG)
-                {
-                    // Clear already processed staging buffers
-                    block.m_filled_bytes = 0;
-                    block.frame_id = 0;
-                    if (!found)
-                    {
-                        found = true;
-                        m_current_block = i;
-                        block.frame_id = frame_id;
-                    }
-                }
-                else if (block.frame_id == frame_id && (block.m_filled_bytes + size) < STAGING_BLOCK_SIZE_BYTES)
-                {
-                    // Block already used in this frame still has free space. Use it.
-                    if (!found)
-                    {
-                        found = true;
-                        m_current_block = i;
-                    }
-                }
+                m_current_block = found_index;
             }
-            if (!found)
+            else
             {
                 // Problem here. There is no block available. Let's try to create a new one.
                 if (((m_staging_blocks.size() + 1) * STAGING_BLOCK_SIZE_BYTES) <= STAGING_MAX_SIZE_BYTES)
                 {
                     InsertStagingBlock();
                     m_current_block = m_staging_blocks.size() - 1;
+                    m_staging_blocks[m_current_block].frame_id = frame_id;
                 }
                 else
                 {
                     // There is not enough space to allocate new block.
                     // We need to wait for previous frames to finish processing.
-                    m_render_device->WaitIdle(); // TODO: is this the best approach?
+                    m_render_device->WaitIdle(); // TODO: If already used all blocks on this frame, need to flush.
                     for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
                     {
                         StagingBlock& block = m_staging_blocks[i];
@@ -173,7 +137,7 @@ namespace brr::render
                         {
                             // Clear already processed staging buffers
                             block.m_filled_bytes = 0;
-                            block.frame_id = 0;
+                            block.frame_id = NULL_FRAME_ID;
                             if (!found)
                             {
                                 found = true;
@@ -184,29 +148,30 @@ namespace brr::render
                     }
                 }
             }
-            AllocateInBlock(m_current_block, size, out_staging_buffer);
+            return AllocateInBlock(m_current_block, size, out_staging_buffer);
         }
     }
 
     void StagingAllocator::WriteToStagingBuffer(StagingBufferHandle staging_buffer, uint32_t staging_buffer_offset, void* data, size_t data_size)
     {
+        assert(data_size <= (staging_buffer.m_size - staging_buffer_offset) && "Error: Can't transfer beyond staging buffer allocated size.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
         memcpy(static_cast<char*>(block.mapping) + staging_buffer.m_offset + staging_buffer_offset, data, data_size);
     }
 
     void StagingAllocator::CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::Buffer dst_buffer,
                                                    size_t size,
-                                                   uint32_t src_offset, uint32_t dst_offset)
+                                                   uint32_t staging_buffer_offset, uint32_t dst_buffer_offset)
     {
-        assert((dst_offset + size) <= staging_buffer.m_size && "Can't make transfer bigger than passed staging buffer.");
+        assert((staging_buffer_offset + size) <= staging_buffer.m_size && "Can't make transfer bigger than passed staging buffer.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
 
         vk::CommandBuffer transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
         
         vk::BufferCopy buffer_copy;
         buffer_copy
-            .setSrcOffset(staging_buffer.m_offset + src_offset)
-            .setDstOffset(dst_offset)
+            .setSrcOffset(staging_buffer.m_offset + staging_buffer_offset)
+            .setDstOffset(dst_buffer_offset)
             .setSize(size);
         transfer_cmd_buffer.copyBuffer(block.m_buffer, dst_buffer, buffer_copy);
     }
@@ -242,6 +207,7 @@ namespace brr::render
 
         block.m_buffer = new_buffer;
         block.mapping = alloc_info.pMappedData;
+        block.frame_id = NULL_FRAME_ID;
 
         m_staging_blocks.push_back(block);
 
@@ -250,7 +216,7 @@ namespace brr::render
         return true;
     }
 
-    void StagingAllocator::ClearProcessedBlocks(uint32_t current_frame_id)
+    void StagingAllocator::ClearProcessedBlocks(int64_t current_frame_id)
     {
         for (StagingBlock& block : m_staging_blocks)
         {
@@ -263,15 +229,66 @@ namespace brr::render
         }
     }
 
-    void StagingAllocator::AllocateInBlock(uint32_t block_index, size_t size, StagingBufferHandle* out_staging_handle)
+    uint32_t StagingAllocator::AllocateInBlock(uint32_t block_index, size_t size, StagingBufferHandle* out_staging_handle)
     {
         out_staging_handle->m_block_index = block_index;
         out_staging_handle->m_offset = m_staging_blocks[block_index].m_filled_bytes;
+
+        if (m_staging_blocks[block_index].m_filled_bytes + size >= STAGING_BLOCK_SIZE_BYTES)
+        {
+            size = STAGING_BLOCK_SIZE_BYTES - m_staging_blocks[block_index].m_filled_bytes;
+        }
+
         out_staging_handle->m_size = size;
 
         m_staging_blocks[block_index].m_filled_bytes += size;
+        assert(m_staging_blocks[block_index].m_filled_bytes <= STAGING_BLOCK_SIZE_BYTES && "Error: Allocated more memory than available on StagingBlock");
 
         BRR_LogInfo("Allocating {} bytes in staging block {}.", size, block_index);
+
+        return size;
+    }
+
+    uint32_t StagingAllocator::FindAvailableBlock(int64_t frame_id, size_t size, bool can_segment)
+    {
+        uint32_t found_index = invalid_block;
+        size_t max_free_bytes = 0;
+        for (uint32_t i = 0; i < m_staging_blocks.size(); i++)
+        {
+            StagingBlock& block = m_staging_blocks[i];
+            const bool finished_frame = block.frame_id <= (frame_id - FRAME_LAG);
+            if (finished_frame || block.frame_id == frame_id)
+            {
+                if (finished_frame)
+                {
+                    // Clear already processed staging buffers
+                    block.m_filled_bytes = 0;
+                    block.frame_id = NULL_FRAME_ID;
+                }
+
+                if (max_free_bytes != std::numeric_limits<size_t>::max())
+                {
+                    if ((block.m_filled_bytes + size) < STAGING_BLOCK_SIZE_BYTES)
+                    {
+                        // Found block with 'size' bytes available. No need to search for other blocks.
+                        max_free_bytes = std::numeric_limits<size_t>::max(); 
+                        found_index = i;
+                    }
+                    else if (can_segment && (STAGING_BLOCK_SIZE_BYTES - block.m_filled_bytes) > max_free_bytes)
+                    {
+                        // If we don't find block with 'size' bytes available, use the one with most available space.
+                        found_index = i;
+                        max_free_bytes = STAGING_BLOCK_SIZE_BYTES - block.m_filled_bytes;
+                    }
+                }
+            }
+        }
+
+        if (found_index != invalid_block)
+        {
+            m_staging_blocks[found_index].frame_id = frame_id;
+        }
+        return found_index;
     }
 
     void StagingAllocator::InitVmaPool()
@@ -312,7 +329,8 @@ namespace brr::render
 
         vmaCreatePool(m_render_device->m_vma_allocator, &pool_create_info, &m_staging_pool);
 
-        BRR_LogInfo("StagingAllocator VmaPool is created.\nPool properties:\n"
+        BRR_LogInfo("StagingAllocator VmaPool is created.\n"
+                    "Pool properties:\n"
                     "\tMemory type index: {}\n"
                     "\tPool Max Size (Bytes): {}\n"
                     "\tPool Current Size (Bytes): {}\n"
