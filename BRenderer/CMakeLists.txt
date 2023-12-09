@@ -62,6 +62,7 @@ set(BRenderer_SOURCE_FILES
     "Scene/Components/NodeComponent.cpp"
     "Scene/Components/Transform3DComponent.cpp"
  
+    "Visualization/Image.cpp"
     "Visualization/SceneRenderer.cpp"
     "Visualization/Window.cpp" 
     "Visualization/WindowManager.cpp"
@@ -75,6 +76,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Vulkan/VulkanRenderDevice.cpp"
     "Renderer/Descriptors.cpp"
     "Renderer/DeviceBuffer.cpp"
+    "Renderer/DeviceImage.cpp"
     "Renderer/DevicePipeline.cpp"
     "Renderer/Shader.cpp" 
     "Renderer/Swapchain.cpp"
@@ -99,14 +101,14 @@ set(BRenderer_HEADER_FILES
     
     "Scene/Components.h"
     "Scene/Entity.h"
-    "Scene/Scene.h"
-    
+    "Scene/Scene.h" 
     "Scene/Components/EntityComponent.h"
     "Scene/Components/MaterialComponent.h"
     "Scene/Components/Mesh3DComponent.h"
     "Scene/Components/NodeComponent.h"
     "Scene/Components/Transform3DComponent.h"
 
+    "Visualization/Image.h"
     "Visualization/SceneRenderer.h"
     "Visualization/Window.h" 
     "Visualization/WindowManager.h"
@@ -121,6 +123,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/Vulkan/VulkanRenderDevice.h"
     "Renderer/Descriptors.h"
     "Renderer/DeviceBuffer.h"
+    "Renderer/DeviceImage.h"
     "Renderer/DevicePipeline.h"
     "Renderer/RenderDefs.h"
     "Renderer/ResourcesHandles.h"

@@ -35,7 +35,7 @@ namespace brr::vis
 		const glm::ivec2 extent{ width, height };
 
 		scene.reset(new Scene(new PerspectiveCamera(
-			glm::vec3{ 2.f },
+			glm::vec3{ 0.f, 0.f, 5.f },
 			glm::vec3{ 0.f },
 			glm::radians(45.f),
 			extent.x / (float)extent.y,

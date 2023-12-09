@@ -46,6 +46,7 @@ namespace brr::render
     uint32_t StagingAllocator::AllocateStagingBuffer(int64_t frame_id, size_t size,
                                                      StagingBufferHandle* out_staging_buffer, bool can_segment)
     {
+        // Probably make a fragmented transfer (transfer a part, then another part, and so on)
         assert(out_staging_buffer && "StagingBufferHandle pointer must be valid to allocate a new staging buffer.");
         if (m_staging_blocks[m_current_block].frame_id == frame_id)
         {
@@ -152,11 +153,27 @@ namespace brr::render
         }
     }
 
-    void StagingAllocator::WriteToStagingBuffer(StagingBufferHandle staging_buffer, uint32_t staging_buffer_offset, void* data, size_t data_size)
+    void StagingAllocator::WriteLinearBufferToStaging(StagingBufferHandle staging_buffer, uint32_t staging_buffer_offset, const void* data, size_t data_size)
     {
         assert(data_size <= (staging_buffer.m_size - staging_buffer_offset) && "Error: Can't transfer beyond staging buffer allocated size.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
         memcpy(static_cast<char*>(block.mapping) + staging_buffer.m_offset + staging_buffer_offset, data, data_size);
+    }
+
+    void StagingAllocator::WriteBlockImageToStaging(StagingBufferHandle staging_buffer, const unsigned char* image_data,
+        glm::uvec2 block_offset, glm::uvec2 block_size, glm::uvec2 image_size, uint8_t pixel_size)
+    {
+        StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
+        const uint32_t line_transfer_size = block_size.x * pixel_size;
+		uint32_t read_offset = (block_offset.y * image_size.x + block_offset.x) * pixel_size;
+		uint32_t write_offset = 0;
+		for (uint32_t y = 0; y < block_size.y; y++)
+		{
+		    memcpy(static_cast<char*>(block.mapping) + staging_buffer.m_offset + write_offset, image_data + read_offset, line_transfer_size);
+
+			read_offset += image_size.x * pixel_size;
+			write_offset += line_transfer_size;
+		}
     }
 
     void StagingAllocator::CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::Buffer dst_buffer,
@@ -174,6 +191,34 @@ namespace brr::render
             .setDstOffset(dst_buffer_offset)
             .setSize(size);
         transfer_cmd_buffer.copyBuffer(block.m_buffer, dst_buffer, buffer_copy);
+    }
+
+    void StagingAllocator::CopyFromStagingToImage(StagingBufferHandle staging_buffer, vk::Image dst_image, vk::Extent3D image_extent,
+                                                  uint32_t src_offset, vk::Offset3D image_offset)
+    {
+        //TODO: CopyFromStagingToImage
+        //assert((image_offset + image_extent) <= staging_buffer.m_size && "Can't make transfer bigger than passed staging buffer.");
+        StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
+
+        vk::CommandBuffer transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
+
+        vk::ImageSubresourceLayers image_subresource;
+        image_subresource
+            .setBaseArrayLayer(0)
+            .setLayerCount(1)
+            .setMipLevel(0)
+            .setAspectMask(vk::ImageAspectFlagBits::eColor);
+
+        vk::BufferImageCopy image_copy;
+        image_copy
+            .setBufferOffset(staging_buffer.m_offset + src_offset)
+            .setBufferRowLength(0)
+            .setBufferImageHeight(0)
+            .setImageSubresource(image_subresource)
+            .setImageOffset(image_offset)
+            .setImageExtent(image_extent);
+
+        transfer_cmd_buffer.copyBufferToImage(block.m_buffer, dst_image, vk::ImageLayout::eTransferDstOptimal, image_copy);
     }
 
     bool StagingAllocator::InsertStagingBlock()

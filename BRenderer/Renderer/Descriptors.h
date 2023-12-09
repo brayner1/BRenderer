@@ -243,7 +243,7 @@ namespace brr::render
         {
             vk::WriteDescriptorSet descriptor_write;
             descriptor_write
-                .setPImageInfo(imageInfo[info_idx])
+                .setPImageInfo(&imageInfo[info_idx])
                 .setDstBinding(binding)
                 .setDescriptorType(descriptor_binding.descriptorType)
                 .setDescriptorCount(1);

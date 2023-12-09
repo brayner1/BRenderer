@@ -21,25 +21,25 @@ namespace brr
         return *this;
     }
 
-    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor>&& vertices)
+    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3>&& vertices)
     : m_vertices(std::move(vertices))
     {}
 
-    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor> vertices)
+    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3> vertices)
     : m_vertices(std::move(vertices))
     {}
 
-    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor>&& vertices, std::vector<uint32_t>&& indices)
+    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3>&& vertices, std::vector<uint32_t>&& indices)
     : m_vertices(std::move(vertices)),
       m_indices(std::move(indices))
     {}
 
-    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3_PosColor> vertices, std::vector<uint32_t> indices)
+    Mesh3DComponent::SurfaceData::SurfaceData(std::vector<Vertex3> vertices, std::vector<uint32_t> indices)
     : m_vertices(std::move(vertices)),
       m_indices(std::move(indices))
     {}
 
-    uint32_t Mesh3DComponent::AddSurface(const std::vector<Vertex3_PosColor>& vertices,
+    uint32_t Mesh3DComponent::AddSurface(const std::vector<Vertex3>& vertices,
                                          const std::vector<uint32_t>& indices)
     {
         BRR_LogInfo("Adding new Surface");

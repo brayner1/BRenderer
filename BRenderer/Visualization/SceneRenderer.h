@@ -2,17 +2,17 @@
 #define BRR_SCENERENDERER_H
 #include <Core/Storage/ContiguousPool.h>
 #include <Geometry/Geometry.h>
+#include <Renderer/Descriptors.h>
+#include <Renderer/DeviceBuffer.h>
+#include <Renderer/DevicePipeline.h>
+#include <Renderer/RenderDefs.h>
+#include <Renderer/Allocators/StagingAllocator.h>
 #include <Renderer/Vulkan/VulkanInc.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
-#include <Renderer/DeviceBuffer.h>
-#include <Renderer/RenderDefs.h>
-#include <Renderer/Descriptors.h>
-#include <Renderer/DevicePipeline.h>
-#include <Renderer/Allocators/StagingAllocator.h>
-
 #include <Scene/Scene.h>
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Scene/Components/NodeComponent.h>
+#include <Visualization/Image.h>
 
 namespace brr::vis
 {
@@ -75,7 +75,7 @@ namespace brr::vis
 
         void SetupCameraUniforms();
 
-        void CreateVertexBuffer(std::vector<Vertex3_PosColor>& vertex_buffer, RenderData& render_data);
+        void CreateVertexBuffer(std::vector<Vertex3>& vertex_buffer, RenderData& render_data);
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
         void DestroyBuffers(RenderData& render_data);
 
@@ -94,7 +94,9 @@ namespace brr::vis
         } m_camera_uniform_info;
 
         ContiguousPool<RenderData> m_render_data;
-        entt::basic_storage<uint32_t, RenderData> m_entt_render_data;
+
+        std::unique_ptr<Image> m_image;
+        render::Texture2DHandle m_texture_2d_handle;
     };
 
 }

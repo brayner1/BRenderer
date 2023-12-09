@@ -97,6 +97,44 @@ namespace brr::render
 		return output;
 	}
 
+	static vk::ImageUsageFlags VkImageUsageFromDeviceImageUsage(VulkanRenderDevice::ImageUsage image_usage)
+    {
+        vk::ImageUsageFlags result = {};
+        if (image_usage & VulkanRenderDevice::TransferSrcImage)
+        {
+            result |= vk::ImageUsageFlagBits::eTransferSrc;
+        }
+        if (image_usage & VulkanRenderDevice::TransferDstImage)
+        {
+            result |= vk::ImageUsageFlagBits::eTransferDst;
+        }
+        if (image_usage & VulkanRenderDevice::SampledImage)
+        {
+            result |= vk::ImageUsageFlagBits::eSampled;
+        }
+        if (image_usage & VulkanRenderDevice::StorageImage)
+        {
+            result |= vk::ImageUsageFlagBits::eStorage;
+        }
+        if (image_usage & VulkanRenderDevice::ColorAttachmentImage)
+        {
+            result |= vk::ImageUsageFlagBits::eColorAttachment;
+        }
+        if (image_usage & VulkanRenderDevice::DepthStencilAttachmentImage)
+        {
+            result |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+        }
+        if (image_usage & VulkanRenderDevice::TransientAttachmentImage)
+        {
+            result |= vk::ImageUsageFlagBits::eTransientAttachment;
+        }
+        if (image_usage & VulkanRenderDevice::InputAttachmentImage)
+        {
+            result |= vk::ImageUsageFlagBits::eInputAttachment;
+        }
+        return result;
+    }
+
 	VmaMemoryUsage VmaMemoryUsageFromDeviceMemoryUsage(VulkanRenderDevice::MemoryUsage memory_usage)
 	{
         switch (memory_usage)
@@ -171,6 +209,9 @@ namespace brr::render
 
 		m_graphics_pipeline->DestroyPipeline();
 		BRR_LogTrace("Destroyed Graphics Pipeline");
+
+		m_device.destroySampler(m_texture2DSampler);
+		m_texture2DSampler = VK_NULL_HANDLE;
 
 		m_descriptor_layout_cache.reset();
 		BRR_LogTrace("Destroyed descriptor layout cache.");
@@ -270,6 +311,7 @@ namespace brr::render
 		m_descriptor_allocator.reset(new DescriptorAllocator(m_device));
 
 		Init_DescriptorLayouts();
+		Init_Texture2DSampler();
 
 		BRR_LogInfo("VulkanRenderDevice {:#x} constructed", (size_t)this);
 	}
@@ -336,8 +378,8 @@ namespace brr::render
 		shader.vert_shader_module_ = vertex_shader_module;
 		shader.frag_shader_module_ = fragment_shader_module;
 
-		shader.vertex_input_binding_description_ = Vertex3_PosColor::GetBindingDescription();
-		shader.vertex_input_attribute_descriptions_ = Vertex3_PosColor::GetAttributeDescriptions();
+		shader.vertex_input_binding_description_ = Vertex3::GetBindingDescription();
+		shader.vertex_input_attribute_descriptions_ = Vertex3::GetAttributeDescriptions();
 
 		BRR_LogDebug("Created graphics shader object.\nVertex shader file:\t'{}'\nFragment shader file:\t'{}'", vertex_file_name, frag_file_name);
 
@@ -519,7 +561,7 @@ namespace brr::render
 		    render::StagingBufferHandle staging_buffer{};
             const uint32_t allocated = m_staging_allocator.AllocateStagingBuffer(m_current_frame, size - written_bytes, &staging_buffer);
 
-			m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
+			m_staging_allocator.WriteLinearBufferToStaging(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
 
 	        m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer->buffer, allocated, 0, written_bytes);
 
@@ -695,20 +737,20 @@ namespace brr::render
 
 			VmaMemoryUsage vma_memory_usage = VMA_MEMORY_USAGE_AUTO;
 
-			VmaAllocationCreateInfo allocInfo = {};
-			allocInfo.usage = vma_memory_usage;
-			allocInfo.flags = 0;
-			allocInfo.requiredFlags = 0;
-			allocInfo.preferredFlags = 0;
-			allocInfo.memoryTypeBits = 0;
-			allocInfo.pool = VK_NULL_HANDLE;
-			allocInfo.pUserData = nullptr;
-			allocInfo.priority = 1.0;
+			VmaAllocationCreateInfo alloc_create_info = {};
+			alloc_create_info.usage = vma_memory_usage;
+			alloc_create_info.flags = 0;
+			alloc_create_info.requiredFlags = 0;
+			alloc_create_info.preferredFlags = 0;
+			alloc_create_info.memoryTypeBits = 0;
+			alloc_create_info.pool = VK_NULL_HANDLE;
+			alloc_create_info.pUserData = nullptr;
+			alloc_create_info.priority = 1.0;
 
 			VkBuffer new_buffer;
 			VmaAllocation allocation;
 			VmaAllocationInfo allocation_info;
-            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &allocInfo,
+            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &alloc_create_info,
                                                                              &new_buffer, &allocation, &allocation_info));
 
 			if (createBufferResult != vk::Result::eSuccess)
@@ -791,7 +833,7 @@ namespace brr::render
 			}
 			index_buffer_handle.index = resource_handle.index; index_buffer_handle.validation = resource_handle.validation;
 			index_buffer = m_index_buffer_alloc.GetResource(index_buffer_handle);
-			assert(index_buffer && "VertexBuffer not initialized. Something is very wrong.");
+			assert(index_buffer && "IndexBuffer not initialized. Something is very wrong.");
 
 			vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eExclusive : vk::SharingMode::eExclusive;
 
@@ -813,26 +855,26 @@ namespace brr::render
 
 			VmaMemoryUsage vma_memory_usage = VMA_MEMORY_USAGE_AUTO;
 
-			VmaAllocationCreateInfo allocInfo = {};
-			allocInfo.usage = vma_memory_usage;
-			allocInfo.flags = 0;
-			allocInfo.requiredFlags = 0;
-			allocInfo.preferredFlags = 0;
-			allocInfo.memoryTypeBits = 0;
-			allocInfo.pool = VK_NULL_HANDLE;
-			allocInfo.pUserData = nullptr;
-			allocInfo.priority = 1.0;
+			VmaAllocationCreateInfo alloc_create_info = {};
+			alloc_create_info.usage = vma_memory_usage;
+			alloc_create_info.flags = 0;
+			alloc_create_info.requiredFlags = 0;
+			alloc_create_info.preferredFlags = 0;
+			alloc_create_info.memoryTypeBits = 0;
+			alloc_create_info.pool = VK_NULL_HANDLE;
+			alloc_create_info.pUserData = nullptr;
+			alloc_create_info.priority = 1.0;
 
 			VkBuffer new_buffer;
 			VmaAllocation allocation;
 			VmaAllocationInfo allocation_info;
-            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &allocInfo,
+            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &alloc_create_info,
                                                                              &new_buffer, &allocation, &allocation_info));
 
 			if (createBufferResult != vk::Result::eSuccess)
 			{
 				m_index_buffer_alloc.DestroyResource(index_buffer_handle);
-				BRR_LogError("Could not create VertexBuffer! Result code: {}.", vk::to_string(createBufferResult).c_str());
+				BRR_LogError("Could not create IndexBuffer! Result code: {}.", vk::to_string(createBufferResult).c_str());
 				return {};
 			}
 			index_buffer->buffer = new_buffer;
@@ -914,11 +956,244 @@ namespace brr::render
 		return true;
     }
 
+    Texture2DHandle VulkanRenderDevice::Create_Texture2D(size_t width, size_t height, ImageUsage image_usage)
+    {
+		Texture2DHandle texture2d_handle;
+		Texture2D* texture2d;
+		const ResourceHandle resource_handle = m_texture2d_alloc.CreateResource();
+		if (!resource_handle)
+		{
+			return {};
+		}
+		texture2d_handle.index = resource_handle.index; texture2d_handle.validation = resource_handle.validation;
+		texture2d = m_texture2d_alloc.GetResource(texture2d_handle);
+		assert(texture2d && "Texture2D not initialized. Something is very wrong.");
+		
+        vk::ImageUsageFlags vk_image_usage = VkImageUsageFromDeviceImageUsage(image_usage);
+
+        vk::ImageCreateInfo img_create_info;
+        img_create_info
+            .setInitialLayout(vk::ImageLayout::eUndefined)
+            .setUsage(vk_image_usage)
+            .setExtent(vk::Extent3D(width, height, 1))
+            .setFormat(vk::Format::eR8G8B8A8Srgb)
+            .setImageType(vk::ImageType::e2D)
+            .setSamples(vk::SampleCountFlagBits::e1)
+            .setTiling(vk::ImageTiling::eOptimal)
+            .setSharingMode(vk::SharingMode::eExclusive)
+            .setMipLevels(1)
+            .setArrayLayers(1);
+
+        VmaAllocationCreateInfo alloc_create_info;
+        alloc_create_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+        alloc_create_info.flags = 0;
+        alloc_create_info.requiredFlags = 0;
+        alloc_create_info.preferredFlags = 0;
+        alloc_create_info.memoryTypeBits = 0;
+        alloc_create_info.pool = VK_NULL_HANDLE;
+        alloc_create_info.pUserData = nullptr;
+        alloc_create_info.priority = 1.0;
+
+        VkImage new_image;
+        VmaAllocation allocation;
+        VmaAllocationInfo allocation_info;
+        const vk::Result createImageResult = vk::Result(vmaCreateImage(m_vma_allocator,
+                                                                       reinterpret_cast<VkImageCreateInfo*>
+			                                                           (&img_create_info),
+                                                                       &alloc_create_info, &new_image,
+                                                                       &allocation, &allocation_info));
+        if (createImageResult != vk::Result::eSuccess)
+        {
+            BRR_LogError("Could not create Image! Result code: {}.", vk::to_string(createImageResult).c_str());
+            return {};
+        }
+
+        BRR_LogInfo("Image created.");
+
+        // Create ImageView
+
+        vk::ImageSubresourceRange subresource_range;
+        subresource_range
+            .setAspectMask(vk::ImageAspectFlagBits::eColor)
+            .setBaseMipLevel(0)
+            .setLevelCount(1)
+            .setBaseArrayLayer(0)
+            .setLayerCount(1);
+
+        vk::ImageViewCreateInfo view_create_info;
+        view_create_info
+            .setImage(new_image)
+            .setViewType(vk::ImageViewType::e2D)
+            .setFormat(vk::Format::eR8G8B8A8Srgb)
+            .setSubresourceRange(subresource_range);
+
+        auto view_result = m_device.createImageView(view_create_info);
+        if (view_result.result != vk::Result::eSuccess)
+        {
+            BRR_LogError("Could not create ImageView! Result code: {}.", vk::to_string(view_result.result).c_str());
+            vmaDestroyImage(m_vma_allocator, new_image, allocation);
+            return {};
+        }
+
+        texture2d->image = new_image;
+		texture2d->image_view = view_result.value;
+		texture2d->image_allocation = allocation;
+		texture2d->allocation_info = allocation_info;
+		texture2d->width = width;
+		texture2d->height = height;
+
+        return texture2d_handle;
+    }
+
+    bool VulkanRenderDevice::DestroyTexture2D(Texture2DHandle texture2d_handle)
+    {
+		const Texture2D* texture = m_texture2d_alloc.GetResource(texture2d_handle);
+		if (!texture)
+		{
+		    return false;
+		}
+
+		Frame& current_frame = m_frames[m_current_buffer];
+		current_frame.texture_delete_list.emplace_back(texture->image, texture->image_view, texture->image_allocation);
+
+		BRR_LogDebug("Destroyed Texture2D. Image: {:#x}", (size_t)(static_cast<VkImage>(texture->image)));
+
+		return m_texture2d_alloc.DestroyResource(texture2d_handle);
+    }
+
+    bool VulkanRenderDevice::UpdateTexture2DData(Texture2DHandle texture2d_handle, const void* data, size_t buffer_size,
+                                                 const glm::ivec2& image_offset, const glm::uvec2& image_extent)
+    {
+		const Texture2D* texture = m_texture2d_alloc.GetResource(texture2d_handle);
+		if (!texture)
+		{
+		    return false;
+		}
+
+		vk::CommandBuffer cmd_buffer = GetCurrentGraphicsCommandBuffer();
+		vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
+
+	    {
+	        vk::ImageSubresourceRange img_subresource_range;
+		    img_subresource_range
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1);
+
+		    vk::ImageMemoryBarrier2 img_mem_barrier;
+		    img_mem_barrier
+                .setOldLayout(vk::ImageLayout::eUndefined)
+                .setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setSrcAccessMask(vk::AccessFlagBits2::eNone)
+				.setDstAccessMask(vk::AccessFlagBits2::eTransferWrite)
+			    .setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
+			    .setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
+                .setImage(texture->image)
+                .setSubresourceRange(img_subresource_range);
+
+		    vk::DependencyInfo dependency_info;
+		    dependency_info
+                .setImageMemoryBarriers(img_mem_barrier);
+
+		    transfer_cmd_buffer.pipelineBarrier2(dependency_info);
+	    }
+
+		for (uint32_t y = 0; y < image_extent.y; y += IMAGE_TRANSFER_BLOCK_SIZE)
+		{
+			for (uint32_t x = 0; x < image_extent.x; x += IMAGE_TRANSFER_BLOCK_SIZE)
+		    {
+                glm::uvec2 block_size = {
+                    std::min(IMAGE_TRANSFER_BLOCK_SIZE, image_extent.x - x),
+                    std::min(IMAGE_TRANSFER_BLOCK_SIZE, image_extent.y - y)
+                };
+				uint32_t block_size_bytes = block_size.x * block_size.y * 4;
+		        StagingBufferHandle staging_buffer{};
+		        m_staging_allocator.AllocateStagingBuffer(m_current_frame, block_size_bytes, &staging_buffer, false);
+
+		        m_staging_allocator.WriteBlockImageToStaging (staging_buffer, static_cast<const uint8_t*>(data), {x, y}, block_size, image_extent, 4); //(staging_buffer, 0, buffer.data(), block_size_bytes);
+
+		        m_staging_allocator.CopyFromStagingToImage(staging_buffer, texture->image, {block_size.x, block_size.y, 1},
+                                                           0, {static_cast<int32_t>(x), static_cast<int32_t>(y), 0});
+		    }
+		}
+
+		if (IsDifferentTransferQueue())
+		{
+		    vk::ImageSubresourceRange img_subresource_range;
+		    img_subresource_range
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1);
+
+		    vk::ImageMemoryBarrier2 img_mem_barrier;
+		    img_mem_barrier
+                .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                //.setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
+			    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+			    //.setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader)
+			    .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
+			    .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
+                .setImage(texture->image)
+                .setSubresourceRange(img_subresource_range);
+
+		    vk::DependencyInfo dependency_info;
+		    dependency_info
+                .setImageMemoryBarriers(img_mem_barrier);
+
+			transfer_cmd_buffer.pipelineBarrier2(dependency_info);
+			img_mem_barrier
+			    .setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
+			    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader);
+
+		    cmd_buffer.pipelineBarrier2(dependency_info);
+		}
+		else
+	    {
+	        vk::ImageSubresourceRange img_subresource_range;
+		    img_subresource_range
+                .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                .setBaseMipLevel(0)
+                .setLevelCount(1)
+                .setBaseArrayLayer(0)
+                .setLayerCount(1);
+
+		    vk::ImageMemoryBarrier2 img_mem_barrier;
+		    img_mem_barrier
+                .setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+                .setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+                .setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
+			    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+			    .setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader)
+                .setImage(texture->image)
+                .setSubresourceRange(img_subresource_range);
+
+		    vk::DependencyInfo dependency_info;
+		    dependency_info
+                .setImageMemoryBarriers(img_mem_barrier);
+
+		    cmd_buffer.pipelineBarrier2(dependency_info);
+	    }
+    }
+
+    vk::DescriptorImageInfo VulkanRenderDevice::GetImageDescriptorInfo(Texture2DHandle texture2d_handle)
+    {
+		Texture2D* texture = m_texture2d_alloc.GetResource(texture2d_handle);
+
+		return vk::DescriptorImageInfo{m_texture2DSampler, texture->image_view, vk::ImageLayout::eShaderReadOnlyOptimal};
+    }
+
     bool VulkanRenderDevice::Create_GraphicsPipeline(Swapchain* swapchain)
     {
 		render::Shader shader = CreateShaderFromFiles("vert", "frag");
 
-		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector{2, m_descriptor_set_layout}, shader,
+		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector<vk::DescriptorSetLayout>{m_descriptor_set0_layout, m_descriptor_set1_layout}, shader,
                                                                        swapchain);
 		return true;
     }
@@ -963,7 +1238,7 @@ namespace brr::render
 		        render::StagingBufferHandle staging_buffer{};
                 const uint32_t allocated = m_staging_allocator.AllocateStagingBuffer(m_current_frame, size - written_bytes, &staging_buffer);
 
-				m_staging_allocator.WriteToStagingBuffer(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
+				m_staging_allocator.WriteLinearBufferToStaging(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
 
 	            m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer, allocated, src_offset, dst_offset + written_bytes);
 
@@ -1218,6 +1493,7 @@ namespace brr::render
 		}
 
 		vk::PhysicalDeviceFeatures device_features{};
+		device_features.setSamplerAnisotropy(VK_TRUE);
 
 		std::vector<const char*> device_extensions{
 			VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -1393,12 +1669,51 @@ namespace brr::render
 
     void VulkanRenderDevice::Init_DescriptorLayouts()
     {
-		render::DescriptorLayoutBuilder layoutBuilder = GetDescriptorLayoutBuilder();
-		layoutBuilder
-			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+	    {
+	        render::DescriptorLayoutBuilder layoutBuilder = GetDescriptorLayoutBuilder();
+	        layoutBuilder
+                .SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
-        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
-		m_descriptor_set_layout = descriptor_layout.m_descriptor_set_layout;
+	        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+	        m_descriptor_set0_layout = descriptor_layout.m_descriptor_set_layout;
+	    }
+	    {
+	        render::DescriptorLayoutBuilder layoutBuilder = GetDescriptorLayoutBuilder();
+	        layoutBuilder
+                .SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
+                .SetBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+
+	        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+	        m_descriptor_set1_layout = descriptor_layout.m_descriptor_set_layout;
+	    }
+    }
+
+    void VulkanRenderDevice::Init_Texture2DSampler()
+    {
+		vk::SamplerCreateInfo sampler_create_info;
+		sampler_create_info
+		    .setAddressModeU(vk::SamplerAddressMode::eRepeat)
+		    .setAddressModeV(vk::SamplerAddressMode::eRepeat)
+		    .setAddressModeW(vk::SamplerAddressMode::eRepeat)
+	        .setAnisotropyEnable(VK_TRUE)
+	        .setMaxAnisotropy(m_device_properties.properties.limits.maxSamplerAnisotropy)
+	        .setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+	        .setUnnormalizedCoordinates(VK_FALSE)
+	        .setCompareEnable(VK_FALSE)
+	        .setCompareOp(vk::CompareOp::eAlways)
+	        .setMipmapMode(vk::SamplerMipmapMode::eLinear)
+	        .setMipLodBias(0.0)
+	        .setMinLod(0.0)
+	        .setMaxLod(0.0);
+
+		auto sampler_create_result = m_device.createSampler(sampler_create_info);
+		if (sampler_create_result.result != vk::Result::eSuccess)
+		{
+		    BRR_LogError("Could not create Texture2D Sampler! Result code: {}", vk::to_string(sampler_create_result.result));
+			exit(1);
+		}
+
+		m_texture2DSampler = sampler_create_result.value;
     }
 
     vk::Result VulkanRenderDevice::BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
@@ -1502,5 +1817,12 @@ namespace brr::render
 		    vmaDestroyBuffer(m_vma_allocator, buffer_alloc_pair.first, buffer_alloc_pair.second);
 		}
 		frame.buffer_delete_list.clear();
+
+		for (auto& texture_alloc_info : frame.texture_delete_list)
+		{
+		    m_device.destroyImageView(texture_alloc_info.image_view);
+			vmaDestroyImage(m_vma_allocator, texture_alloc_info.image, texture_alloc_info.allocation);
+		}
+		frame.texture_delete_list.clear();
     }
 }

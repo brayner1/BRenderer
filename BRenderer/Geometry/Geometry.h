@@ -24,6 +24,19 @@ namespace brr
 
 		static std::array<vk::VertexInputAttributeDescription, 2> GetAttributeDescriptions();
 	};
+
+	struct Vertex3_PosColorUV
+	{
+		glm::vec3 pos;
+		glm::vec3 color;
+		glm::vec2 uv;
+
+		static vk::VertexInputBindingDescription GetBindingDescription();
+
+		static std::array<vk::VertexInputAttributeDescription, 3> GetAttributeDescriptions();
+	};
+
+	using Vertex3 = Vertex3_PosColorUV;
 }
 
 #endif
