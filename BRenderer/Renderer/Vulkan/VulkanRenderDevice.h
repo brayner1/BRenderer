@@ -42,23 +42,23 @@ namespace brr::render
 
 		/* Vulkan Objects (Instance, Device, CommandPools and Queues) */
 
-		FORCEINLINE [[nodiscard]] vk::Instance Get_VkInstance() const { return m_vulkan_instance; }
+		[[nodiscard]] FORCEINLINE vk::Instance Get_VkInstance() const { return m_vulkan_instance; }
 
-		FORCEINLINE [[nodiscard]] vk::PhysicalDevice Get_VkPhysicalDevice() const { return m_phys_device; }
-		FORCEINLINE [[nodiscard]] vk::Device Get_VkDevice() const { return m_device; }
+		[[nodiscard]] FORCEINLINE vk::PhysicalDevice Get_VkPhysicalDevice() const { return m_phys_device; }
+		[[nodiscard]] FORCEINLINE vk::Device Get_VkDevice() const { return m_device; }
 
 		/**********
 		 * Queues *
 		 **********/
 
-		FORCEINLINE [[nodiscard]] VkHelpers::QueueFamilyIndices GetQueueFamilyIndices() const { return m_queue_family_indices; }
+		[[nodiscard]] FORCEINLINE VkHelpers::QueueFamilyIndices GetQueueFamilyIndices() const { return m_queue_family_indices; }
 
-		FORCEINLINE [[nodiscard]] vk::Queue GetGraphicsQueue() const { return m_graphics_queue; }
-		FORCEINLINE [[nodiscard]] vk::Queue GetPresentQueue() const { return m_presentation_queue; }
-		FORCEINLINE [[nodiscard]] vk::Queue GetTransferQueue() const { return m_transfer_queue; }
+		[[nodiscard]] FORCEINLINE vk::Queue GetGraphicsQueue() const { return m_graphics_queue; }
+		[[nodiscard]] FORCEINLINE vk::Queue GetPresentQueue() const { return m_presentation_queue; }
+		[[nodiscard]] FORCEINLINE vk::Queue GetTransferQueue() const { return m_transfer_queue; }
 
-		FORCEINLINE [[nodiscard]] bool IsDifferentPresentQueue() const { return m_different_present_queue; }
-		FORCEINLINE [[nodiscard]] bool IsDifferentTransferQueue() const { return m_different_transfer_queue; }
+		[[nodiscard]] FORCEINLINE bool IsDifferentPresentQueue() const noexcept { return m_different_present_queue; }
+		[[nodiscard]] FORCEINLINE bool IsDifferentTransferQueue() const noexcept { return m_different_transfer_queue; }
 
 		/*******************
 		 * Command Buffers *

@@ -29,18 +29,18 @@ namespace brr::render
 		void Recreate_Swapchain();
 		void Cleanup_Swapchain();
 
-        FORCEINLINE [[nodiscard]] glm::uvec2 GetSwapchainExtent() const
+        [[nodiscard]] FORCEINLINE glm::uvec2 GetSwapchainExtent() const
         {
             return {m_swapchain_extent.width, m_swapchain_extent.height};
         }
 
-		FORCEINLINE [[nodiscard]] vk::RenderPass GetRenderPass() const { return m_render_pass; }
+		[[nodiscard]] FORCEINLINE vk::RenderPass GetRenderPass() const { return m_render_pass; }
 
-		FORCEINLINE [[nodiscard]] uint32_t GetCurrentImageIndex() const { return m_current_image_idx; }
+		[[nodiscard]] FORCEINLINE uint32_t GetCurrentImageIndex() const { return m_current_image_idx; }
 
-		FORCEINLINE [[nodiscard]] vk::Framebuffer GetFramebuffer(uint32_t image_index) const { return m_image_resources[image_index].m_framebuffer; }
+		[[nodiscard]] FORCEINLINE vk::Framebuffer GetFramebuffer(uint32_t image_index) const { return m_image_resources[image_index].m_framebuffer; }
 
-		FORCEINLINE [[nodiscard]] vk::Fence GetCurrentInFlightFence() const { return m_in_flight_fences[m_current_buffer_idx]; }
+		[[nodiscard]] FORCEINLINE vk::Fence GetCurrentInFlightFence() const { return m_in_flight_fences[m_current_buffer_idx]; }
 
 	private:
 

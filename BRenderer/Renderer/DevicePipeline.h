@@ -30,9 +30,9 @@ namespace brr::render
 
         void DestroyPipeline();
 
-        FORCEINLINE [[nodiscard]] explicit operator bool() const noexcept { return m_pipeline; }
+        [[nodiscard]] FORCEINLINE explicit operator bool() const noexcept { return m_pipeline; }
 
-        FORCEINLINE [[nodiscard]] bool operator!() const noexcept { return !m_pipeline; }
+        [[nodiscard]] FORCEINLINE bool operator!() const noexcept { return !m_pipeline; }
 
     private:
 

@@ -18,7 +18,7 @@ namespace brr::vis
 {
     enum class SurfaceId : uint64_t
     {
-        NULL_ID = -1
+        NULL_ID = static_cast<uint64_t>(-1)
     };
 
     class SceneRenderer

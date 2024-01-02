@@ -149,6 +149,7 @@ add_executable (BRenderer ${BRenderer_SOURCE_FILES} ${BRenderer_HEADER_FILES})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET BRenderer PROPERTY CXX_STANDARD 20)
+  set_property(TARGET BRenderer PROPERTY CXX_STANDARD_REQUIRED ON)
 endif()
 
 if (WIN32)

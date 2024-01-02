@@ -1180,6 +1180,7 @@ namespace brr::render
 
 		    cmd_buffer.pipelineBarrier2(dependency_info);
 	    }
+		return true;
     }
 
     vk::DescriptorImageInfo VulkanRenderDevice::GetImageDescriptorInfo(Texture2DHandle texture2d_handle)
