@@ -21,9 +21,6 @@ namespace brr::vis
       m_render_device(render::VKRD::GetSingleton())
     {
 		m_swapchain = std::make_unique<render::Swapchain>(m_owner_window);
-		m_scene_renderer = std::make_unique<SceneRenderer>(m_owner_window->GetScene());
-
-		m_owner_window->GetScene()->SetSceneRenderer(m_scene_renderer.get());
 
 		Init_GraphicsPipeline();
     }
@@ -68,11 +65,12 @@ namespace brr::vis
 
     void WindowRenderer::Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
 	{
-		m_scene_renderer->UpdateDirtyInstances();
+		SceneRenderer* scene_renderer = m_owner_window->GetScene()->GetSceneRenderer();
+		scene_renderer->UpdateDirtyInstances();
 
 		BeginRenderPass(graphics_cmd_buffer);
 
-		m_scene_renderer->Render3D();
+		scene_renderer->Render3D();
 
 		EndRenderPass(graphics_cmd_buffer);
 	}
@@ -93,9 +91,8 @@ namespace brr::vis
 
 		m_frame_count = m_render_device->BeginFrame();
 
-		uint32_t current_buffer_index = m_swapchain->GetCurrentBufferIndex();
-
-		m_scene_renderer->BeginRender(current_buffer_index, m_frame_count);
+		SceneRenderer* scene_renderer = m_owner_window->GetScene()->GetSceneRenderer();
+		scene_renderer->BeginRender();
 
         vk::CommandBuffer current_graphics_cmd_buffer = m_render_device->GetCurrentGraphicsCommandBuffer();
 
@@ -125,7 +122,6 @@ namespace brr::vis
 		// Destroy Windows Swapchain and its Resources
 		{
 		    m_swapchain = nullptr;
-		    m_scene_renderer.reset();
 		}
 
 		m_render_device = nullptr;

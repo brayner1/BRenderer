@@ -3,6 +3,7 @@
 #include <Scene/Components.h>
 #include <Scene/Entity.h>
 #include <Core/LogSystem.h>
+#include <Visualization/SceneRenderer.h>
 
 
 namespace brr
@@ -19,7 +20,12 @@ namespace brr
 		m_registry.clear();
 	}
 
-	Entity Scene::Add3DEntity(Entity parent)
+    void Scene::InitSceneRenderer()
+    {
+		m_scene_renderer = std::make_unique<vis::SceneRenderer>(this);
+    }
+
+    Entity Scene::Add3DEntity(Entity parent)
 	{
 		BRR_LogInfo("Adding new 3D Entity");
 		entt::entity new_entity = m_registry.create();

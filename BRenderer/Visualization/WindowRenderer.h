@@ -57,8 +57,6 @@ namespace brr{
 
             vk::Semaphore m_current_image_available_semaphore {};
 
-			std::unique_ptr<SceneRenderer> m_scene_renderer;
-
             render::VulkanRenderDevice* m_render_device {};
 		};
 	}

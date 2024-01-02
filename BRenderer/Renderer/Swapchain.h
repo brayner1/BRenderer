@@ -36,7 +36,6 @@ namespace brr::render
 
 		FORCEINLINE [[nodiscard]] vk::RenderPass GetRenderPass() const { return m_render_pass; }
 
-		FORCEINLINE [[nodiscard]] uint32_t GetCurrentBufferIndex() const { return m_current_buffer_idx; }
 		FORCEINLINE [[nodiscard]] uint32_t GetCurrentImageIndex() const { return m_current_image_idx; }
 
 		FORCEINLINE [[nodiscard]] vk::Framebuffer GetFramebuffer(uint32_t image_index) const { return m_image_resources[image_index].m_framebuffer; }

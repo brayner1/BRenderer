@@ -32,7 +32,7 @@ namespace brr::vis
         SurfaceId CreateNewSurface(Mesh3DComponent::SurfaceData& surface, const Entity& owner_entity);
         void RemoveSurface(SurfaceId surface_id);
 
-        void BeginRender(uint32_t buffer_index, size_t current_frame);
+        void BeginRender();
 
         void UpdateDirtyInstances();
 

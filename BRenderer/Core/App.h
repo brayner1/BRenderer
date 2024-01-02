@@ -18,11 +18,11 @@ namespace brr
 		void MainLoop();
 		void Clear();
 
-		bool m_pShouldFinish = false;
+		bool m_should_finish = false;
 
-		std::unique_ptr<vis::WindowManager> m_pWindowManager{};
+		std::unique_ptr<vis::WindowManager> m_window_manager{};
 
-		Scene* scene_;
+		std::unique_ptr<Scene> m_scene;
 	};
 }
 

@@ -33,13 +33,6 @@ namespace brr::vis
 		int width, height;
 		SDL_Vulkan_GetDrawableSize(m_pWindow, &width, &height);
 		const glm::ivec2 extent{ width, height };
-
-		scene.reset(new Scene(new PerspectiveCamera(
-			glm::vec3{ 0.f, 0.f, 5.f },
-			glm::vec3{ 0.f },
-			glm::radians(45.f),
-			extent.x / (float)extent.y,
-			0.1f, 100.f)));
 	}
 
 	void Window::CloseWindow()

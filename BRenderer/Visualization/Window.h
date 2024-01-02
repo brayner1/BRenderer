@@ -37,9 +37,8 @@ namespace brr::vis
 		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
 		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance);
 
-		
-
-		Scene* GetScene() const { return scene.get(); }
+		Scene* GetScene() const { return m_scene; }
+		void SetScene(Scene* scene) { m_scene = scene; }
 
 	private:
 		bool m_pNeedToClose = false;
@@ -50,7 +49,7 @@ namespace brr::vis
 
 		std::unique_ptr<WindowRenderer> m_pWindowRenderer;
 
-		std::unique_ptr<Scene> scene;
+		Scene* m_scene = nullptr;
 	};
 }
 

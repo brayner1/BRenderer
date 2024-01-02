@@ -64,10 +64,9 @@ namespace brr::vis
 		m_render_data.RemoveObject(object_id);
     }
 
-    void SceneRenderer::BeginRender(uint32_t buffer_index, size_t current_frame)
+    void SceneRenderer::BeginRender()
     {
-		m_current_buffer = buffer_index;
-		m_current_frame = current_frame;
+		m_current_buffer = (m_current_buffer + 1) % render::FRAME_LAG;
     }
 
     void SceneRenderer::UpdateDirtyInstances()
