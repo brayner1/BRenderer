@@ -11,6 +11,7 @@
 #include <iostream>
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+static vk::DynamicLoader VulkanDynamicLoader;
 
 namespace brr::render
 {
@@ -531,7 +532,7 @@ namespace brr::render
 			buffer->mapped = nullptr;
 	    }
 
-		BRR_LogDebug("Mapped buffer. Buffer: {:#x}. Mapped adress: {:#x}.", size_t(VkBuffer(buffer->buffer)), (size_t)buffer->mapped);
+		BRR_LogTrace("Mapped buffer. Buffer: {:#x}. Mapped adress: {:#x}.", size_t(VkBuffer(buffer->buffer)), (size_t)buffer->mapped);
 
 		return buffer->mapped;
     }
@@ -548,7 +549,7 @@ namespace brr::render
 		vmaUnmapMemory(m_vma_allocator, buffer->buffer_allocation);
 		buffer->mapped = nullptr;
 
-		BRR_LogDebug("Unmapped buffer. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
+		BRR_LogTrace("Unmapped buffer. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
     }
 
     bool VulkanRenderDevice::UploadBufferData(BufferHandle dst_buffer_handle, void* data, size_t size, uint32_t offset)
@@ -1299,8 +1300,7 @@ namespace brr::render
 	{
 		// Dynamic load of the library
 	    {
-	        vk::DynamicLoader dl;
-	        PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+	        PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = VulkanDynamicLoader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 			if (vkGetInstanceProcAddr == nullptr)
 			{
 				BRR_LogError("Could not load 'vkGetInstanceProcAddr' function address. Can't create vkInstance.");
@@ -1350,6 +1350,9 @@ namespace brr::render
 		std::vector<const char*> extensions{};
 		{
 			window->GetRequiredVulkanExtensions(extensions);
+#ifndef NDEBUG
+			extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
 
 			// TODO: Check if the required extensions are supported by Vulkan
 			uint32_t extension_count = 0;
@@ -1357,13 +1360,23 @@ namespace brr::render
 			std::vector<vk::ExtensionProperties> extension_properties = enumInstExtPropsResult.value;
 
 		    {
-		        LogStreamBuffer log_msg = BRR_DebugStrBuff();
-				log_msg << "Available Instance Extensions:";
+		      LogStreamBuffer log_msg = BRR_DebugStrBuff();
+				  log_msg << "Available Instance Extensions:";
 			    for (vk::ExtensionProperties& extension : extension_properties)
 			    {
 			        log_msg << "\n\tExtension name: " << extension.extensionName;
 			    }
 		    }
+
+	      {
+	        LogStreamBuffer aLogMsg = BRR_InfoStrBuff();
+			    aLogMsg << "Required Instance Extensions:";
+			    for (const char* extension : extensions)
+			    {
+			      aLogMsg << "\n\tExtension name: " << extension;
+			    }
+			    aLogMsg.Flush();
+	      }
 		}
 
 		vk::ApplicationInfo app_info{ };

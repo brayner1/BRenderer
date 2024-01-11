@@ -116,14 +116,6 @@ namespace brr::vis
 			BRR_LogError("Could not get extensions required by SDL: {}", SDL_GetError());
 			exit(1);
 		}
-
-		LogStreamBuffer aLogMsg = BRR_InfoStrBuff();
-		aLogMsg << "Required Extensions:\n";
-		for (const char* extension : extensions)
-		{
-			aLogMsg << "\tExtension name: " << extension << "\n";
-		}
-		aLogMsg.Flush();
 	}
 
 	glm::ivec2 Window::GetWindowExtent() const
