@@ -7,3 +7,6 @@
 [submodule "BRenderer/dependencies/stb"]
 	path = BRenderer/dependencies/stb
 	url = https://github.com/nothings/stb.git
+[submodule "BRenderer/dependencies/assimp"]
+	path = BRenderer/dependencies/assimp
+	url = https://github.com/assimp/assimp
