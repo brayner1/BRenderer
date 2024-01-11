@@ -26,20 +26,6 @@ else()
     return()
 endif()
 
-message("Searching Assimp...")
-find_package(assimp REQUIRED)
-if (assimp_FOUND)
-    
-    message("ASSIMP_ROOT_DIR: ${ASSIMP_ROOT_DIR}")
-    message("ASSIMP_LIBRARIES: ${ASSIMP_LIBRARIES}")
-    message("ASSIMP_LIBRARY_DIRS: ${ASSIMP_LIBRARY_DIRS}")
-    message("ASSIMP_INCLUDE_DIRS: ${ASSIMP_INCLUDE_DIRS}")
-    
-else()
-    message(FATAL_ERROR "Error: Unable to find Assimp package")
-    return()
-endif()
-
 # Define the project files
 set(BRenderer_SOURCE_FILES
     "BRenderer.cpp" 
@@ -162,7 +148,7 @@ target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CUR
 
 target_link_directories(BRenderer PUBLIC $<TARGET_LINKER_FILE_DIR:Vulkan::Vulkan>)
 
-target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" "${ASSIMP_LIBRARIES}" PRIVATE Vulkan::Headers spdlog::spdlog VulkanMemoryAllocator)
+target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" PRIVATE Vulkan::Headers assimp::assimp spdlog::spdlog VulkanMemoryAllocator)
 
 if (TARGET spdlog)
     message("SpdLog Found!")
@@ -187,11 +173,7 @@ if (WIN32)
     )
 
     add_custom_command(TARGET BRenderer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ASSIMP_ROOT_DIR}/bin/pugixml.dll" $<TARGET_FILE_DIR:BRenderer>
-    )
-
-    add_custom_command(TARGET BRenderer POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ASSIMP_ROOT_DIR}/bin/zlib1.dll" $<TARGET_FILE_DIR:BRenderer>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different  $<TARGET_FILE:spdlog::spdlog> $<TARGET_FILE_DIR:BRenderer>
     )
 
     add_custom_command(TARGET BRenderer POST_BUILD
