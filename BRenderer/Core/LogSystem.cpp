@@ -21,19 +21,19 @@ namespace brr
 
     void LogStreamBuffer::Flush()
     {
-#ifdef USE_SPDLOG
         if (message.str().empty())
         {
             return;
         }
+#ifdef USE_SPDLOG
         spdlog::log(
             spdlog::source_loc{ filename, line, funcname },
             static_cast<spdlog::level::level_enum>(log_level),
             message.str()
         );
+#endif
         message.str({});
         message.clear();
-#endif
     }
 
     LogSystem& LogSystem::Instance()
@@ -48,6 +48,14 @@ namespace brr
         spdlog::set_pattern(format_str);
 #else
         //TODO: Implement own
+#endif
+    }
+
+    void LogSystem::SetLevel(LogLevel logLevel)
+    {
+#ifdef USE_SPDLOG
+        spdlog::level::level_enum spdlogLevel = static_cast<spdlog::level::level_enum>(logLevel);
+        spdlog::set_level(spdlogLevel);
 #endif
     }
 

@@ -34,6 +34,7 @@ namespace brr
 	void App::Run()
 	{
 		LogSystem::SetPattern("[%Y-%m-%d %T.%e] [%^%l%$] [%!] [%s:%#]\n%v\n");
+		LogSystem::SetLevel(LogLevel::Debug);
 
 		Init();
 		MainLoop();

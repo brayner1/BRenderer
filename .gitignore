@@ -36,7 +36,7 @@
 /CMakePresets.json
 
 # Build
-/out/build/x64-debug
+/out
 /CMakeSettings.json
 
 #shader spv files
