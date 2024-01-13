@@ -4,6 +4,8 @@
 #include <Scene/Entity.h>
 #include <Scene/Components/Mesh3DComponent.h>
 
+#include "Importer/Importer.h"
+
 
 namespace brr
 {
@@ -48,7 +50,7 @@ namespace brr
         glm::ivec2 extent = m_window_manager->GetMainWindow()->GetWindowExtent();
 
 		m_scene.reset(new Scene(new PerspectiveCamera (
-			glm::vec3{ 0.f, 0.f, 5.f },
+			glm::vec3{ 8.f, 2.f, 0.f },
 			glm::vec3{ 0.f },
 			glm::radians(45.f),
 			extent.x / (float)extent.y,
@@ -56,9 +58,8 @@ namespace brr
 		m_scene->InitSceneRenderer();
 
 		m_window_manager->GetMainWindow()->SetScene(m_scene.get());
-		Entity entity = m_scene->Add3DEntity({});
-		Mesh3DComponent& mesh = entity.AddComponent<Mesh3DComponent>();
-		mesh.AddSurface({ vertices_uv, indices });
+
+		brr::SceneImporter::LoadFileIntoScene("Monkey.obj", m_scene.get());
 	}
 
 	void App::MainLoop()
