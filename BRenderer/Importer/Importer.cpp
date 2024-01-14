@@ -10,78 +10,92 @@
 
 void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Entity parent = {})
 {
-	//struct NodeInfo
-	//{
-	//	aiNode* assimp_node;
-	//	brr::Transform3DComponent* parent_transform;
-	//};
-	//std::list<NodeInfo> nodes;
+	struct NodeInfo
+	{
+		aiNode* assimp_node;
+		brr::Transform3DComponent* parent_transform;
+	};
+	std::list<NodeInfo> nodes;
 
-	//// Insert root node (as a child of the passed parent Entity, if that's the case)
-	//{
-	//	brr::Transform3DComponent* parent_transf{ nullptr };
-	//	if (parent)
-	//	{
-	//		parent_transf = &parent.GetComponent<brr::Transform3DComponent>();
-	//	}
-	//	nodes.push_back({assimp_scene->mRootNode, parent_transf });
-	//}
+	// Insert root node (as a child of the passed parent Entity, if that's the case)
+	{
+		brr::Transform3DComponent* parent_transf{ nullptr };
+		if (parent)
+		{
+			parent_transf = &parent.GetComponent<brr::Transform3DComponent>();
+		}
+		nodes.push_back({assimp_scene->mRootNode, parent_transf });
+	}
 
-	//while (!nodes.empty())
-	//{
-	//	NodeInfo node_info = nodes.front();
-	//	nodes.pop_front();
+	while (!nodes.empty())
+	{
+		NodeInfo node_info = nodes.front();
+		nodes.pop_front();
 
-	//	brr::Entity entity = scene.Add3DEntity({});
+		brr::Entity entity = scene.Add3DEntity({});
 
-	//	brr::Transform3DComponent& node_transform = entity.GetComponent<brr::Transform3DComponent>();
+		brr::Transform3DComponent& node_transform = entity.GetComponent<brr::Transform3DComponent>();
 
-	//	if (node_info.parent_transform)
-	//	{
-	//		node_transform.SetParent(node_info.parent_transform);
-	//	}
+		if (node_info.parent_transform)
+		{
+			node_transform.SetParent(node_info.parent_transform);
+		}
 
-	//	aiNode* node = node_info.assimp_node;
-	//	{
-	//		if (node->mNumMeshes > 0)
-	//		{
-	//			//brr::Entity mesh_entity = scene.Add3DEntity();
-	//			brr::Mesh3DComponent& mesh_component = entity.AddComponent<brr::Mesh3DComponent>();
+		aiNode* node = node_info.assimp_node;
+		{
+			if (node->mNumMeshes > 0)
+			{
+				brr::Mesh3DComponent& mesh_component = entity.AddComponent<brr::Mesh3DComponent>();
+			
+				for (size_t i = 0; i < node->mNumMeshes; i++)
+				{
+					uint32_t mesh_index = node->mMeshes[i];
+					aiMesh* mesh = assimp_scene->mMeshes[mesh_index];
 
-	//			mesh_component.m_surfaces.resize(node->mNumMeshes);
-	//		
-	//			for (size_t i = 0; i < node->mNumMeshes; i++)
-	//			{
-	//				brr::Transform3DComponent& mesh_transform = entity.GetComponent<brr::Transform3DComponent>();
-	//				mesh_transform.SetParent(&node_transform);
+					std::vector<brr::Vertex3>  vertices(mesh->mNumVertices);
+					for (uint32_t vertex_idx = 0; vertex_idx < mesh->mNumVertices; vertex_idx++)
+					{
+						const aiVector3D& aiVertex = mesh->mVertices[vertex_idx];
+						brr::Vertex3& vertex = vertices[vertex_idx];
+					    vertex.pos = {aiVertex.x, aiVertex.y, aiVertex.z};
+						if (mesh->HasNormals())
+						{
+						}
 
-	//				uint32_t mesh_index = node->mMeshes[i];
-	//				aiMesh* mesh = assimp_scene->mMeshes[mesh_index];
+						if (mesh->HasTextureCoords(0))
+						{
+							const aiVector3D& aiUV = mesh->mTextureCoords[0][vertex_idx];
+						    vertex.uv = {aiUV.x, aiUV.y};
+						}
 
-	//			
-	//				mesh_component.m_surfaces[i].m_vertices.resize(mesh->mNumVertices);
-	//				memcpy(mesh_component.m_surfaces[i].m_vertices.data(), &mesh->mVertices, mesh->mNumVertices * sizeof(glm::vec3));
+						if (mesh->HasVertexColors(0))
+						{
+						    const aiColor4D& aiColor = mesh->mColors[0][vertex_idx];
+							vertex.color = {aiColor.r, aiColor.g, aiColor.b};
+						}
+					}
 
-	//				mesh_component.m_surfaces[i].m_indices.resize(mesh->mNumFaces * 3);
+					std::vector<uint32_t> indices (mesh->mNumFaces * 3);
+					for (uint32_t face_idx = 0, index_idx = 0; face_idx < mesh->mNumFaces; face_idx++, index_idx += 3)
+					{
+						aiFace face = mesh->mFaces[face_idx];
 
-	//				for (uint32_t i = 0, j = 0; i < mesh->mNumFaces; i++, j += 3)
-	//				{
-	//					aiFace face = mesh->mFaces[i];
+						indices[index_idx]	 = face.mIndices[0];
+						indices[index_idx+1] = face.mIndices[1];
+						indices[index_idx+2] = face.mIndices[2];
+					}
 
-	//					mesh_component.m_surfaces[i].m_indices[ j ] = face.mIndices[0];
-	//					mesh_component.m_surfaces[i].m_indices[j+1] = face.mIndices[1];
-	//					mesh_component.m_surfaces[i].m_indices[j+2] = face.mIndices[2];
-	//				}
-	//			}
-	//		}
-	//	}
+					mesh_component.AddSurface(vertices, indices);
+				}
+			}
+		}
 
-	//	for (size_t i = 0; i < node->mNumChildren; i++)
-	//	{
-	//		nodes.push_back({node->mChildren[i], &node_transform });
-	//	}
+		for (size_t i = 0; i < node->mNumChildren; i++)
+		{
+			nodes.push_back({node->mChildren[i], &node_transform });
+		}
 
-	//}
+	}
 }
 
 namespace brr
