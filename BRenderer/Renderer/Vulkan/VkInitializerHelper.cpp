@@ -203,15 +203,54 @@ namespace brr::render::VkHelpers
 		return available_formats[0];
 	}
 
-	vk::PresentModeKHR Select_SwapchainPresentMode(const std::vector<vk::PresentModeKHR>& available_present_modes)
-	{
-		for (const auto& availablePresentMode : available_present_modes) {
-			if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
-				return availablePresentMode;
+    vk::Format Select_SupportedFormat(vk::PhysicalDevice phys_device, std::vector<vk::Format> candidate_formats,
+                                      vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+    {
+		for (auto format : candidate_formats)
+		{
+		    vk::FormatProperties format_properties = phys_device.getFormatProperties(format);
+
+			if (tiling == vk::ImageTiling::eLinear && (format_properties.linearTilingFeatures & features) == features)
+			{
+			    return format;
+			}
+			else if (tiling == vk::ImageTiling::eOptimal && (format_properties.optimalTilingFeatures & features) == features)
+			{
+			    return format;
 			}
 		}
 
-		return vk::PresentModeKHR::eFifo;
+		return vk::Format::eUndefined;
+    }
+
+    vk::PresentModeKHR Select_SwapchainPresentMode(const std::vector<vk::PresentModeKHR>& available_present_modes, 
+                                                   const std::vector<vk::PresentModeKHR>& preferred_present_modes)
+	{
+		struct Selected
+		{
+		    uint32_t index {};
+			vk::PresentModeKHR mode = vk::PresentModeKHR::eFifo;
+		} selected_format;
+		selected_format.index = preferred_present_modes.size();
+
+		for (const auto& availablePresentMode : available_present_modes) 
+		{
+			for (uint32_t index = 0; index < selected_format.index; index++)
+			{
+			    if (availablePresentMode == preferred_present_modes[index])
+			    {
+			        selected_format.index = index;
+					selected_format.mode  = availablePresentMode;
+					break;
+			    }
+			}
+			if (selected_format.index == 0)
+			{
+			    break;
+			}
+		}
+
+		return selected_format.mode;
 	}
 
 	vk::Extent2D Select_SwapchainExtent(vis::Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities)

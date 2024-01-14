@@ -83,6 +83,16 @@ namespace brr::render
 			.setScissorCount(1)
 			.setScissors(scissor);
 
+		vk::PipelineDepthStencilStateCreateInfo depth_stencil_state_create_info {};
+		depth_stencil_state_create_info
+		    .setDepthTestEnable(VK_TRUE)
+            .setDepthWriteEnable(VK_TRUE)
+            .setDepthCompareOp(vk::CompareOp::eLess)
+		    .setDepthBoundsTestEnable(VK_FALSE)
+		    .setMinDepthBounds(0.0)
+		    .setMaxDepthBounds(1.0)
+            .setStencilTestEnable(VK_FALSE);
+
 		vk::PipelineRasterizationStateCreateInfo rasterization_state_info{};
 		rasterization_state_info
 			.setDepthClampEnable(false)
@@ -150,7 +160,8 @@ namespace brr::render
 			.setPViewportState(&viewport_state_info)
 			.setPRasterizationState(&rasterization_state_info)
 			.setPMultisampleState(&multisampling_info)
-			.setPColorBlendState(&color_blending_info);
+			.setPColorBlendState(&color_blending_info)
+            .setPDepthStencilState(&depth_stencil_state_create_info);
 		graphics_pipeline_info
 			.setLayout(m_pipeline_layout)
 			.setRenderPass(swapchain->GetRenderPass())
