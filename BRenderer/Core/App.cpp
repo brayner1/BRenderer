@@ -9,27 +9,6 @@
 
 namespace brr
 {
-	static const std::vector<Vertex3_PosColor> vertices
-    {
-		{glm::vec3{-0.5f, -0.5f, 0.0f}, glm::vec3{1.f, 0.f, 0.f}},
-		{glm::vec3{0.5f, -0.5f, 0.0f}, glm::vec3{0.f, 1.f, 0.f}},
-		{glm::vec3{.5f, .5f, 0.0f}, glm::vec3{0.f, 0.f, 1.f}},
-		{glm::vec3{-.5f, .5f, 0.0f}, glm::vec3{1.f, 1.f, 1.f}}
-	};
-
-	static const std::vector<Vertex3> vertices_uv
-    {
-		{glm::vec3{-0.5f, -0.5f, 0.0f}, glm::vec3{1.f, 0.f, 0.f}, {0.0, 1.0}},
-		{glm::vec3{0.5f, -0.5f, 0.0f}, glm::vec3{0.f, 1.f, 0.f}, {1.0, 1.0}},
-		{glm::vec3{.5f, .5f, 0.0f}, glm::vec3{0.f, 0.f, 1.f}, {1.0, 0.0}},
-		{glm::vec3{-.5f, .5f, 0.0f}, glm::vec3{1.f, 1.f, 1.f}, {0.0, 0.0}}
-	};
-
-	static const std::vector<uint32_t> indices
-	{
-		0, 1, 2, 2, 3, 0
-	};
-
 	App::App() : m_scene(nullptr)
 	{}
 
@@ -59,7 +38,7 @@ namespace brr
 
 		m_window_manager->GetMainWindow()->SetScene(m_scene.get());
 
-		brr::SceneImporter::LoadFileIntoScene("Monkey.obj", m_scene.get());
+		brr::SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", m_scene.get());
 	}
 
 	void App::MainLoop()

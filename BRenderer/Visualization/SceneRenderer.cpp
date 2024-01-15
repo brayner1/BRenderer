@@ -16,13 +16,14 @@ namespace brr::vis
 
 		SetupCameraUniforms();
 
-		m_image = std::make_unique<Image>("UV_Grid.jpg");
+		m_image = std::make_unique<Image>("Resources/UV_Grid.png");
 
 		m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(), render::VKRD::ImageUsage::TransferDstImage | render::VKRD::ImageUsage::SampledImage);
 		if (m_texture_2d_handle != render::null_handle)
 		{
 		    m_render_device->UpdateTexture2DData(m_texture_2d_handle, m_image->Data(), m_image->DataSize(), {0, 0}, {m_image->Width(), m_image->Height()});
 		}
+		SetupMaterialUniforms();
     }
 
     SceneRenderer::~SceneRenderer()
@@ -84,31 +85,25 @@ namespace brr::vis
 				if (!render_data.m_descriptor_sets[0])
 				{
 					Init_UniformBuffers(render_data);
+					// Init model descriptor set
+				    {
+				        render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
+					    layoutBuilder
+                            .SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
-                    render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
-					layoutBuilder
-						.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-				        .SetBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+					    render_data.m_model_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
 
-					render_data.m_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+					    std::array<vk::DescriptorBufferInfo, render::FRAME_LAG> model_descriptor_buffer_infos;
+					    for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
+					    {
+					        model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
+					    }
 
-					std::array<vk::DescriptorBufferInfo, render::FRAME_LAG> model_descriptor_buffer_infos;
-					for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
-					{
-						model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
-					}
+					    auto setBuilder = m_render_device->GetDescriptorSetBuilder(render_data.m_model_descriptor_layout);
+					    setBuilder.BindBuffer(0, model_descriptor_buffer_infos);
 
-					std::array<vk::DescriptorImageInfo, render::FRAME_LAG> model_descriptor_image_infos;
-					for (uint32_t image_info_idx = 0; image_info_idx < render::FRAME_LAG; image_info_idx++)
-					{
-						model_descriptor_image_infos[image_info_idx] = m_render_device->GetImageDescriptorInfo(m_texture_2d_handle);
-					}
-
-					auto setBuilder = m_render_device->GetDescriptorSetBuilder(render_data.m_descriptor_layout);
-					setBuilder.BindBuffer(0, model_descriptor_buffer_infos);
-					setBuilder.BindImage(1, model_descriptor_image_infos);
-
-					setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
+					    setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
+				    }
 
 					BRR_LogInfo("Model Descriptor Sets created.");
 				}
@@ -146,6 +141,7 @@ namespace brr::vis
 		for (RenderData& render_data : m_render_data)
 		{
 			m_render_device->Bind_DescriptorSet(render_data.m_descriptor_sets[m_current_buffer], 1);
+			m_render_device->Bind_DescriptorSet(m_material_descriptor_sets[m_current_buffer], 2);
 
 			assert(render_data.m_vertex_buffer_handle.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
 			m_render_device->BindVertexBuffer(render_data.m_vertex_buffer_handle);
@@ -189,6 +185,29 @@ namespace brr::vis
 		setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
 
 		setBuilder.BuildDescriptorSet(m_camera_uniform_info.m_descriptor_sets);
+    }
+
+    void SceneRenderer::SetupMaterialUniforms()
+    {
+		// Init material descriptor set
+		{
+			render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
+			layoutBuilder
+                .SetBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+
+			m_material_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+
+			std::array<vk::DescriptorImageInfo, render::FRAME_LAG> model_descriptor_image_infos;
+			for (uint32_t image_info_idx = 0; image_info_idx < render::FRAME_LAG; image_info_idx++)
+			{
+				model_descriptor_image_infos[image_info_idx] = m_render_device->GetImageDescriptorInfo(m_texture_2d_handle);
+			}
+			auto setBuilder = m_render_device->GetDescriptorSetBuilder(m_material_descriptor_layout);
+
+			setBuilder.BindImage(0, model_descriptor_image_infos);
+
+			setBuilder.BuildDescriptorSet(m_material_descriptor_sets);
+		}
     }
 
     void SceneRenderer::CreateVertexBuffer(std::vector<Vertex3>& vertex_buffer, RenderData& render_data)

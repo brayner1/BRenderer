@@ -177,6 +177,10 @@ if (WIN32)
     )
 
     add_custom_command(TARGET BRenderer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory  ${CMAKE_CURRENT_SOURCE_DIR}/../Resources $<TARGET_FILE_DIR:BRenderer>/Resources
+    )
+
+    add_custom_command(TARGET BRenderer POST_BUILD
         COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Shaders/compile_shaders.bat"
     )
 endif()

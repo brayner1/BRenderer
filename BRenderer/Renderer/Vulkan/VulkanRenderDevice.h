@@ -397,6 +397,7 @@ namespace brr::render
 		// Descriptor Sets
 		vk::DescriptorSetLayout m_descriptor_set0_layout {};
 		vk::DescriptorSetLayout m_descriptor_set1_layout {};
+		vk::DescriptorSetLayout m_descriptor_set2_layout {};
 
 		vk::Sampler m_texture2DSampler {};
 

@@ -67,13 +67,14 @@ namespace brr::vis
 
             uint32_t num_vertices = 0, num_indices = 0;
 
-            render::DescriptorLayout m_descriptor_layout;
+            render::DescriptorLayout m_model_descriptor_layout;
             std::array<bool, render::FRAME_LAG> m_uniform_dirty { true };
             std::array<render::DeviceBuffer, render::FRAME_LAG>       m_uniform_buffers{}; // model transform
             std::array<vk::DescriptorSet, render::FRAME_LAG>  m_descriptor_sets{};
         };
 
         void SetupCameraUniforms();
+        void SetupMaterialUniforms();
 
         void CreateVertexBuffer(std::vector<Vertex3>& vertex_buffer, RenderData& render_data);
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
@@ -94,6 +95,9 @@ namespace brr::vis
         } m_camera_uniform_info;
 
         ContiguousPool<RenderData> m_render_data;
+
+        render::DescriptorLayout m_material_descriptor_layout;
+        std::array<vk::DescriptorSet, render::FRAME_LAG>  m_material_descriptor_sets{};
 
         std::unique_ptr<Image> m_image;
         render::Texture2DHandle m_texture_2d_handle;

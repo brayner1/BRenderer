@@ -60,18 +60,21 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 					    vertex.pos = {aiVertex.x, aiVertex.y, aiVertex.z};
 						if (mesh->HasNormals())
 						{
+							const aiVector3D& aiNormal = mesh->mNormals[vertex_idx];
+							vertex.normal = {aiNormal.x, aiNormal.y, aiNormal.z};
+						}
+
+						if (mesh->HasTangentsAndBitangents())
+						{
+						    const aiVector3D& aiTangent = mesh->mTangents[vertex_idx];
+							vertex.tangent = {aiTangent.x, aiTangent.y, aiTangent.z};
 						}
 
 						if (mesh->HasTextureCoords(0))
 						{
 							const aiVector3D& aiUV = mesh->mTextureCoords[0][vertex_idx];
-						    vertex.uv = {aiUV.x, aiUV.y};
-						}
-
-						if (mesh->HasVertexColors(0))
-						{
-						    const aiColor4D& aiColor = mesh->mColors[0][vertex_idx];
-							vertex.color = {aiColor.r, aiColor.g, aiColor.b};
+						    vertex.u = aiUV.x;
+						    vertex.v = aiUV.y;
 						}
 					}
 
@@ -108,7 +111,7 @@ namespace brr
 
 		if (!assimp_scene)
 		{
-			BRR_LogError("Assimp could not load Scene. Assimp Error:\n{}", assimp_importer.GetErrorString());
+			BRR_LogError("Assimp could not load Scene. Assimp Error Code:\n{}", assimp_importer.GetErrorString());
 		}
 
 		ConvertAssimpScene(assimp_scene, *scene, parent);

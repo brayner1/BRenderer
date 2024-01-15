@@ -36,7 +36,7 @@ namespace brr::render
 		std::vector<vk::PipelineShaderStageCreateInfo> pipeline_stage_infos_;
 
 		vk::VertexInputBindingDescription vertex_input_binding_description_;
-		std::array<vk::VertexInputAttributeDescription, 3> vertex_input_attribute_descriptions_;
+		std::array<vk::VertexInputAttributeDescription, 5> vertex_input_attribute_descriptions_;
 
 		std::vector<vk::DescriptorSetLayout>  descriptor_set_layouts_;
 	};

@@ -36,7 +36,20 @@ namespace brr
 		static std::array<vk::VertexInputAttributeDescription, 3> GetAttributeDescriptions();
 	};
 
-	using Vertex3 = Vertex3_PosColorUV;
+	struct Vertex3_PosUvNormal
+	{
+	    glm::vec3 pos;
+		float u;
+		glm::vec3 normal;
+		float v;
+		glm::vec3 tangent;
+
+		static vk::VertexInputBindingDescription GetBindingDescription();
+
+		static std::array<vk::VertexInputAttributeDescription, 5> GetAttributeDescriptions();
+	};
+
+	using Vertex3 = Vertex3_PosUvNormal;
 }
 
 #endif

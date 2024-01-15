@@ -1195,7 +1195,7 @@ namespace brr::render
     {
 		render::Shader shader = CreateShaderFromFiles("vert", "frag");
 
-		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector<vk::DescriptorSetLayout>{m_descriptor_set0_layout, m_descriptor_set1_layout}, shader,
+		m_graphics_pipeline = std::make_unique<render::DevicePipeline>(std::vector<vk::DescriptorSetLayout>{m_descriptor_set0_layout, m_descriptor_set1_layout, m_descriptor_set2_layout}, shader,
                                                                        swapchain);
 		return true;
     }
@@ -1694,11 +1694,18 @@ namespace brr::render
 	    {
 	        render::DescriptorLayoutBuilder layoutBuilder = GetDescriptorLayoutBuilder();
 	        layoutBuilder
-                .SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex)
-                .SetBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+                .SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
 
 	        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
 	        m_descriptor_set1_layout = descriptor_layout.m_descriptor_set_layout;
+	    }
+		{
+	        render::DescriptorLayoutBuilder layoutBuilder = GetDescriptorLayoutBuilder();
+	        layoutBuilder
+                .SetBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+
+	        render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+	        m_descriptor_set2_layout = descriptor_layout.m_descriptor_set_layout;
 	    }
     }
 
