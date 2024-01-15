@@ -44,7 +44,7 @@ namespace brr::vis
 
     void WindowRenderer::BeginRenderPass(vk::CommandBuffer cmd_buffer) const
     {
-        vk::ClearValue clear_value(std::array<float, 4>({ {0.2f, 0.2f, 0.2f, 1.f} }));
+        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.2f, 0.2f, 0.2f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
 
 		glm::uvec2 extent = m_swapchain->GetSwapchainExtent();
 
@@ -53,7 +53,7 @@ namespace brr::vis
             .setRenderPass(m_swapchain->GetRenderPass())
             .setFramebuffer(m_swapchain->GetFramebuffer(m_swapchain->GetCurrentImageIndex()))
             .setRenderArea(vk::Rect2D{ {0, 0},  {extent.x, extent.y}})
-            .setClearValues(clear_value);
+            .setClearValues(clear_values);
 
         cmd_buffer.beginRenderPass(render_pass_begin_info, vk::SubpassContents::eInline);
 	}

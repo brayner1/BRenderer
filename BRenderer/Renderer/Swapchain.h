@@ -63,10 +63,15 @@ namespace brr::render
 			vk::Image m_image {};
 			vk::ImageView m_image_view {};
 			vk::Framebuffer m_framebuffer {};
+
+			vk::Image m_depth_image {};
+			vk::ImageView m_depth_image_view {};
+			VmaAllocation m_depth_image_allocation {};
 		};
 
 		vk::SurfaceKHR m_surface {};
 		vk::Format m_swapchain_image_format {};
+		vk::Format m_swapchain_depth_format {};
 		vk::Extent2D m_swapchain_extent {};
 
 		vk::SwapchainKHR m_swapchain {};

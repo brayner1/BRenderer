@@ -47,6 +47,8 @@ namespace brr::render
 		[[nodiscard]] FORCEINLINE vk::PhysicalDevice Get_VkPhysicalDevice() const { return m_phys_device; }
 		[[nodiscard]] FORCEINLINE vk::Device Get_VkDevice() const { return m_device; }
 
+		[[nodiscard]] FORCEINLINE VmaAllocator Get_VmaAllocator() const { return m_vma_allocator; }
+
 		/**********
 		 * Queues *
 		 **********/
