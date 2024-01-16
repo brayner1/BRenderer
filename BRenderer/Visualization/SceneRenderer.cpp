@@ -14,11 +14,29 @@ namespace brr::vis
 		assert(m_render_device && "Can't create SceneRenderer without VulkanRenderDevice.");
 		BRR_LogInfo("Creating SceneRenderer");
 
+		{
+			render::ShaderBuilder shader_builder;
+            shader_builder
+            .SetVertexShaderFile ("vert.spv")
+            .SetFragmentShaderFile ("frag.spv")
+            .AddVertexInputBindingDescription (0, sizeof(Vertex3))
+            .AddVertexAttributeDescription(0, 0, render::DataFormat::R32G32B32_Float, offsetof(Vertex3, pos))
+            .AddVertexAttributeDescription(0, 1, render::DataFormat::R32_Float, offsetof(Vertex3, u))
+            .AddVertexAttributeDescription(0, 2, render::DataFormat::R32G32B32_Float, offsetof(Vertex3, normal))
+            .AddVertexAttributeDescription(0, 3, render::DataFormat::R32_Float, offsetof(Vertex3, v))
+            .AddVertexAttributeDescription(0, 4, render::DataFormat::R32G32B32_Float, offsetof(Vertex3, tangent));
+
+            render::Shader shader = shader_builder.BuildShader();
+		    m_graphics_pipeline = m_render_device->Create_GraphicsPipeline(shader, {render::DataFormat::R8G8B8A8_SRGB}, render::DataFormat::D32_Float);
+		}
+
 		SetupCameraUniforms();
 
 		m_image = std::make_unique<Image>("Resources/UV_Grid.png");
 
-		m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(), render::VKRD::ImageUsage::TransferDstImage | render::VKRD::ImageUsage::SampledImage);
+        m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(),
+                                                                render::ImageUsage::TransferDstImage | render::ImageUsage::SampledImage,
+                                                                render::DataFormat::R8G8B8A8_SRGB);
 		if (m_texture_2d_handle != render::null_handle)
 		{
 		    m_render_device->UpdateTexture2DData(m_texture_2d_handle, m_image->Data(), m_image->DataSize(), {0, 0}, {m_image->Width(), m_image->Height()});
@@ -33,6 +51,7 @@ namespace brr::vis
             DestroyBuffers(render_data);
 		}
 		m_render_device->DestroyTexture2D(m_texture_2d_handle);
+		m_render_device->DestroyGraphicsPipeline(m_graphics_pipeline);
     }
 
     SurfaceId SceneRenderer::CreateNewSurface(Mesh3DComponent::SurfaceData& surface,
@@ -135,13 +154,13 @@ namespace brr::vis
 
     void SceneRenderer::Render3D()
     {
-		m_render_device->Bind_GraphicsPipeline();
+		m_render_device->Bind_GraphicsPipeline(m_graphics_pipeline);
 
-		m_render_device->Bind_DescriptorSet(m_camera_uniform_info.m_descriptor_sets[m_current_buffer], 0);
+		m_render_device->Bind_DescriptorSet(m_graphics_pipeline, m_camera_uniform_info.m_descriptor_sets[m_current_buffer], 0);
 		for (RenderData& render_data : m_render_data)
 		{
-			m_render_device->Bind_DescriptorSet(render_data.m_descriptor_sets[m_current_buffer], 1);
-			m_render_device->Bind_DescriptorSet(m_material_descriptor_sets[m_current_buffer], 2);
+			m_render_device->Bind_DescriptorSet(m_graphics_pipeline, render_data.m_descriptor_sets[m_current_buffer], 1);
+			m_render_device->Bind_DescriptorSet(m_graphics_pipeline, m_material_descriptor_sets[m_current_buffer], 2);
 
 			assert(render_data.m_vertex_buffer_handle.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
 			m_render_device->BindVertexBuffer(render_data.m_vertex_buffer_handle);
@@ -164,7 +183,7 @@ namespace brr::vis
 		{
 			m_camera_uniform_info.m_uniform_buffers[idx] =
                 render::DeviceBuffer(sizeof(UniformBufferObject),
-					                 render::VulkanRenderDevice::BufferUsage::UniformBuffer,
+					                 render::BufferUsage::UniformBuffer,
                                      render::VKRD::AUTO,
                                      VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
@@ -255,7 +274,7 @@ namespace brr::vis
 		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
 		{
             render_data.m_uniform_buffers[i] = render::DeviceBuffer(buffer_size,
-                                                                    render::VKRD::BufferUsage::UniformBuffer,
+                                                                    render::BufferUsage::UniformBuffer,
                                                                     render::VKRD::AUTO,
                                                                     VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}

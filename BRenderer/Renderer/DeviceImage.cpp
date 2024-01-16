@@ -6,12 +6,12 @@ namespace brr::render
     {
     }
 
-    DeviceImage::DeviceImage(size_t width, size_t height, VulkanRenderDevice::ImageUsage image_usage)
+    DeviceImage::DeviceImage(size_t width, size_t height, ImageUsage image_usage, DataFormat image_format)
         : m_width(width), m_heigth(height),
           m_device(VKRD::GetSingleton())
     {
         BRR_LogInfo("Creating DeviceImage. New Image: [ width: {}, height: {} ]", width, height);
-        m_texture_handle = m_device->Create_Texture2D(width, height, image_usage);
+        m_texture_handle = m_device->Create_Texture2D(width, height, image_usage, image_format);
     }
 
     DeviceImage::DeviceImage(DeviceImage&& device_buffer) noexcept

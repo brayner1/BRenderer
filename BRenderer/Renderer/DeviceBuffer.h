@@ -24,7 +24,7 @@ namespace brr
     {
     public:
         DeviceBuffer();
-        DeviceBuffer(size_t buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VKRD::MemoryUsage memory_usage,
+        DeviceBuffer(size_t buffer_size, BufferUsage buffer_usage, VKRD::MemoryUsage memory_usage,
                      VmaAllocationCreateFlags allocation_create_flags = {});
         DeviceBuffer(DeviceBuffer&& device_buffer) noexcept;
 
@@ -32,7 +32,7 @@ namespace brr
 
         ~DeviceBuffer();
 
-        void Reset(size_t buffer_size, VulkanRenderDevice::BufferUsage buffer_usage, VKRD::MemoryUsage memory_usage,
+        void Reset(size_t buffer_size, BufferUsage buffer_usage, VKRD::MemoryUsage memory_usage,
                    VmaAllocationCreateFlags allocation_create_flags = {});
 
         void WriteToBuffer(void* data, size_t size = VK_WHOLE_SIZE, uint32_t offset = 0);

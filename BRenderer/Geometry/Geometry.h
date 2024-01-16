@@ -12,7 +12,7 @@ namespace brr
 
 		static vk::VertexInputBindingDescription GetBindingDescription();
 
-		static std::array<vk::VertexInputAttributeDescription, 2> GetAttributeDescriptions();
+		static std::vector<vk::VertexInputAttributeDescription> GetAttributeDescriptions();
 	};
 
 	struct Vertex3_PosColor
@@ -22,7 +22,7 @@ namespace brr
 
 		static vk::VertexInputBindingDescription GetBindingDescription();
 
-		static std::array<vk::VertexInputAttributeDescription, 2> GetAttributeDescriptions();
+		static std::vector<vk::VertexInputAttributeDescription> GetAttributeDescriptions();
 	};
 
 	struct Vertex3_PosColorUV
@@ -33,7 +33,7 @@ namespace brr
 
 		static vk::VertexInputBindingDescription GetBindingDescription();
 
-		static std::array<vk::VertexInputAttributeDescription, 3> GetAttributeDescriptions();
+		static std::vector<vk::VertexInputAttributeDescription> GetAttributeDescriptions();
 	};
 
 	struct Vertex3_PosUvNormal
@@ -46,7 +46,7 @@ namespace brr
 
 		static vk::VertexInputBindingDescription GetBindingDescription();
 
-		static std::array<vk::VertexInputAttributeDescription, 5> GetAttributeDescriptions();
+		static std::vector<vk::VertexInputAttributeDescription> GetAttributeDescriptions();
 	};
 
 	using Vertex3 = Vertex3_PosUvNormal;

@@ -1,45 +1,94 @@
 #ifndef BRR_SHADER_H
 #define BRR_SHADER_H
 #include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/RenderEnums.h>
 
 #include <vector>
 
 namespace brr::render
 {
+    class DevicePipeline;
     class VulkanRenderDevice;
+    class Shader;
+
+    class ShaderBuilder
+    {
+    public:
+        ShaderBuilder() {}
+
+        ShaderBuilder& SetVertexShaderFile(std::string vert_shader_path);
+
+        ShaderBuilder& SetFragmentShaderFile(std::string frag_shader_path);
+
+        ShaderBuilder& AddVertexInputBindingDescription(uint32_t binding,
+                                                        uint32_t stride);
+
+        ShaderBuilder& AddVertexAttributeDescription(uint32_t   binding,
+                                                     uint32_t   location,
+                                                     DataFormat format,
+                                                     uint32_t   offset);
+
+        Shader BuildShader();
+
+    private:
+        struct VertexInputBindingDesc
+        {
+            uint32_t m_binding;
+            uint32_t m_stride;
+            // TODO: Input rate (Vertex or Instance).
+        };
+
+        struct VertexInputAttributeDesc
+        {
+            uint32_t   m_binding;
+            uint32_t   m_location;
+            DataFormat m_format;
+            uint32_t   m_offset;
+        };
+
+        std::vector<char> m_vertex_shader_code;
+        std::vector<char> m_fragment_shader_code;
+
+        std::vector<VertexInputBindingDesc>   m_binding_descs;
+        std::vector<VertexInputAttributeDesc> m_attribute_descs;
+    };
 
     class Shader
-	{
-		friend class VulkanRenderDevice;
-	public:
+    {
+        friend class VulkanRenderDevice;
+        friend class ShaderBuilder;
+    public:
 
-		~Shader();
+        ~Shader();
 
-		void DestroyShaderModules();
+        void DestroyShaderModules();
 
-		[[nodiscard]] bool IsValid() const { return m_isValid; }
+        [[nodiscard]] bool IsValid() const { return m_isValid; }
 
-		[[nodiscard]] const std::vector<vk::PipelineShaderStageCreateInfo>& GetPipelineStagesInfo() const { return pipeline_stage_infos_; }
+        [[nodiscard]] const std::vector<vk::PipelineShaderStageCreateInfo>& GetPipelineStagesInfo() const { return pipeline_stage_infos_; }
 
-		[[nodiscard]] vk::PipelineVertexInputStateCreateInfo GetPipelineVertexInputState() const;
+        [[nodiscard]] vk::PipelineVertexInputStateCreateInfo GetPipelineVertexInputState() const;
 
-	private:
-		Shader();
+        [[nodiscard]] const std::vector<vk::DescriptorSetLayout>& GetDescriptorSetLayouts() const { return m_descriptor_set_layouts; }
 
-		Shader(Shader&& other) noexcept;
+    private:
+        Shader();
 
-		VulkanRenderDevice* m_pDevice;
+        Shader(Shader&& other) noexcept;
 
-		bool m_isValid = false;
-		vk::ShaderModule vert_shader_module_ {};
-		vk::ShaderModule frag_shader_module_ {};
-		std::vector<vk::PipelineShaderStageCreateInfo> pipeline_stage_infos_;
+        VulkanRenderDevice* m_pDevice;
 
-		vk::VertexInputBindingDescription vertex_input_binding_description_;
-		std::array<vk::VertexInputAttributeDescription, 5> vertex_input_attribute_descriptions_;
+        bool m_isValid = false;
+        vk::ShaderModule m_vert_shader_module {};
+        vk::ShaderModule m_frag_shader_module {};
+        std::vector<vk::PipelineShaderStageCreateInfo> pipeline_stage_infos_;
 
-		std::vector<vk::DescriptorSetLayout>  descriptor_set_layouts_;
-	};
+        std::vector<vk::VertexInputBindingDescription>   m_vertex_input_binding_descriptions;
+        std::vector<vk::VertexInputAttributeDescription> m_vertex_input_attribute_descriptions;
+
+        std::vector<vk::DescriptorSetLayout> m_descriptor_set_layouts;
+        std::unique_ptr<DevicePipeline>      m_graphics_pipeline;
+    };
 }
 
 #endif

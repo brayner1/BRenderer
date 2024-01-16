@@ -14,7 +14,7 @@ namespace brr
 		return binding_description;
 	}
 
-	std::array<vk::VertexInputAttributeDescription, 2> Vertex2_PosColor::GetAttributeDescriptions()
+	std::vector<vk::VertexInputAttributeDescription> Vertex2_PosColor::GetAttributeDescriptions()
 	{
 		std::array<vk::VertexInputAttributeDescription, 2> attribute_descriptions {};
 
@@ -36,7 +36,7 @@ namespace brr
 				.setOffset(offsetof(Vertex2_PosColor, color));
 		}
 
-		return attribute_descriptions;
+		return {attribute_descriptions[0], attribute_descriptions[1]};
 	}
 
 	vk::VertexInputBindingDescription Vertex3_PosColor::GetBindingDescription()
@@ -51,7 +51,7 @@ namespace brr
 		return binding_description;
 	}
 
-	std::array<vk::VertexInputAttributeDescription, 2> Vertex3_PosColor::GetAttributeDescriptions()
+    std::vector<vk::VertexInputAttributeDescription> Vertex3_PosColor::GetAttributeDescriptions()
 	{
 		std::array<vk::VertexInputAttributeDescription, 2> attribute_descriptions{};
 
@@ -73,7 +73,7 @@ namespace brr
 				.setOffset(offsetof(Vertex3_PosColor, color));
 		}
 
-		return attribute_descriptions;
+		return {attribute_descriptions[0], attribute_descriptions[1]};
 	}
 
     vk::VertexInputBindingDescription Vertex3_PosColorUV::GetBindingDescription()
@@ -88,7 +88,7 @@ namespace brr
 		return binding_description;
     }
 
-    std::array<vk::VertexInputAttributeDescription, 3> Vertex3_PosColorUV::GetAttributeDescriptions()
+    std::vector<vk::VertexInputAttributeDescription> Vertex3_PosColorUV::GetAttributeDescriptions()
     {
 		std::array<vk::VertexInputAttributeDescription, 3> attribute_descriptions{};
 
@@ -119,7 +119,7 @@ namespace brr
 				.setOffset(offsetof(Vertex3_PosColorUV, uv));
 		}
 
-		return attribute_descriptions;
+		return {attribute_descriptions[0], attribute_descriptions[1], attribute_descriptions[2]};
     }
 
     vk::VertexInputBindingDescription Vertex3_PosUvNormal::GetBindingDescription()
@@ -134,7 +134,7 @@ namespace brr
 		return binding_description;
     }
 
-    std::array<vk::VertexInputAttributeDescription, 5> Vertex3_PosUvNormal::GetAttributeDescriptions()
+    std::vector<vk::VertexInputAttributeDescription> Vertex3_PosUvNormal::GetAttributeDescriptions()
     {
 		std::array<vk::VertexInputAttributeDescription, 5> attribute_descriptions{};
 
@@ -183,6 +183,8 @@ namespace brr
 				.setOffset(offsetof(Vertex3_PosUvNormal, tangent));
 		}
 
-		return attribute_descriptions;
+		return {attribute_descriptions[0], attribute_descriptions[1], attribute_descriptions[2],
+                attribute_descriptions[3], attribute_descriptions[4]};
+        ;
     }
 }
