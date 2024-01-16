@@ -12,8 +12,6 @@ namespace brr::render
 	{
 		Init_Swapchain(window);
 		Init_SwapchainResources();
-		Init_RenderPass();
-		Init_Framebuffers();
 		Init_Synchronization();
 	}
 
@@ -59,11 +57,91 @@ namespace brr::render
 		return result;
 	}
 
-	Swapchain::~Swapchain()
+    void Swapchain::BeginRendering(vk::CommandBuffer command_buffer)
+    {
+		// Image transition from Undefined to Color Attachment
+	    {
+            m_render_device->TransitionImageLayout(command_buffer, m_image_resources[m_current_image_idx].m_image,
+                                                   vk::ImageLayout::eUndefined,
+                                                   vk::ImageLayout::eColorAttachmentOptimal,
+                                                   vk::AccessFlagBits2::eMemoryWrite,
+                                                   vk::PipelineStageFlagBits2::eAllCommands,
+                                                   vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                                                   vk::PipelineStageFlagBits2::eAllCommands,
+                                                   vk::ImageAspectFlagBits::eColor);
+	    }
+
+		// DepthImage transition from Undefined to Depth Attachment
+	    {
+			m_render_device->TransitionImageLayout(command_buffer, m_image_resources[m_current_image_idx].m_depth_image,
+                                                   vk::ImageLayout::eUndefined,
+                                                   vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                                                   vk::AccessFlagBits2::eMemoryWrite,
+                                                   vk::PipelineStageFlagBits2::eAllCommands,
+                                                   vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                                                   vk::PipelineStageFlagBits2::eAllCommands,
+                                                   vk::ImageAspectFlagBits::eDepth);
+	    }
+
+		std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.2f, 0.2f, 0.2f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
+		ImageResources& image_resource = m_image_resources[m_current_image_idx];
+
+        vk::Viewport viewport{
+            0, 0,
+            static_cast<float>(m_swapchain_extent.width), static_cast<float>(m_swapchain_extent.height), 0.0, 1.0
+        };
+		vk::Rect2D scissor {{0, 0}, m_swapchain_extent};
+
+		command_buffer.setViewport(0, viewport);
+		command_buffer.setScissor(0, scissor);
+
+		vk::RenderingAttachmentInfo color_attachment_info {};
+		color_attachment_info
+		    .setClearValue(clear_values[0])
+            .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+            .setImageView(image_resource.m_image_view)
+	        .setLoadOp(vk::AttachmentLoadOp::eClear)
+	        .setStoreOp(vk::AttachmentStoreOp::eStore);
+
+		vk::RenderingAttachmentInfo depth_attachment_info {};
+		depth_attachment_info
+		    .setClearValue(clear_values[1])
+            .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+            .setImageView(image_resource.m_depth_image_view)
+	        .setLoadOp(vk::AttachmentLoadOp::eClear)
+	        .setStoreOp(vk::AttachmentStoreOp::eStore);
+
+		vk::RenderingInfo rendering_info {};
+		rendering_info
+            .setColorAttachments(color_attachment_info)
+		    .setPDepthAttachment(&depth_attachment_info)
+            .setLayerCount(1)
+            .setRenderArea(scissor);
+
+		command_buffer.beginRendering(rendering_info);
+    }
+
+    void Swapchain::EndRendering(vk::CommandBuffer command_buffer)
+    {
+		command_buffer.endRendering();
+
+		// Image transition from Color Attachment to Present Src
+	    {
+			m_render_device->TransitionImageLayout(command_buffer, m_image_resources[m_current_image_idx].m_image,
+                                                   vk::ImageLayout::eColorAttachmentOptimal,
+                                                   vk::ImageLayout::ePresentSrcKHR,
+                                                   vk::AccessFlagBits2::eMemoryWrite,
+                                                   vk::PipelineStageFlagBits2::eAllCommands,
+                                                   vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                                                   vk::PipelineStageFlagBits2::eAllCommands,
+                                                   vk::ImageAspectFlagBits::eColor);
+	    }
+    }
+
+    Swapchain::~Swapchain()
 	{
 		Cleanup_Swapchain();
 
-		m_render_device->Get_VkDevice().destroyRenderPass(m_render_pass);
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
 			m_render_device->Get_VkDevice().destroySemaphore(m_image_available_semaphores[i]);
@@ -268,106 +346,6 @@ namespace brr::render
 		BRR_LogInfo("Images Resources initialized.");
 	}
 
-	void Swapchain::Init_RenderPass()
-	{
-		vk::AttachmentDescription color_attachment{};
-		color_attachment
-			.setFormat(m_swapchain_image_format)
-			.setSamples(vk::SampleCountFlagBits::e1)
-			.setLoadOp(vk::AttachmentLoadOp::eClear)
-			.setStoreOp(vk::AttachmentStoreOp::eStore)
-			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setInitialLayout(vk::ImageLayout::eUndefined)
-			.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
-
-		vk::AttachmentDescription depth_attachment{};
-		depth_attachment
-			.setFormat(m_swapchain_depth_format)
-			.setSamples(vk::SampleCountFlagBits::e1)
-			.setLoadOp(vk::AttachmentLoadOp::eClear)
-			.setStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setInitialLayout(vk::ImageLayout::eUndefined)
-			.setFinalLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-		vk::AttachmentReference color_attachment_ref{};
-		color_attachment_ref
-			.setAttachment(0)
-			.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
-
-		vk::AttachmentReference depth_attachment_ref{};
-		depth_attachment_ref
-			.setAttachment(1)
-			.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-		vk::SubpassDescription subpass_description{};
-		subpass_description
-			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-			.setColorAttachments(color_attachment_ref)
-	        .setPDepthStencilAttachment(&depth_attachment_ref);
-
-		vk::SubpassDependency subpass_dependency[1];
-		subpass_dependency[0]
-			.setSrcSubpass(VK_SUBPASS_EXTERNAL)
-			.setDstSubpass(0)
-			.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests)
-			.setSrcAccessMask(vk::AccessFlagBits::eNone)
-			.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests)
-			.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentWrite/* | vk::AccessFlagBits::eColorAttachmentRead*/ | vk::AccessFlagBits::eDepthStencilAttachmentWrite)
-			.setDependencyFlags(vk::DependencyFlags());
-		//subpass_dependency[1]
-		//	.setSrcSubpass(0)
-		//	.setDstSubpass(0)
-		//	.setSrcStageMask(vk::PipelineStageFlagBits::eTopOfPipe)
-		//	.setSrcAccessMask(vk::AccessFlagBits::eMemoryWrite/* | vk::AccessFlagBits::eColorAttachmentRead*/)
-		//	.setDstStageMask(vk::PipelineStageFlagBits::eVertexInput)
-		//	.setDstAccessMask(vk::AccessFlagBits::eMemoryRead)
-		//	.setDependencyFlags(vk::DependencyFlags());
-
-		std::array<vk::AttachmentDescription, 2> attachments {color_attachment, depth_attachment};
-		vk::RenderPassCreateInfo render_pass_info{};
-		render_pass_info
-			.setAttachments(attachments)
-			.setSubpasses(subpass_description)
-			.setDependencies(subpass_dependency);
-
-		 auto createRenderPassResult = m_render_device->Get_VkDevice().createRenderPass(render_pass_info);
-		 if (createRenderPassResult.result != vk::Result::eSuccess)
-		 {
-			 BRR_LogError("Could not create RenderPass for swapchain! Result code: {}.", vk::to_string(createRenderPassResult.result).c_str());
-			 exit(1);
-		 }
-		 m_render_pass = createRenderPassResult.value;
-
-		BRR_LogInfo("Render Pass Created");
-	}
-
-	void Swapchain::Init_Framebuffers()
-	{
-		for (size_t i = 0; i < m_image_resources.size(); ++i)
-		{
-			std::array<vk::ImageView, 2> attachments {m_image_resources[i].m_image_view, m_image_resources[i].m_depth_image_view};
-			vk::FramebufferCreateInfo framebuffer_info;
-			framebuffer_info
-				.setAttachments(attachments)
-				.setRenderPass(m_render_pass)
-				.setWidth(m_swapchain_extent.width)
-				.setHeight(m_swapchain_extent.height)
-				.setLayers(1);
-
-			 auto createFramebufferResult = m_render_device->Get_VkDevice().createFramebuffer(framebuffer_info);
-			 if (createFramebufferResult.result != vk::Result::eSuccess)
-			 {
-				 BRR_LogError("Could not create Framebuffer for swapchain! Result code: {}.", vk::to_string(createFramebufferResult.result).c_str());
-				 exit(1);
-			 }
-			 m_image_resources[i].m_framebuffer = createFramebufferResult.value;
-			BRR_LogInfo("Created Framebuffer for swapchain image number {}", i);
-		}
-	}
-
 	void Swapchain::Init_Synchronization()
 	{
 		for (int i = 0; i < FRAME_LAG; i++)
@@ -398,7 +376,6 @@ namespace brr::render
 
 		Init_Swapchain(m_window);
 		Init_SwapchainResources();
-		Init_Framebuffers();
 	}
 
 	void Swapchain::Cleanup_Swapchain()
@@ -406,12 +383,6 @@ namespace brr::render
 		for (int i = 0; i < m_image_resources.size(); ++i)
 		{
 			ImageResources& resource = m_image_resources[i];
-			if (resource.m_framebuffer)
-			{
-				m_render_device->Get_VkDevice().destroyFramebuffer(resource.m_framebuffer);
-				resource.m_framebuffer = VK_NULL_HANDLE;
-				BRR_LogInfo("Framebuffer of Swapchain Image {} Destroyed.", i);
-			}
 			if (resource.m_image_view)
 			{
 				m_render_device->Get_VkDevice().destroyImageView(resource.m_image_view);

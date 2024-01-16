@@ -91,8 +91,7 @@ namespace brr::vis
 
     void Window::RenderWindow()
     {
-		m_pWindowRenderer->BeginRenderWindow();
-		m_pWindowRenderer->EndRenderWindow();
+		m_pWindowRenderer->RenderWindow(m_scene->GetSceneRenderer());
     }
 
 	void Window::GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const

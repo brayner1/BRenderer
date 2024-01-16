@@ -2,6 +2,8 @@
 #define BRR_PIPELINE_H
 
 #include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/RenderEnums.h>
+#include <Renderer/ResourcesHandles.h>
 
 #include <vector>
 
@@ -14,37 +16,26 @@ namespace brr::render
     class DevicePipeline
     {
     public:
-        DevicePipeline(std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
-                       const Shader& shader, 
-                       Swapchain* swapchain);
+        DevicePipeline(const Shader& shader, 
+                       const std::vector<DataFormat>& color_attachment_formats,
+                       DataFormat depth_attachment_format);
 
         DevicePipeline(DevicePipeline&& other) noexcept;
 
         DevicePipeline& operator=(DevicePipeline&& other) noexcept;
 
-
         ~DevicePipeline();
 
-        [[nodiscard]] constexpr vk::Pipeline GetPipeline() const{ return m_pipeline; }
-        [[nodiscard]] constexpr vk::PipelineLayout GetPipelineLayout() const { return m_pipeline_layout; }
+        void BindGraphicsPipeline();
+        void BindDescriptorSet(vk::DescriptorSet descriptor_set, uint32_t set_index);
 
-        void DestroyPipeline();
-
-        [[nodiscard]] FORCEINLINE explicit operator bool() const noexcept { return m_pipeline; }
-
-        [[nodiscard]] FORCEINLINE bool operator!() const noexcept { return !m_pipeline; }
+        [[nodiscard]] FORCEINLINE explicit operator bool() const noexcept { return m_pipeline_handle; }
 
     private:
 
-        bool Init_GraphicsPipeline(
-            std::vector<vk::DescriptorSetLayout> descriptors_layouts,
-            const Shader& shader,
-            Swapchain* swapchain);
-
         VulkanRenderDevice* m_device;
 
-        vk::PipelineLayout m_pipeline_layout;
-        vk::Pipeline       m_pipeline;
+        ResourceHandle m_pipeline_handle {};
     };
 
 }

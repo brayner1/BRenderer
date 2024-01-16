@@ -13,7 +13,7 @@ namespace brr::render
     public:
 
         DeviceImage();
-        DeviceImage(size_t width, size_t height, VulkanRenderDevice::ImageUsage image_usage);
+        DeviceImage(size_t width, size_t height, ImageUsage image_usage, DataFormat image_format);
         DeviceImage(DeviceImage&& device_buffer) noexcept;
 
         ~DeviceImage();

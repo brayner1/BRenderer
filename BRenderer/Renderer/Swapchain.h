@@ -25,6 +25,8 @@ namespace brr::render
 
 		vk::Result AcquireNextImage(vk::Semaphore& image_available_semaphore);
 		vk::Result PresentCurrentImage(vk::Semaphore wait_semaphore);
+		void BeginRendering(vk::CommandBuffer command_buffer);
+		void EndRendering(vk::CommandBuffer command_buffer);
 
 		void Recreate_Swapchain();
 		void Cleanup_Swapchain();
@@ -34,20 +36,17 @@ namespace brr::render
             return {m_swapchain_extent.width, m_swapchain_extent.height};
         }
 
-		[[nodiscard]] FORCEINLINE vk::RenderPass GetRenderPass() const { return m_render_pass; }
-
 		[[nodiscard]] FORCEINLINE uint32_t GetCurrentImageIndex() const { return m_current_image_idx; }
 
-		[[nodiscard]] FORCEINLINE vk::Framebuffer GetFramebuffer(uint32_t image_index) const { return m_image_resources[image_index].m_framebuffer; }
-
 		[[nodiscard]] FORCEINLINE vk::Fence GetCurrentInFlightFence() const { return m_in_flight_fences[m_current_buffer_idx]; }
+
+		[[nodiscard]] FORCEINLINE vk::Format GetColorImageFormat() const { return m_swapchain_image_format; }
+		[[nodiscard]] FORCEINLINE vk::Format GetDepthImageFormat() const { return m_swapchain_depth_format; }
 
 	private:
 
 		void Init_Swapchain(vis::Window* window);
 		void Init_SwapchainResources();
-		void Init_RenderPass();
-		void Init_Framebuffers();
 		void Init_Synchronization();
 
         vis::Window* m_window = nullptr;
@@ -62,7 +61,6 @@ namespace brr::render
 		{
 			vk::Image m_image {};
 			vk::ImageView m_image_view {};
-			vk::Framebuffer m_framebuffer {};
 
 			vk::Image m_depth_image {};
 			vk::ImageView m_depth_image_view {};
@@ -76,10 +74,6 @@ namespace brr::render
 
 		vk::SwapchainKHR m_swapchain {};
 		std::vector<ImageResources> m_image_resources {};
-
-		// Render pass
-
-		vk::RenderPass m_render_pass {};
 
 		// Synchronization
 

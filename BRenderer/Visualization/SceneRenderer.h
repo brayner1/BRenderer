@@ -4,7 +4,6 @@
 #include <Geometry/Geometry.h>
 #include <Renderer/Descriptors.h>
 #include <Renderer/DeviceBuffer.h>
-#include <Renderer/DevicePipeline.h>
 #include <Renderer/RenderDefs.h>
 #include <Renderer/Allocators/StagingAllocator.h>
 #include <Renderer/Vulkan/VulkanInc.h>
@@ -101,6 +100,7 @@ namespace brr::vis
 
         std::unique_ptr<Image> m_image;
         render::Texture2DHandle m_texture_2d_handle;
+        render::ResourceHandle m_graphics_pipeline;
     };
 
 }

@@ -1,7 +1,6 @@
 #ifndef BRR_RENDERER_H
 #define BRR_RENDERER_H
 #include <Core/thirdpartiesInc.h>
-#include <Renderer/DevicePipeline.h>
 #include <Renderer/Swapchain.h>
 #include <Renderer/Descriptors.h>
 
@@ -31,18 +30,12 @@ namespace brr{
 
 			void Window_Resized();
 
-            void BeginRenderWindow();
-			void EndRenderWindow();
+            void RenderWindow(SceneRenderer* scene_renderer);
 
 		private:
 			friend class WindowManager;
 
-			// Define DescriptorSetLayout and create the GraphicsPipeline
-			void Init_GraphicsPipeline();
-
-			void BeginRenderPass(vk::CommandBuffer cmd_buffer) const;
-			void Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer);
-			void EndRenderPass(vk::CommandBuffer cmd_buffer) const;
+			void Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer, SceneRenderer* scene_renderer);
 
 			void Recreate_Swapchain();
 

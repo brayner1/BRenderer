@@ -11,7 +11,7 @@ namespace brr
 	{
 		DeviceBuffer::DeviceBuffer() = default;
 
-		DeviceBuffer::DeviceBuffer(size_t buffer_size, VKRD::BufferUsage buffer_usage,
+		DeviceBuffer::DeviceBuffer(size_t buffer_size, BufferUsage buffer_usage,
 		                           VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
 	    : m_render_device(VKRD::GetSingleton()),
 	      m_buffer_size(buffer_size)
@@ -58,7 +58,7 @@ namespace brr
 			}
 		}
 
-		void DeviceBuffer::Reset(size_t buffer_size, VKRD::BufferUsage buffer_usage,
+		void DeviceBuffer::Reset(size_t buffer_size, BufferUsage buffer_usage,
                                  VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
 		{
 			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {} ]", buffer_size);

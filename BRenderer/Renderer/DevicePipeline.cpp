@@ -8,25 +8,19 @@
 
 namespace brr::render
 {
-    DevicePipeline::DevicePipeline(std::vector<vk::DescriptorSetLayout> descriptors_layouts, 
-		                           const Shader& shader, 
-		                           Swapchain* swapchain)
-	: m_device(VKRD::GetSingleton())
+    DevicePipeline::DevicePipeline(const Shader& shader, 
+		                           const std::vector<DataFormat>& color_attachment_formats,
+                                   DataFormat depth_attachment_format)
+	: m_device(VKRD::GetSingleton()),
+	  m_pipeline_handle(null_handle)
     {
-        if (!Init_GraphicsPipeline(descriptors_layouts, shader, swapchain))
-        {
-			m_pipeline = VK_NULL_HANDLE;
-			m_pipeline_layout = VK_NULL_HANDLE;
-        }
+		m_pipeline_handle = m_device->Create_GraphicsPipeline(shader, color_attachment_formats, depth_attachment_format);
     }
 
     DevicePipeline::DevicePipeline(DevicePipeline&& other) noexcept
     {
-		m_pipeline = other.m_pipeline;
-		other.m_pipeline = VK_NULL_HANDLE;
-
-		m_pipeline_layout = other.m_pipeline_layout;
-		other.m_pipeline_layout = VK_NULL_HANDLE;
+		m_pipeline_handle = other.m_pipeline_handle;
+		other.m_pipeline_handle = null_handle;
 
 		m_device = other.m_device;
 		other.m_device = VK_NULL_HANDLE;
@@ -34,11 +28,8 @@ namespace brr::render
 
     DevicePipeline& DevicePipeline::operator=(DevicePipeline&& other) noexcept
     {
-		m_pipeline = other.m_pipeline;
-		other.m_pipeline = VK_NULL_HANDLE;
-
-		m_pipeline_layout = other.m_pipeline_layout;
-		other.m_pipeline_layout = VK_NULL_HANDLE;
+		m_pipeline_handle = other.m_pipeline_handle;
+		other.m_pipeline_handle = null_handle;
 
 		m_device = other.m_device;
 		other.m_device = VK_NULL_HANDLE;
@@ -48,151 +39,21 @@ namespace brr::render
 
     DevicePipeline::~DevicePipeline()
     {
-		DestroyPipeline();
-    }
-
-    bool DevicePipeline::Init_GraphicsPipeline(
-        std::vector<vk::DescriptorSetLayout> descriptors_layouts,
-        const Shader& shader,
-        Swapchain* swapchain)
-    {
-		vk::PipelineVertexInputStateCreateInfo vertex_input_info = shader.GetPipelineVertexInputState();
-
-		vk::PipelineInputAssemblyStateCreateInfo input_assembly_info{};
-		input_assembly_info
-			.setTopology(vk::PrimitiveTopology::eTriangleList)
-			.setPrimitiveRestartEnable(false);
-
-		glm::uvec2 swapchain_extent = swapchain->GetSwapchainExtent();
-
-		vk::Viewport viewport{};
-		viewport
-			.setX(0.f)
-			.setY(0.f)
-			.setWidth((float)swapchain_extent.x)
-			.setHeight((float)swapchain_extent.y)
-			.setMinDepth(0.f)
-			.setMaxDepth(1.f);
-
-		vk::Rect2D scissor{ {0, 0}, {swapchain_extent.x, swapchain_extent.y} };
-
-		vk::PipelineViewportStateCreateInfo viewport_state_info{};
-		viewport_state_info
-			.setViewportCount(1)
-			.setViewports(viewport)
-			.setScissorCount(1)
-			.setScissors(scissor);
-
-		vk::PipelineDepthStencilStateCreateInfo depth_stencil_state_create_info {};
-		depth_stencil_state_create_info
-		    .setDepthTestEnable(VK_TRUE)
-            .setDepthWriteEnable(VK_TRUE)
-            .setDepthCompareOp(vk::CompareOp::eLess)
-		    .setDepthBoundsTestEnable(VK_FALSE)
-		    .setMinDepthBounds(0.0)
-		    .setMaxDepthBounds(1.0)
-            .setStencilTestEnable(VK_FALSE);
-
-		vk::PipelineRasterizationStateCreateInfo rasterization_state_info{};
-		rasterization_state_info
-			.setDepthClampEnable(false)
-			.setRasterizerDiscardEnable(false)
-			.setPolygonMode(vk::PolygonMode::eFill)
-			.setLineWidth(1.f)
-			.setCullMode(vk::CullModeFlagBits::eBack)
-			.setFrontFace(vk::FrontFace::eCounterClockwise)
-			.setDepthBiasEnable(false)
-			.setDepthBiasConstantFactor(0.f)
-			.setDepthBiasClamp(0.f)
-			.setDepthBiasSlopeFactor(0.f);
-
-		vk::PipelineMultisampleStateCreateInfo multisampling_info{};
-		multisampling_info
-			.setSampleShadingEnable(false)
-			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
-			.setMinSampleShading(1.f)
-			.setPSampleMask(nullptr)
-			.setAlphaToCoverageEnable(false)
-			.setAlphaToOneEnable(false);
-
-		vk::PipelineColorBlendAttachmentState color_blend_attachment{};
-		color_blend_attachment
-			.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-			.setBlendEnable(false)
-			.setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
-			.setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
-			.setColorBlendOp(vk::BlendOp::eAdd)
-			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
-			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
-			.setAlphaBlendOp(vk::BlendOp::eAdd);
-
-		vk::PipelineColorBlendStateCreateInfo color_blending_info{};
-		color_blending_info
-			.setLogicOpEnable(false)
-			.setLogicOp(vk::LogicOp::eCopy)
-			.setAttachments(color_blend_attachment);
-
-#if 1
-		std::vector<vk::DynamicState> dynamic_states{ vk::DynamicState::eViewport, vk::DynamicState::eScissor };
-
-		vk::PipelineDynamicStateCreateInfo dynamic_state_info{};
-		dynamic_state_info
-			.setDynamicStates(dynamic_states);
-#endif
-
-		vk::PipelineLayoutCreateInfo pipeline_layout_info{};
-		pipeline_layout_info
-			.setSetLayouts(descriptors_layouts);
-
-		auto createPipelineLayoutResult = m_device->Get_VkDevice().createPipelineLayout(pipeline_layout_info);
-		if (createPipelineLayoutResult.result != vk::Result::eSuccess)
-		{
-			BRR_LogError("Not able to create PipelineLayout. Result code: {}.", vk::to_string(createPipelineLayoutResult.result).c_str());
-			return false;
-		}
-		m_pipeline_layout = createPipelineLayoutResult.value;
-
-		vk::GraphicsPipelineCreateInfo graphics_pipeline_info{};
-		graphics_pipeline_info
-			.setStages(shader.GetPipelineStagesInfo())
-			.setPVertexInputState(&vertex_input_info)
-			.setPInputAssemblyState(&input_assembly_info)
-			.setPViewportState(&viewport_state_info)
-			.setPRasterizationState(&rasterization_state_info)
-			.setPMultisampleState(&multisampling_info)
-			.setPColorBlendState(&color_blending_info)
-            .setPDepthStencilState(&depth_stencil_state_create_info);
-		graphics_pipeline_info
-			.setLayout(m_pipeline_layout)
-			.setRenderPass(swapchain->GetRenderPass())
-			.setSubpass(0)
-			.setBasePipelineHandle(VK_NULL_HANDLE)
-			.setBasePipelineIndex(-1);
-
-		auto createGraphicsPipelineResult = m_device->Get_VkDevice().createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
-		if (createGraphicsPipelineResult.result != vk::Result::eSuccess)
-		{
-			BRR_LogError("Could not create GraphicsPipeline! Result code: {}.", vk::to_string(createGraphicsPipelineResult.result).c_str());
-			return false;
-		}
-
-		m_pipeline = createGraphicsPipelineResult.value;
-
-		BRR_LogInfo("Graphics DevicePipeline created.");
-
-		return true;
-    }
-
-    void DevicePipeline::DestroyPipeline()
-    {
-		if (!m_pipeline)
+		if (!m_pipeline_handle)
 		{
 			return;
 		}
-		m_device->Get_VkDevice().destroyPipeline(m_pipeline);
-		m_pipeline = VK_NULL_HANDLE;
-		m_device->Get_VkDevice().destroyPipelineLayout(m_pipeline_layout);
-		m_pipeline_layout = VK_NULL_HANDLE;
-		BRR_LogInfo("Destroyed Pipeline and PipelineLayout");
+		m_device->DestroyGraphicsPipeline(m_pipeline_handle);
+		BRR_LogInfo("Destroyed DevicePipeline.");
+    }
+
+    void DevicePipeline::BindGraphicsPipeline()
+    {
+        m_device->Bind_GraphicsPipeline(m_pipeline_handle);
+    }
+
+    void DevicePipeline::BindDescriptorSet(vk::DescriptorSet descriptor_set, uint32_t set_index)
+    {
+        m_device->Bind_DescriptorSet(m_pipeline_handle, descriptor_set, set_index);
     }
 }

@@ -112,6 +112,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/DeviceImage.h"
     "Renderer/DevicePipeline.h"
     "Renderer/RenderDefs.h"
+    "Renderer/RenderEnums.h"
     "Renderer/ResourcesHandles.h"
     "Renderer/Shader.h"
     "Renderer/Swapchain.h"
