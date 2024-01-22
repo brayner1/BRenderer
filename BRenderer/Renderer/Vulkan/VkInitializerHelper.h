@@ -1,6 +1,7 @@
 #ifndef BRR_VKINITIALIZERHELPER_H
 #define BRR_VKINITIALIZERHELPER_H
 #include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/RenderEnums.h>
 
 #include <optional>
 #include <vector>
@@ -59,6 +60,18 @@ namespace brr::render::VkHelpers
 
 	// Find the correct memory type index given the required memory properties.
 	uint32_t FindMemoryType(uint32_t type_filter, vk::MemoryPropertyFlags properties, const vk::PhysicalDeviceMemoryProperties& phys_device_mem_properties);
+
+	// Return the Vulkan Descriptor Type based on engine enum.
+	vk::DescriptorType VkDescriptorTypeFromDescriptorType(DescriptorType descriptor_type);
+
+	// Return the Vulkan shader stage flag based on engine enum.
+	vk::ShaderStageFlags VkShaderStageFlagFromShaderStageFlag(ShaderStageFlag shader_stage_flag);
+
+	// Return the VkFormat equivalent to the given DataFormat
+	vk::Format VkFormatFromDeviceDataFormat(DataFormat data_format);
+
+	// Return DataFormat equivalent to the given VkFormat
+	DataFormat DataFormatFromVkFormat(vk::Format vk_format);
 
 }
 

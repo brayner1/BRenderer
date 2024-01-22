@@ -5,8 +5,10 @@
 
 #include <vector>
 
+
 namespace brr::render
 {
+    struct DescriptorLayout;
     class DevicePipeline;
     class VulkanRenderDevice;
     class Shader;
@@ -28,6 +30,10 @@ namespace brr::render
                                                      DataFormat format,
                                                      uint32_t   offset);
 
+        ShaderBuilder& AddSet();
+
+        ShaderBuilder& AddSetBinding(DescriptorType descriptor_type, ShaderStageFlag stage_flag);
+
         Shader BuildShader();
 
     private:
@@ -46,11 +52,24 @@ namespace brr::render
             uint32_t   m_offset;
         };
 
+        struct SetBinding
+        {
+            DescriptorType m_descriptor_type;
+            ShaderStageFlag m_shader_stage_flag;
+        };
+
+        struct SetLayout
+        {
+            std::vector<SetBinding> m_set_bindings;
+        };
+
         std::vector<char> m_vertex_shader_code;
         std::vector<char> m_fragment_shader_code;
 
         std::vector<VertexInputBindingDesc>   m_binding_descs;
         std::vector<VertexInputAttributeDesc> m_attribute_descs;
+
+        std::vector<SetLayout> m_sets_layouts;
     };
 
     class Shader
@@ -58,6 +77,11 @@ namespace brr::render
         friend class VulkanRenderDevice;
         friend class ShaderBuilder;
     public:
+        Shader();
+
+        Shader(Shader&& other) noexcept;
+
+        Shader& operator=(Shader&& other) noexcept;
 
         ~Shader();
 
@@ -69,12 +93,9 @@ namespace brr::render
 
         [[nodiscard]] vk::PipelineVertexInputStateCreateInfo GetPipelineVertexInputState() const;
 
-        [[nodiscard]] const std::vector<vk::DescriptorSetLayout>& GetDescriptorSetLayouts() const { return m_descriptor_set_layouts; }
+        [[nodiscard]] const std::vector<DescriptorLayout>& GetDescriptorSetLayouts() const { return m_descriptors_layouts; }
 
     private:
-        Shader();
-
-        Shader(Shader&& other) noexcept;
 
         VulkanRenderDevice* m_pDevice;
 
@@ -86,8 +107,7 @@ namespace brr::render
         std::vector<vk::VertexInputBindingDescription>   m_vertex_input_binding_descriptions;
         std::vector<vk::VertexInputAttributeDescription> m_vertex_input_attribute_descriptions;
 
-        std::vector<vk::DescriptorSetLayout> m_descriptor_set_layouts;
-        std::unique_ptr<DevicePipeline>      m_graphics_pipeline;
+        std::vector<DescriptorLayout> m_descriptors_layouts;
     };
 }
 

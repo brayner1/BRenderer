@@ -168,6 +168,23 @@ namespace brr::render
 
     };
 
+    enum class DescriptorType
+    {
+        UniformBuffer,
+        StorageBuffer,
+        CombinedImageSampler,
+        SampledImage,
+        StorageImage,
+        Sampler
+    };
+
+    enum ShaderStageFlag : int
+    {
+        VertexShader			= (1 << 0),
+        FragmentShader			= (1 << 1),
+        ComputeShader			= (1 << 2)
+    };
+
     inline BufferUsage operator|(BufferUsage a, BufferUsage b)
     {
         return static_cast<BufferUsage>(static_cast<int>(a) | static_cast<int>(b));
@@ -176,6 +193,11 @@ namespace brr::render
     inline ImageUsage operator|(ImageUsage a, ImageUsage b)
     {
         return static_cast<ImageUsage>(static_cast<int>(a) | static_cast<int>(b));
+    }
+
+    inline ShaderStageFlag operator|(ShaderStageFlag a, ShaderStageFlag b)
+    {
+        return static_cast<ShaderStageFlag>(static_cast<int>(a) | static_cast<int>(b));
     }
 }
 

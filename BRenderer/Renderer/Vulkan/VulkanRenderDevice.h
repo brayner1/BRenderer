@@ -2,7 +2,6 @@
 #define BRR_RENDERDEVICE_H
 #include <Renderer/RenderDefs.h>
 #include <Renderer/RenderEnums.h>
-#include <Renderer/Descriptors.h>
 #include <Renderer/DevicePipeline.h>
 #include <Renderer/Shader.h>
 #include <Renderer/Allocators/ResourceAllocator.h>
@@ -14,6 +13,12 @@
 
 namespace brr::render
 {
+    struct DescriptorLayoutBindings;
+    struct DescriptorLayout;
+    class DescriptorLayoutBuilder;
+    template <uint32_t N_Sets> class DescriptorSetBuilder;
+    class DescriptorSetAllocator;
+
     //TODO: Inherit from a base class RenderDevice. Support multiple APIs in the future.
     class VulkanRenderDevice
     {
@@ -187,7 +192,7 @@ namespace brr::render
         bool DestroyGraphicsPipeline(ResourceHandle graphics_pipeline_handle);
 
         void Bind_GraphicsPipeline(ResourceHandle graphics_pipeline_handle);
-        void Bind_DescriptorSet(ResourceHandle graphics_pipeline_handle, vk::DescriptorSet descriptor_set, uint32_t set_index);
+        void Bind_DescriptorSet(ResourceHandle graphics_pipeline_handle, DescriptorSetHandle descriptor_set_handle, uint32_t set_index);
 
         /************
          * Commands *
@@ -196,13 +201,22 @@ namespace brr::render
         void Draw(uint32_t num_vertex, uint32_t num_instances, uint32_t first_vertex, uint32_t first_instance);
         void DrawIndexed(uint32_t num_indices, uint32_t num_instances, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
 
-    public:
-        // Utils
-        static vk::Format VkFormatFromDeviceDataFormat(DataFormat format);
-
     protected:
 
         void UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size, uint32_t src_offset, uint32_t dst_offset);
+
+        DescriptorLayoutHandle CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings);
+
+        struct DescriptorSetBinding
+        {
+            Texture2DHandle texture_handle = null_handle;
+            BufferHandle    buffer_handle = null_handle;
+            DescriptorType  descriptor_type;
+        };
+
+        std::vector<DescriptorSetHandle> AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
+                                                               uint32_t               number_sets,
+                                                               std::array<std::vector<DescriptorSetBinding>, FRAME_LAG> shader_bindings);
 
     private: // Initialization functions
 
@@ -308,10 +322,20 @@ namespace brr::render
         };
 
         ResourceAllocator<GraphicsPipeline> m_graphics_pipeline_alloc;
+
+        struct DescriptorSet
+        {
+            vk::DescriptorSet descriptor_set {};
+            vk::DescriptorPool set_pool {};
+        };
+
+        ResourceAllocator<DescriptorSet> m_descriptor_set_alloc;
         
     private: // Data
 
         friend class StagingAllocator;
+        friend class DescriptorLayoutBuilder;
+        template <uint32_t T> friend class DescriptorSetBuilder;
 
         // Singleton Device
         static std::unique_ptr<VulkanRenderDevice> device_instance;
@@ -381,7 +405,7 @@ namespace brr::render
         // Descriptor Sets
         vk::Sampler m_texture2DSampler {};
 
-        std::unique_ptr<DescriptorAllocator> m_descriptor_allocator = nullptr;
+        std::unique_ptr<DescriptorSetAllocator> m_descriptor_allocator = nullptr;
         std::unique_ptr<DescriptorLayoutCache> m_descriptor_layout_cache = nullptr;
 
     };

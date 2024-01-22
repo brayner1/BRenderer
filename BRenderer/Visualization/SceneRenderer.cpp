@@ -24,10 +24,17 @@ namespace brr::vis
             .AddVertexAttributeDescription(0, 1, render::DataFormat::R32_Float, offsetof(Vertex3, u))
             .AddVertexAttributeDescription(0, 2, render::DataFormat::R32G32B32_Float, offsetof(Vertex3, normal))
             .AddVertexAttributeDescription(0, 3, render::DataFormat::R32_Float, offsetof(Vertex3, v))
-            .AddVertexAttributeDescription(0, 4, render::DataFormat::R32G32B32_Float, offsetof(Vertex3, tangent));
+            .AddVertexAttributeDescription(0, 4, render::DataFormat::R32G32B32_Float, offsetof(Vertex3, tangent))
+		    .AddSet()
+		    .AddSetBinding(render::DescriptorType::UniformBuffer, render::ShaderStageFlag::VertexShader)
+		    .AddSet()
+		    .AddSetBinding(render::DescriptorType::UniformBuffer, render::ShaderStageFlag::VertexShader)
+		    .AddSet()
+		    .AddSetBinding(render::DescriptorType::CombinedImageSampler, render::ShaderStageFlag::FragmentShader);
 
-            render::Shader shader = shader_builder.BuildShader();
-		    m_graphics_pipeline = m_render_device->Create_GraphicsPipeline(shader, {render::DataFormat::R8G8B8A8_SRGB}, render::DataFormat::D32_Float);
+            m_shader = shader_builder.BuildShader();
+		    m_graphics_pipeline = m_render_device->Create_GraphicsPipeline(m_shader, {render::DataFormat::R8G8B8A8_SRGB}, render::DataFormat::D32_Float);
+			m_shader.DestroyShaderModules();
 		}
 
 		SetupCameraUniforms();
@@ -106,16 +113,12 @@ namespace brr::vis
 					Init_UniformBuffers(render_data);
 					// Init model descriptor set
 				    {
-				        render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
-					    layoutBuilder
-                            .SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+					    render_data.m_model_descriptor_layout = m_shader.GetDescriptorSetLayouts()[1];
 
-					    render_data.m_model_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
-
-					    std::array<vk::DescriptorBufferInfo, render::FRAME_LAG> model_descriptor_buffer_infos;
+					    std::array<render::BufferHandle, render::FRAME_LAG> model_descriptor_buffer_infos;
 					    for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
 					    {
-					        model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
+					        model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetHandle();
 					    }
 
 					    auto setBuilder = m_render_device->GetDescriptorSetBuilder(render_data.m_model_descriptor_layout);
@@ -188,18 +191,13 @@ namespace brr::vis
                                      VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
 		}
 
-        render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
-		layoutBuilder
-			.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
-
-		std::array<vk::DescriptorBufferInfo, render::FRAME_LAG> camera_descriptor_buffer_infos;
+		std::array<render::BufferHandle, render::FRAME_LAG> camera_descriptor_buffer_infos;
 		for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
 		{
-			camera_descriptor_buffer_infos[buffer_info_idx] =
-				m_camera_uniform_info.m_uniform_buffers[buffer_info_idx].GetDescriptorInfo();
+			camera_descriptor_buffer_infos[buffer_info_idx] = m_camera_uniform_info.m_uniform_buffers[buffer_info_idx].GetHandle();
 		}
 
-        render::DescriptorLayout layout = layoutBuilder.BuildDescriptorLayout();
+        render::DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
 		auto setBuilder = m_render_device->GetDescriptorSetBuilder(layout);
 		setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
 
@@ -212,14 +210,14 @@ namespace brr::vis
 		{
 			render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
 			layoutBuilder
-                .SetBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
+                .SetBinding(0, render::DescriptorType::CombinedImageSampler, render::ShaderStageFlag::FragmentShader);
 
-			m_material_descriptor_layout = layoutBuilder.BuildDescriptorLayout();
+			m_material_descriptor_layout = m_shader.GetDescriptorSetLayouts()[2];
 
-			std::array<vk::DescriptorImageInfo, render::FRAME_LAG> model_descriptor_image_infos;
+			std::array<render::Texture2DHandle, render::FRAME_LAG> model_descriptor_image_infos;
 			for (uint32_t image_info_idx = 0; image_info_idx < render::FRAME_LAG; image_info_idx++)
 			{
-				model_descriptor_image_infos[image_info_idx] = m_render_device->GetImageDescriptorInfo(m_texture_2d_handle);
+				model_descriptor_image_infos[image_info_idx] = m_texture_2d_handle;
 			}
 			auto setBuilder = m_render_device->GetDescriptorSetBuilder(m_material_descriptor_layout);
 
@@ -249,7 +247,7 @@ namespace brr::vis
 		if (index_buffer.empty())
 			return;
 
-		vk::DeviceSize buffer_size = sizeof(uint32_t) * index_buffer.size();
+		size_t buffer_size = sizeof(uint32_t) * index_buffer.size();
 
 		BRR_LogInfo("Creating Index Buffer.");
 
@@ -268,7 +266,7 @@ namespace brr::vis
 
     void SceneRenderer::Init_UniformBuffers(RenderData& render_data)
 	{
-		vk::DeviceSize buffer_size = sizeof(Mesh3DUniform);
+		size_t buffer_size = sizeof(Mesh3DUniform);
 
 		BRR_LogInfo("Creating Uniform Buffers");
 		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
