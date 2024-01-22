@@ -57,6 +57,7 @@ set(BRenderer_SOURCE_FILES
     "Importer/Importer.cpp"
     
     "Renderer/Allocators/StagingAllocator.cpp"
+    "Renderer/Vulkan/VkDescriptors.cpp"
     "Renderer/Vulkan/VkInitializerHelper.cpp" 
     "Renderer/Vulkan/VmaImpl.cpp"
     "Renderer/Vulkan/VulkanRenderDevice.cpp"
@@ -68,7 +69,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Swapchain.cpp"
     
     "Files/FilesUtils.cpp" 
-   )
+  )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
@@ -104,6 +105,7 @@ set(BRenderer_HEADER_FILES
     
     "Renderer/Allocators/ResourceAllocator.h"
     "Renderer/Allocators/StagingAllocator.h"
+    "Renderer/Vulkan/VKDescriptors.h"
     "Renderer/Vulkan/VkInitializerHelper.h"
     "Renderer/Vulkan/VulkanInc.h"
     "Renderer/Vulkan/VulkanRenderDevice.h"

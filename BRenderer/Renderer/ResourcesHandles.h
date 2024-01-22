@@ -6,6 +6,14 @@
 
 namespace brr::render
 {
+    struct DescriptorLayoutHandle
+    {
+    private:
+        friend class DescriptorLayoutCache;
+
+        uint32_t m_layout_index;
+    };
+
     struct ResourceHandle
     {
 
@@ -68,6 +76,15 @@ namespace brr::render
         Texture2DHandle() = default;
 
         Texture2DHandle(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
+
+    struct DescriptorSetHandle : public ResourceHandle
+    {
+        DescriptorSetHandle() = default;
+
+        DescriptorSetHandle(const ResourceHandle& resource_handle)
         : ResourceHandle(resource_handle)
         {}
     };

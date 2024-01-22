@@ -1,6 +1,7 @@
 #include "Shader.h"
 
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
+#include <Renderer/Descriptors.h>
 #include <Core/LogSystem.h>
 #include <Files/FilesUtils.h>
 
@@ -63,6 +64,23 @@ namespace brr::render
                                                                 uint32_t   offset)
     {
         m_attribute_descs.emplace_back (binding, location, format, offset);
+        return *this;
+    }
+
+    ShaderBuilder& ShaderBuilder::AddSet()
+    {
+        m_sets_layouts.emplace_back();
+        return *this;
+    }
+
+    ShaderBuilder& ShaderBuilder::AddSetBinding(DescriptorType descriptor_type, ShaderStageFlag stage_flag)
+    {
+        if (m_sets_layouts.empty())
+        {
+            BRR_LogError("Trying to add set binding, but no set was added.");
+            return *this;
+        }
+        m_sets_layouts.back().m_set_bindings.emplace_back(descriptor_type, stage_flag);
         return *this;
     }
 
@@ -136,7 +154,7 @@ namespace brr::render
         vertex_input_attribute_descriptions.reserve (m_attribute_descs.size());
         for (const VertexInputAttributeDesc& attribute_desc : m_attribute_descs)
         {
-            vk::Format format = VKRD::VkFormatFromDeviceDataFormat (attribute_desc.m_format);
+            vk::Format format = VkHelpers::VkFormatFromDeviceDataFormat (attribute_desc.m_format);
             vertex_input_attribute_descriptions.emplace_back (attribute_desc.m_location,
                                                               attribute_desc.m_binding,
                                                               format,
@@ -144,34 +162,21 @@ namespace brr::render
         }
         shader.m_vertex_input_attribute_descriptions = std::move(vertex_input_attribute_descriptions);
 
-        // TODO: User defined descriptor sets layouts
-        shader.m_descriptor_set_layouts.resize(3);
+        shader.m_descriptors_layouts.resize(m_sets_layouts.size());
+        for (uint32_t set_idx = 0; set_idx < m_sets_layouts.size(); set_idx++)
         {
             render::DescriptorLayoutBuilder layoutBuilder = shader.m_pDevice->GetDescriptorLayoutBuilder();
-            layoutBuilder.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
+            const std::vector<SetBinding>& set_bindings = m_sets_layouts[set_idx].m_set_bindings;
+            for (uint32_t binding_idx = 0; binding_idx < set_bindings.size(); binding_idx++)
+            {
+                layoutBuilder.SetBinding(binding_idx, set_bindings[binding_idx].m_descriptor_type, set_bindings[binding_idx].m_shader_stage_flag);
+            }
 
-            render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
-            shader.m_descriptor_set_layouts[0]         = descriptor_layout.m_descriptor_set_layout;
+            shader.m_descriptors_layouts[set_idx] = layoutBuilder.BuildDescriptorLayout();
         }
-        {
-            render::DescriptorLayoutBuilder layoutBuilder = shader.m_pDevice->GetDescriptorLayoutBuilder();
-            layoutBuilder.SetBinding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex);
-
-            render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
-            shader.m_descriptor_set_layouts[1]         = descriptor_layout.m_descriptor_set_layout;
-        }
-        {
-            render::DescriptorLayoutBuilder layoutBuilder = shader.m_pDevice->GetDescriptorLayoutBuilder();
-            layoutBuilder.SetBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment);
-
-            render::DescriptorLayout descriptor_layout = layoutBuilder.BuildDescriptorLayout();
-            shader.m_descriptor_set_layouts[2]         = descriptor_layout.m_descriptor_set_layout;
-        }
-
-        //shader.m_graphics_pipeline = std::make_unique<DevicePipeline> (shader.m_descriptor_set_layouts, shader, )
 
         shader.m_isValid = true;
-        return std::move(shader);
+        return shader;
     }
 
     Shader::~Shader()
@@ -181,17 +186,19 @@ namespace brr::render
 
     void Shader::DestroyShaderModules()
     {
+        LogStreamBuffer log_stream = BRR_InfoStrBuff();
         if (m_vert_shader_module)
         {
             m_pDevice->Get_VkDevice().destroyShaderModule(m_vert_shader_module);
+            log_stream << "VertexShader ShaderModule destroyed.";
         }
         m_vert_shader_module = VK_NULL_HANDLE;
         if (m_frag_shader_module)
         {
             m_pDevice->Get_VkDevice().destroyShaderModule(m_frag_shader_module);
+            log_stream << "FragmentShader ShaderModule destroyed.";
         }
         m_frag_shader_module = VK_NULL_HANDLE;
-        BRR_LogInfo("Shader modules destroyed.");
     }
 
     vk::PipelineVertexInputStateCreateInfo Shader::GetPipelineVertexInputState() const
@@ -226,10 +233,35 @@ namespace brr::render
         m_vertex_input_attribute_descriptions = std::move(other.m_vertex_input_attribute_descriptions);
         other.m_vertex_input_attribute_descriptions.clear();
 
-        m_descriptor_set_layouts = std::move(other.m_descriptor_set_layouts);
-        other.m_descriptor_set_layouts.clear();
+        m_descriptors_layouts = std::move(other.m_descriptors_layouts);
+        other.m_descriptors_layouts.clear();
         
         m_pDevice = other.m_pDevice;
         other.m_pDevice = nullptr;
+    }
+
+    Shader& Shader::operator=(Shader&& other) noexcept
+    {
+        m_isValid = other.m_isValid;
+        m_vert_shader_module = other.m_vert_shader_module;
+        other.m_vert_shader_module = VK_NULL_HANDLE;
+        m_frag_shader_module = other.m_frag_shader_module;
+        other.m_frag_shader_module = VK_NULL_HANDLE;
+
+        pipeline_stage_infos_ = std::move(other.pipeline_stage_infos_);
+
+        m_vertex_input_binding_descriptions = std::move(other.m_vertex_input_binding_descriptions);
+        other.m_vertex_input_binding_descriptions.clear();
+
+        m_vertex_input_attribute_descriptions = std::move(other.m_vertex_input_attribute_descriptions);
+        other.m_vertex_input_attribute_descriptions.clear();
+
+        m_descriptors_layouts = std::move(other.m_descriptors_layouts);
+        other.m_descriptors_layouts.clear();
+        
+        m_pDevice = other.m_pDevice;
+        other.m_pDevice = nullptr;
+
+        return *this;
     }
 }

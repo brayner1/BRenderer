@@ -1,7 +1,8 @@
 #include "VulkanRenderDevice.h"
-#include "VulkanRenderDevice.h"
 
 #include <Renderer/RenderDefs.h>
+#include <Renderer/Descriptors.h>
+#include <Renderer/Vulkan/VKDescriptors.h>
 
 #include <Visualization/Window.h>
 #include <Core/LogSystem.h>
@@ -134,421 +135,6 @@ namespace brr::render
             result |= vk::ImageUsageFlagBits::eInputAttachment;
         }
         return result;
-    }
-
-    static DataFormat DataFormatFromVkFormat(vk::Format vk_format)
-    {
-        switch (vk_format)
-        {
-        case vk::Format::eR8Unorm:
-            return DataFormat::R8_UNorm;
-        case vk::Format::eR8Snorm:
-            return DataFormat::R8_SNorm;
-        case vk::Format::eR8Uscaled:
-            return DataFormat::R8_UScaled;
-        case vk::Format::eR8Sscaled:
-            return DataFormat::R8_SScaled;
-        case vk::Format::eR8Uint:
-            return DataFormat::R8_UInt;
-        case vk::Format::eR8Sint:
-            return DataFormat::R8_SInt;
-        case vk::Format::eR16Unorm:
-            return DataFormat::R16_UNorm;
-        case vk::Format::eR16Snorm:
-            return DataFormat::R16_SNorm;
-        case vk::Format::eR16Uscaled:
-            return DataFormat::R16_UScaled;
-        case vk::Format::eR16Sscaled:
-            return DataFormat::R16_SScaled;
-        case vk::Format::eR16Uint:
-            return DataFormat::R16_UInt;
-        case vk::Format::eR16Sint:
-            return DataFormat::R16_SInt;
-        case vk::Format::eR16Sfloat:
-            return DataFormat::R16_Float;
-        case vk::Format::eR8G8Unorm:
-            return DataFormat::R8G8_UNorm;
-        case vk::Format::eR8G8Snorm:
-            return DataFormat::R8G8_SNorm;
-        case vk::Format::eR8G8Uscaled:
-            return DataFormat::R8G8_UScaled;
-        case vk::Format::eR8G8Sscaled:
-            return DataFormat::R8G8_SScaled;
-        case vk::Format::eR8G8Uint:
-            return DataFormat::R8G8_UInt;
-        case vk::Format::eR8G8Sint:
-            return DataFormat::R8G8_SInt;
-        case vk::Format::eR8G8Srgb:
-            return DataFormat::R8G8_SRGB;
-        case vk::Format::eR8G8B8Unorm:
-            return DataFormat::R8G8B8_UNorm;
-        case vk::Format::eR8G8B8Snorm:
-            return DataFormat::R8G8B8_SNorm;
-        case vk::Format::eR8G8B8Uscaled:
-            return DataFormat::R8G8B8_UScaled;
-        case vk::Format::eR8G8B8Sscaled:
-            return DataFormat::R8G8B8_SScaled;
-        case vk::Format::eR8G8B8Uint:
-            return DataFormat::R8G8B8_UInt;
-        case vk::Format::eR8G8B8Sint:
-            return DataFormat::R8G8B8_SInt;
-        case vk::Format::eR8G8B8Srgb:
-            return DataFormat::R8G8B8_SRGB;
-        case vk::Format::eB8G8R8Unorm:
-            return DataFormat::B8G8R8_UNorm;
-        case vk::Format::eB8G8R8Snorm:
-            return DataFormat::B8G8R8_SNorm;
-        case vk::Format::eB8G8R8Uscaled:
-            return DataFormat::B8G8R8_UScaled;
-        case vk::Format::eB8G8R8Sscaled:
-            return DataFormat::B8G8R8_SScaled;
-        case vk::Format::eB8G8R8Uint:
-            return DataFormat::B8G8R8_UInt;
-        case vk::Format::eB8G8R8Sint:
-            return DataFormat::B8G8R8_SInt;
-        case vk::Format::eB8G8R8Srgb:
-            return DataFormat::B8G8R8_SRGB;
-        case vk::Format::eR32Uint:
-            return DataFormat::R32_UInt;
-        case vk::Format::eR32Sint:
-            return DataFormat::R32_SInt;
-        case vk::Format::eR32Sfloat:
-            return DataFormat::R32_Float;
-        case vk::Format::eR16G16Unorm:
-            return DataFormat::R16G16_UNorm;
-        case vk::Format::eR16G16Snorm:
-            return DataFormat::R16G16_SNorm;
-        case vk::Format::eR16G16Uscaled:
-            return DataFormat::R16G16_UScaled;
-        case vk::Format::eR16G16Sscaled:
-            return DataFormat::R16G16_SScaled;
-        case vk::Format::eR16G16Uint:
-            return DataFormat::R16G16_UInt;
-        case vk::Format::eR16G16Sint:
-            return DataFormat::R16G16_SInt;
-        case vk::Format::eR16G16Sfloat:
-            return DataFormat::R16G16_Float;
-        case vk::Format::eR8G8B8A8Unorm:
-            return DataFormat::R8G8B8A8_UNorm;
-        case vk::Format::eR8G8B8A8Snorm:
-            return DataFormat::R8G8B8A8_SNorm;
-        case vk::Format::eR8G8B8A8Uscaled:
-            return DataFormat::R8G8B8A8_UScaled;
-        case vk::Format::eR8G8B8A8Sscaled:
-            return DataFormat::R8G8B8A8_SScaled;
-        case vk::Format::eR8G8B8A8Uint:
-            return DataFormat::R8G8B8A8_UInt;
-        case vk::Format::eR8G8B8A8Sint:
-            return DataFormat::R8G8B8A8_SInt;
-        case vk::Format::eR8G8B8A8Srgb:
-            return DataFormat::R8G8B8A8_SRGB;
-        case vk::Format::eB8G8R8A8Unorm:
-            return DataFormat::B8G8R8A8_UNorm;
-        case vk::Format::eB8G8R8A8Snorm:
-            return DataFormat::B8G8R8A8_SNorm;
-        case vk::Format::eB8G8R8A8Uscaled:
-            return DataFormat::B8G8R8A8_UScaled;
-        case vk::Format::eB8G8R8A8Sscaled:
-            return DataFormat::B8G8R8A8_SScaled;
-        case vk::Format::eB8G8R8A8Uint:
-            return DataFormat::B8G8R8A8_UInt;
-        case vk::Format::eB8G8R8A8Sint:
-            return DataFormat::B8G8R8A8_SInt;
-        case vk::Format::eB8G8R8A8Srgb:
-            return DataFormat::B8G8R8A8_SRGB;
-        case vk::Format::eR16G16B16Unorm:
-            return DataFormat::R16G16B16_UNorm;
-        case vk::Format::eR16G16B16Snorm:
-            return DataFormat::R16G16B16_SNorm;
-        case vk::Format::eR16G16B16Uscaled:
-            return DataFormat::R16G16B16_UScaled;
-        case vk::Format::eR16G16B16Sscaled:
-            return DataFormat::R16G16B16_SScaled;
-        case vk::Format::eR16G16B16Uint:
-            return DataFormat::R16G16B16_UInt;
-        case vk::Format::eR16G16B16Sint:
-            return DataFormat::R16G16B16_SInt;
-        case vk::Format::eR16G16B16Sfloat:
-            return DataFormat::R16G16B16_Float;
-        case vk::Format::eR64Uint:
-            return DataFormat::R64_UInt;
-        case vk::Format::eR64Sint:
-            return DataFormat::R64_SInt;
-        case vk::Format::eR64Sfloat:
-            return DataFormat::R64_Float;
-        case vk::Format::eR32G32Uint:
-            return DataFormat::R32G32_UInt;
-        case vk::Format::eR32G32Sint:
-            return DataFormat::R32G32_SInt;
-        case vk::Format::eR32G32Sfloat:
-            return DataFormat::R32G32_Float;
-        case vk::Format::eR16G16B16A16Unorm:
-            return DataFormat::R16G16B16A16_UNorm;
-        case vk::Format::eR16G16B16A16Snorm:
-            return DataFormat::R16G16B16A16_SNorm;
-        case vk::Format::eR16G16B16A16Uscaled:
-            return DataFormat::R16G16B16A16_UScaled;
-        case vk::Format::eR16G16B16A16Sscaled:
-            return DataFormat::R16G16B16A16_SScaled;
-        case vk::Format::eR16G16B16A16Uint:
-            return DataFormat::R16G16B16A16_UInt;
-        case vk::Format::eR16G16B16A16Sint:
-            return DataFormat::R16G16B16A16_SInt;
-        case vk::Format::eR16G16B16A16Sfloat:
-            return DataFormat::R16G16B16A16_Float;
-        case vk::Format::eR32G32B32Uint:
-            return DataFormat::R32G32B32_UInt;
-        case vk::Format::eR32G32B32Sint:
-            return DataFormat::R32G32B32_SInt;
-        case vk::Format::eR32G32B32Sfloat:
-            return DataFormat::R32G32B32_Float;
-        case vk::Format::eR64G64Uint:
-            return DataFormat::R64G64_UInt;
-        case vk::Format::eR64G64Sint:
-            return DataFormat::R64G64_SInt;
-        case vk::Format::eR64G64Sfloat:
-            return DataFormat::R64G64_Float;
-        case vk::Format::eR32G32B32A32Uint:
-            return DataFormat::R32G32B32A32_UInt;
-        case vk::Format::eR32G32B32A32Sint:
-            return DataFormat::R32G32B32A32_SInt;
-        case vk::Format::eR32G32B32A32Sfloat:
-            return DataFormat::R32G32B32A32_Float;
-        case vk::Format::eR64G64B64Uint:
-            return DataFormat::R64G64B64_UInt;
-        case vk::Format::eR64G64B64Sint:
-            return DataFormat::R64G64B64_SInt;
-        case vk::Format::eR64G64B64Sfloat:
-            return DataFormat::R64G64B64_Float;
-        case vk::Format::eR64G64B64A64Uint:
-            return DataFormat::R64G64B64A64_UInt;
-        case vk::Format::eR64G64B64A64Sint:
-            return DataFormat::R64G64B64A64_SInt;
-        case vk::Format::eR64G64B64A64Sfloat:
-            return DataFormat::R64G64B64A64_Float;
-        case vk::Format::eD16Unorm:
-            return DataFormat::D16_UNorm;
-        case vk::Format::eD32Sfloat:
-            return DataFormat::D32_Float;
-        case vk::Format::eS8Uint:
-            return DataFormat::S8_UInt;
-        case vk::Format::eD16UnormS8Uint:
-            return DataFormat::D16_UNorm_S8_UInt;
-        case vk::Format::eD24UnormS8Uint:
-            return DataFormat::D24_UNorm_S8_UInt;
-        case vk::Format::eD32SfloatS8Uint:
-            return DataFormat::D32_Float_S8_UInt;
-        default:
-            return DataFormat::Undefined;
-        }
-    }
-
-    vk::Format VulkanRenderDevice::VkFormatFromDeviceDataFormat(DataFormat data_format)
-    {
-        switch (data_format)
-        {
-        case DataFormat::R8_UNorm:
-            return vk::Format::eR8Unorm;
-        case DataFormat::R8_SNorm:
-            return vk::Format::eR8Snorm;
-        case DataFormat::R8_UScaled:
-            return vk::Format::eR8Uscaled;
-        case DataFormat::R8_SScaled:
-            return vk::Format::eR8Sscaled;
-        case DataFormat::R8_UInt:
-            return vk::Format::eR8Uint;
-        case DataFormat::R8_SInt:
-            return vk::Format::eR8Sint;
-        case DataFormat::R16_UNorm:
-            return vk::Format::eR16Unorm;
-        case DataFormat::R16_SNorm:
-            return vk::Format::eR16Snorm;
-        case DataFormat::R16_UScaled:
-            return vk::Format::eR16Uscaled;
-        case DataFormat::R16_SScaled:
-            return vk::Format::eR16Sscaled;
-        case DataFormat::R16_UInt:
-            return vk::Format::eR16Uint;
-        case DataFormat::R16_SInt:
-            return vk::Format::eR16Sint;
-        case DataFormat::R16_Float:
-            return vk::Format::eR16Sfloat;
-        case DataFormat::R8G8_UNorm:
-            return vk::Format::eR8G8Unorm;
-        case DataFormat::R8G8_SNorm:
-            return vk::Format::eR8G8Snorm;
-        case DataFormat::R8G8_UScaled:
-            return vk::Format::eR8G8Uscaled;
-        case DataFormat::R8G8_SScaled:
-            return vk::Format::eR8G8Sscaled;
-        case DataFormat::R8G8_UInt:
-            return vk::Format::eR8G8Uint;
-        case DataFormat::R8G8_SInt:
-            return vk::Format::eR8G8Sint;
-        case DataFormat::R8G8_SRGB:
-            return vk::Format::eR8G8Srgb;
-        case DataFormat::R8G8B8_UNorm:
-            return vk::Format::eR8G8B8Unorm;
-        case DataFormat::R8G8B8_SNorm:
-            return vk::Format::eR8G8B8Snorm;
-        case DataFormat::R8G8B8_UScaled:
-            return vk::Format::eR8G8B8Uscaled;
-        case DataFormat::R8G8B8_SScaled:
-            return vk::Format::eR8G8B8Sscaled;
-        case DataFormat::R8G8B8_UInt:
-            return vk::Format::eR8G8B8Uint;
-        case DataFormat::R8G8B8_SInt:
-            return vk::Format::eR8G8B8Sint;
-        case DataFormat::R8G8B8_SRGB:
-            return vk::Format::eR8G8B8Srgb;
-        case DataFormat::B8G8R8_UNorm:
-            return vk::Format::eB8G8R8Unorm;
-        case DataFormat::B8G8R8_SNorm:
-            return vk::Format::eB8G8R8Snorm;
-        case DataFormat::B8G8R8_UScaled:
-            return vk::Format::eB8G8R8Uscaled;
-        case DataFormat::B8G8R8_SScaled:
-            return vk::Format::eB8G8R8Sscaled;
-        case DataFormat::B8G8R8_UInt:
-            return vk::Format::eB8G8R8Uint;
-        case DataFormat::B8G8R8_SInt:
-            return vk::Format::eB8G8R8Sint;
-        case DataFormat::B8G8R8_SRGB:
-            return vk::Format::eB8G8R8Srgb;
-        case DataFormat::R32_UInt:
-            return vk::Format::eR32Uint;
-        case DataFormat::R32_SInt:
-            return vk::Format::eR32Sint;
-        case DataFormat::R32_Float:
-            return vk::Format::eR32Sfloat;
-        case DataFormat::R16G16_UNorm:
-            return vk::Format::eR16G16Unorm;
-        case DataFormat::R16G16_SNorm:
-            return vk::Format::eR16G16Snorm;
-        case DataFormat::R16G16_UScaled:
-            return vk::Format::eR16G16Uscaled;
-        case DataFormat::R16G16_SScaled:
-            return vk::Format::eR16G16Sscaled;
-        case DataFormat::R16G16_UInt:
-            return vk::Format::eR16G16Uint;
-        case DataFormat::R16G16_SInt:
-            return vk::Format::eR16G16Sint;
-        case DataFormat::R16G16_Float:
-            return vk::Format::eR16G16Sfloat;
-        case DataFormat::R8G8B8A8_UNorm:
-            return vk::Format::eR8G8B8A8Unorm;
-        case DataFormat::R8G8B8A8_SNorm:
-            return vk::Format::eR8G8B8A8Snorm;
-        case DataFormat::R8G8B8A8_UScaled:
-            return vk::Format::eR8G8B8A8Uscaled;
-        case DataFormat::R8G8B8A8_SScaled:
-            return vk::Format::eR8G8B8A8Sscaled;
-        case DataFormat::R8G8B8A8_UInt:
-            return vk::Format::eR8G8B8A8Uint;
-        case DataFormat::R8G8B8A8_SInt:
-            return vk::Format::eR8G8B8A8Sint;
-        case DataFormat::R8G8B8A8_SRGB:
-            return vk::Format::eR8G8B8A8Srgb;
-        case DataFormat::B8G8R8A8_UNorm:
-            return vk::Format::eB8G8R8A8Unorm;
-        case DataFormat::B8G8R8A8_SNorm:
-            return vk::Format::eB8G8R8A8Snorm;
-        case DataFormat::B8G8R8A8_UScaled:
-            return vk::Format::eB8G8R8A8Uscaled;
-        case DataFormat::B8G8R8A8_SScaled:
-            return vk::Format::eB8G8R8A8Sscaled;
-        case DataFormat::B8G8R8A8_UInt:
-            return vk::Format::eB8G8R8A8Uint;
-        case DataFormat::B8G8R8A8_SInt:
-            return vk::Format::eB8G8R8A8Sint;
-        case DataFormat::B8G8R8A8_SRGB:
-            return vk::Format::eB8G8R8A8Srgb;
-        case DataFormat::R16G16B16_UNorm:
-            return vk::Format::eR16G16B16Unorm;
-        case DataFormat::R16G16B16_SNorm:
-            return vk::Format::eR16G16B16Snorm;
-        case DataFormat::R16G16B16_UScaled:
-            return vk::Format::eR16G16B16Uscaled;
-        case DataFormat::R16G16B16_SScaled:
-            return vk::Format::eR16G16B16Sscaled;
-        case DataFormat::R16G16B16_UInt:
-            return vk::Format::eR16G16B16Uint;
-        case DataFormat::R16G16B16_SInt:
-            return vk::Format::eR16G16B16Sint;
-        case DataFormat::R16G16B16_Float:
-            return vk::Format::eR16G16B16Sfloat;
-        case DataFormat::R64_UInt:
-            return vk::Format::eR64Uint;
-        case DataFormat::R64_SInt:
-            return vk::Format::eR64Sint;
-        case DataFormat::R64_Float:
-            return vk::Format::eR64Sfloat;
-        case DataFormat::R32G32_UInt:
-            return vk::Format::eR32G32Uint;
-        case DataFormat::R32G32_SInt:
-            return vk::Format::eR32G32Sint;
-        case DataFormat::R32G32_Float:
-            return vk::Format::eR32G32Sfloat;
-        case DataFormat::R16G16B16A16_UNorm:
-            return vk::Format::eR16G16B16A16Unorm;;
-        case DataFormat::R16G16B16A16_SNorm:
-            return vk::Format::eR16G16B16A16Snorm;
-        case DataFormat::R16G16B16A16_UScaled:
-            return vk::Format::eR16G16B16A16Uscaled;
-        case DataFormat::R16G16B16A16_SScaled:
-            return vk::Format::eR16G16B16A16Sscaled;
-        case DataFormat::R16G16B16A16_UInt:
-            return vk::Format::eR16G16B16A16Uint;
-        case DataFormat::R16G16B16A16_SInt:
-            return vk::Format::eR16G16B16A16Sint;
-        case DataFormat::R16G16B16A16_Float:
-            return vk::Format::eR16G16B16A16Sfloat;
-        case DataFormat::R32G32B32_UInt:
-            return vk::Format::eR32G32B32Uint;
-        case DataFormat::R32G32B32_SInt:
-            return vk::Format::eR32G32B32Sint;
-        case DataFormat::R32G32B32_Float:
-            return vk::Format::eR32G32B32Sfloat;
-        case DataFormat::R64G64_UInt:
-            return vk::Format::eR64G64Uint;
-        case DataFormat::R64G64_SInt:
-            return vk::Format::eR64G64Sint;
-        case DataFormat::R64G64_Float:
-            return vk::Format::eR64G64Sfloat;
-        case DataFormat::R32G32B32A32_UInt:
-            return vk::Format::eR32G32B32A32Uint;
-        case DataFormat::R32G32B32A32_SInt:
-            return vk::Format::eR32G32B32A32Sint;
-        case DataFormat::R32G32B32A32_Float:
-            return vk::Format::eR32G32B32A32Sfloat;
-        case DataFormat::R64G64B64_UInt:
-            return vk::Format::eR64G64B64Uint;
-        case DataFormat::R64G64B64_SInt:
-            return vk::Format::eR64G64B64Sint;
-        case DataFormat::R64G64B64_Float:
-            return vk::Format::eR64G64B64Sfloat;
-        case DataFormat::R64G64B64A64_UInt:
-            return vk::Format::eR64G64B64A64Uint;
-        case DataFormat::R64G64B64A64_SInt:
-            return vk::Format::eR64G64B64A64Sint;
-        case DataFormat::R64G64B64A64_Float:
-            return vk::Format::eR64G64B64A64Sfloat;
-        case DataFormat::D16_UNorm:
-            return vk::Format::eD16Unorm;
-        case DataFormat::D32_Float:
-            return vk::Format::eD32Sfloat;
-        case DataFormat::S8_UInt:
-            return vk::Format::eS8Uint;
-        case DataFormat::D16_UNorm_S8_UInt:
-            return vk::Format::eD16UnormS8Uint;
-        case DataFormat::D24_UNorm_S8_UInt:
-            return vk::Format::eD24UnormS8Uint;
-        case DataFormat::D32_Float_S8_UInt:
-            return vk::Format::eD32SfloatS8Uint;
-        case DataFormat::Undefined:
-        default:
-            return vk::Format::eUndefined;
-        }
     }
 
     VmaMemoryUsage VmaMemoryUsageFromDeviceMemoryUsage(VulkanRenderDevice::MemoryUsage memory_usage)
@@ -721,7 +307,7 @@ namespace brr::render
         m_staging_allocator.Init(this);
 
         m_descriptor_layout_cache.reset(new DescriptorLayoutCache(m_device));
-        m_descriptor_allocator.reset(new DescriptorAllocator(m_device));
+        m_descriptor_allocator.reset(new DescriptorSetAllocator(m_device));
 
         Init_Texture2DSampler();
 
@@ -767,13 +353,13 @@ namespace brr::render
 
     DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
     {
-        return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(m_descriptor_layout_cache.get());
+        return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(const_cast<VulkanRenderDevice*>(this));
     }
 
-    DescriptorSetBuilder<FRAME_LAG> VulkanRenderDevice::GetDescriptorSetBuilder(
-        const DescriptorLayout& layout) const
+    DescriptorSetBuilder<FRAME_LAG> VulkanRenderDevice::GetDescriptorSetBuilder(const DescriptorLayout& layout) const
     {
-        return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, m_descriptor_allocator.get());
+        return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, 
+                                                                         const_cast<VulkanRenderDevice*>(this));
     }
 
     BufferHandle VulkanRenderDevice::CreateBuffer(size_t buffer_size, BufferUsage buffer_usage,
@@ -1312,7 +898,7 @@ namespace brr::render
         assert(texture2d && "Texture2D not initialized. Something is very wrong.");
         
         vk::ImageUsageFlags vk_image_usage = VkImageUsageFromDeviceImageUsage(image_usage);
-        vk::Format vk_format = VkFormatFromDeviceDataFormat(image_format);
+        vk::Format vk_format = VkHelpers::VkFormatFromDeviceDataFormat(image_format);
 
         vk::ImageCreateInfo img_create_info;
         img_create_info
@@ -1557,129 +1143,137 @@ namespace brr::render
 
         vk::PipelineVertexInputStateCreateInfo vertex_input_info = shader.GetPipelineVertexInputState();
 
-		vk::PipelineInputAssemblyStateCreateInfo input_assembly_info{};
-		input_assembly_info
-			.setTopology(vk::PrimitiveTopology::eTriangleList)
-			.setPrimitiveRestartEnable(false);
+        vk::PipelineInputAssemblyStateCreateInfo input_assembly_info{};
+        input_assembly_info
+            .setTopology(vk::PrimitiveTopology::eTriangleList)
+            .setPrimitiveRestartEnable(false);
 
-		vk::PipelineViewportStateCreateInfo viewport_state_info{};
-		viewport_state_info
-			.setViewportCount(1)
-		    .setScissorCount(1);
+        vk::PipelineViewportStateCreateInfo viewport_state_info{};
+        viewport_state_info
+            .setViewportCount(1)
+            .setScissorCount(1);
 
-		vk::PipelineDepthStencilStateCreateInfo depth_stencil_state_create_info {};
-		depth_stencil_state_create_info
-		    .setDepthTestEnable(VK_TRUE)
+        vk::PipelineDepthStencilStateCreateInfo depth_stencil_state_create_info {};
+        depth_stencil_state_create_info
+            .setDepthTestEnable(VK_TRUE)
             .setDepthWriteEnable(VK_TRUE)
             .setDepthCompareOp(vk::CompareOp::eLess)
-		    .setDepthBoundsTestEnable(VK_FALSE)
-		    .setMinDepthBounds(0.0)
-		    .setMaxDepthBounds(1.0)
+            .setDepthBoundsTestEnable(VK_FALSE)
+            .setMinDepthBounds(0.0)
+            .setMaxDepthBounds(1.0)
             .setStencilTestEnable(VK_FALSE);
 
-		vk::PipelineRasterizationStateCreateInfo rasterization_state_info{};
-		rasterization_state_info
-			.setDepthClampEnable(false)
-			.setRasterizerDiscardEnable(false)
-			.setPolygonMode(vk::PolygonMode::eFill)
-			.setLineWidth(1.f)
-			.setCullMode(vk::CullModeFlagBits::eBack)
-			.setFrontFace(vk::FrontFace::eCounterClockwise)
-			.setDepthBiasEnable(false)
-			.setDepthBiasConstantFactor(0.f)
-			.setDepthBiasClamp(0.f)
-			.setDepthBiasSlopeFactor(0.f);
+        vk::PipelineRasterizationStateCreateInfo rasterization_state_info{};
+        rasterization_state_info
+            .setDepthClampEnable(false)
+            .setRasterizerDiscardEnable(false)
+            .setPolygonMode(vk::PolygonMode::eFill)
+            .setLineWidth(1.f)
+            .setCullMode(vk::CullModeFlagBits::eBack)
+            .setFrontFace(vk::FrontFace::eCounterClockwise)
+            .setDepthBiasEnable(false)
+            .setDepthBiasConstantFactor(0.f)
+            .setDepthBiasClamp(0.f)
+            .setDepthBiasSlopeFactor(0.f);
 
-		vk::PipelineMultisampleStateCreateInfo multisampling_info{};
-		multisampling_info
-			.setSampleShadingEnable(false)
-			.setRasterizationSamples(vk::SampleCountFlagBits::e1)
-			.setMinSampleShading(1.f)
-			.setPSampleMask(nullptr)
-			.setAlphaToCoverageEnable(false)
-			.setAlphaToOneEnable(false);
+        vk::PipelineMultisampleStateCreateInfo multisampling_info{};
+        multisampling_info
+            .setSampleShadingEnable(false)
+            .setRasterizationSamples(vk::SampleCountFlagBits::e1)
+            .setMinSampleShading(1.f)
+            .setPSampleMask(nullptr)
+            .setAlphaToCoverageEnable(false)
+            .setAlphaToOneEnable(false);
 
-		vk::PipelineColorBlendAttachmentState color_blend_attachment{};
-		color_blend_attachment
-			.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
-			.setBlendEnable(false)
-			.setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
-			.setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
-			.setColorBlendOp(vk::BlendOp::eAdd)
-			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
-			.setDstAlphaBlendFactor(vk::BlendFactor::eZero)
-			.setAlphaBlendOp(vk::BlendOp::eAdd);
+        vk::PipelineColorBlendAttachmentState color_blend_attachment{};
+        color_blend_attachment
+            .setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
+            .setBlendEnable(false)
+            .setSrcColorBlendFactor(vk::BlendFactor::eSrcAlpha)
+            .setDstColorBlendFactor(vk::BlendFactor::eOneMinusSrcAlpha)
+            .setColorBlendOp(vk::BlendOp::eAdd)
+            .setSrcAlphaBlendFactor(vk::BlendFactor::eOne)
+            .setDstAlphaBlendFactor(vk::BlendFactor::eZero)
+            .setAlphaBlendOp(vk::BlendOp::eAdd);
 
-		vk::PipelineColorBlendStateCreateInfo color_blending_info{};
-		color_blending_info
-			.setLogicOpEnable(false)
-			.setLogicOp(vk::LogicOp::eCopy)
-			.setAttachments(color_blend_attachment);
+        vk::PipelineColorBlendStateCreateInfo color_blending_info{};
+        color_blending_info
+            .setLogicOpEnable(false)
+            .setLogicOp(vk::LogicOp::eCopy)
+            .setAttachments(color_blend_attachment);
 
 #if 1
-		std::vector<vk::DynamicState> dynamic_states{ vk::DynamicState::eViewport, vk::DynamicState::eScissor };
+        std::vector<vk::DynamicState> dynamic_states{ vk::DynamicState::eViewport, vk::DynamicState::eScissor };
 
-		vk::PipelineDynamicStateCreateInfo dynamic_state_info{};
-		dynamic_state_info
-			.setDynamicStates(dynamic_states);
+        vk::PipelineDynamicStateCreateInfo dynamic_state_info{};
+        dynamic_state_info
+            .setDynamicStates(dynamic_states);
 #endif
 
-		vk::PipelineLayoutCreateInfo pipeline_layout_info{};
-		pipeline_layout_info
-			.setSetLayouts(shader.GetDescriptorSetLayouts());
+        const std::vector<DescriptorLayout>& desc_set_layouts = shader.GetDescriptorSetLayouts();
+        std::vector<vk::DescriptorSetLayout> vk_layouts;
+        vk_layouts.reserve(desc_set_layouts.size());
+        for (const auto& layout : desc_set_layouts)
+        {
+            vk_layouts.emplace_back(m_descriptor_layout_cache->GetDescriptorLayout(layout.m_layout_handle));
+        }
 
-		auto createPipelineLayoutResult = m_device.createPipelineLayout(pipeline_layout_info);
-		if (createPipelineLayoutResult.result != vk::Result::eSuccess)
-		{
-			BRR_LogError("Not able to create PipelineLayout. Result code: {}.", vk::to_string(createPipelineLayoutResult.result).c_str());
+        vk::PipelineLayoutCreateInfo pipeline_layout_info{};
+        pipeline_layout_info
+            .setSetLayouts(vk_layouts);
+
+        auto createPipelineLayoutResult = m_device.createPipelineLayout(pipeline_layout_info);
+        if (createPipelineLayoutResult.result != vk::Result::eSuccess)
+        {
+            BRR_LogError("Not able to create PipelineLayout. Result code: {}.", vk::to_string(createPipelineLayoutResult.result).c_str());
             m_graphics_pipeline_alloc.DestroyResource(pipeline_handle);
-			return {};
-		}
-		graphics_pipeline->pipeline_layout = createPipelineLayoutResult.value;
+            return {};
+        }
+        graphics_pipeline->pipeline_layout = createPipelineLayoutResult.value;
 
-		std::vector<vk::Format> vk_color_attachment_formats;
-		vk_color_attachment_formats.reserve(color_attachment_formats.size());
-		for (const auto& format : color_attachment_formats)
-		{
-		    vk::Format vk_format = VKRD::VkFormatFromDeviceDataFormat(format);
-			vk_color_attachment_formats.emplace_back(vk_format);
-		}
-		vk::Format vk_depth_attachment_format = VKRD::VkFormatFromDeviceDataFormat(depth_attachment_format);
+        std::vector<vk::Format> vk_color_attachment_formats;
+        vk_color_attachment_formats.reserve(color_attachment_formats.size());
+        for (const auto& format : color_attachment_formats)
+        {
+            vk::Format vk_format = VkHelpers::VkFormatFromDeviceDataFormat(format);
+            vk_color_attachment_formats.emplace_back(vk_format);
+        }
+        vk::Format vk_depth_attachment_format = VkHelpers::VkFormatFromDeviceDataFormat(depth_attachment_format);
 
-		vk::PipelineRenderingCreateInfo rendering_create_info {};
-		rendering_create_info
-		    .setColorAttachmentFormats(vk_color_attachment_formats)
+        vk::PipelineRenderingCreateInfo rendering_create_info {};
+        rendering_create_info
+            .setColorAttachmentFormats(vk_color_attachment_formats)
             .setDepthAttachmentFormat(vk_depth_attachment_format);
 
-		vk::GraphicsPipelineCreateInfo graphics_pipeline_info{};
-		graphics_pipeline_info
-			.setStages(shader.GetPipelineStagesInfo())
-			.setPVertexInputState(&vertex_input_info)
-			.setPInputAssemblyState(&input_assembly_info)
-		    .setPDynamicState(&dynamic_state_info)
-			.setPViewportState(&viewport_state_info)
-			.setPRasterizationState(&rasterization_state_info)
-			.setPMultisampleState(&multisampling_info)
-			.setPColorBlendState(&color_blending_info)
+        vk::GraphicsPipelineCreateInfo graphics_pipeline_info{};
+        graphics_pipeline_info
+            .setStages(shader.GetPipelineStagesInfo())
+            .setPVertexInputState(&vertex_input_info)
+            .setPInputAssemblyState(&input_assembly_info)
+            .setPDynamicState(&dynamic_state_info)
+            .setPViewportState(&viewport_state_info)
+            .setPRasterizationState(&rasterization_state_info)
+            .setPMultisampleState(&multisampling_info)
+            .setPColorBlendState(&color_blending_info)
             .setPDepthStencilState(&depth_stencil_state_create_info);
-		graphics_pipeline_info
-		    .setPNext(&rendering_create_info)
-			.setLayout(graphics_pipeline->pipeline_layout)
-			.setSubpass(0)
-			.setBasePipelineHandle(VK_NULL_HANDLE)
-			.setBasePipelineIndex(-1);
+        graphics_pipeline_info
+            .setPNext(&rendering_create_info)
+            .setLayout(graphics_pipeline->pipeline_layout)
+            .setSubpass(0)
+            .setBasePipelineHandle(VK_NULL_HANDLE)
+            .setBasePipelineIndex(-1);
 
-		auto createGraphicsPipelineResult = m_device.createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
-		if (createGraphicsPipelineResult.result != vk::Result::eSuccess)
-		{
-			BRR_LogError("Could not create GraphicsPipeline! Result code: {}.", vk::to_string(createGraphicsPipelineResult.result).c_str());
+        auto createGraphicsPipelineResult = m_device.createGraphicsPipeline(VK_NULL_HANDLE, graphics_pipeline_info);
+        if (createGraphicsPipelineResult.result != vk::Result::eSuccess)
+        {
+            BRR_LogError("Could not create GraphicsPipeline! Result code: {}.", vk::to_string(createGraphicsPipelineResult.result).c_str());
             m_graphics_pipeline_alloc.DestroyResource(pipeline_handle);
-			return {};
-		}
+            return {};
+        }
 
-		graphics_pipeline->pipeline = createGraphicsPipelineResult.value;
+        graphics_pipeline->pipeline = createGraphicsPipelineResult.value;
 
-		BRR_LogInfo("Graphics DevicePipeline created.");
+        BRR_LogInfo("Graphics DevicePipeline created.");
 
         return pipeline_handle;
     }
@@ -1693,7 +1287,7 @@ namespace brr::render
         }
 
         m_device.destroyPipeline(graphics_pipeline->pipeline);
-		m_device.destroyPipelineLayout(graphics_pipeline->pipeline_layout);
+        m_device.destroyPipelineLayout(graphics_pipeline->pipeline_layout);
 
         m_graphics_pipeline_alloc.DestroyResource(graphics_pipeline_handle);
 
@@ -1713,11 +1307,19 @@ namespace brr::render
         current_frame.graphics_cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphics_pipeline->pipeline);
     }
 
-    void VulkanRenderDevice::Bind_DescriptorSet(ResourceHandle graphics_pipeline_handle, vk::DescriptorSet descriptor_set, uint32_t set_index)
+    void VulkanRenderDevice::Bind_DescriptorSet(ResourceHandle graphics_pipeline_handle, DescriptorSetHandle descriptor_set_handle, uint32_t set_index)
     {
         const GraphicsPipeline* graphics_pipeline = m_graphics_pipeline_alloc.GetResource(graphics_pipeline_handle);
         if (!graphics_pipeline)
         {
+            BRR_LogError ("Trying to bind DescriptorSet with invalid graphics pipeline.");
+            return;
+        }
+
+        const DescriptorSet* descriptor_set = m_descriptor_set_alloc.GetResource(descriptor_set_handle);
+        if (!descriptor_set)
+        {
+            BRR_LogError ("Trying to bind DescriptorSet with invalid DescriptorSetHandle.");
             return;
         }
 
@@ -1725,7 +1327,7 @@ namespace brr::render
 
         current_frame.graphics_cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                                              graphics_pipeline->pipeline_layout, set_index,
-                                                             descriptor_set, {});
+                                                             descriptor_set->descriptor_set, {});
     }
 
     void VulkanRenderDevice::Draw(uint32_t num_vertex, uint32_t num_instances, uint32_t first_vertex,
@@ -1808,6 +1410,92 @@ namespace brr::render
                                                 vk::DependencyFlags(), 1, &memory_barrier, 0,
                                                 nullptr, 0, nullptr);
         }
+    }
+
+    DescriptorLayoutHandle VulkanRenderDevice::CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings)
+    {
+        return m_descriptor_layout_cache->CreateDescriptorLayout(descriptor_layout_bindings);
+    }
+
+    std::vector<DescriptorSetHandle> VulkanRenderDevice::AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
+                                                                               uint32_t number_sets,
+                                                                               std::array<std::vector<
+                                                                                   DescriptorSetBinding>, FRAME_LAG>
+                                                                               shader_bindings)
+    {
+        vk::DescriptorSetLayout descriptor_set_layout = m_descriptor_layout_cache->GetDescriptorLayout(descriptor_layout);
+        std::vector<vk::DescriptorSetLayout> vk_layouts (number_sets, descriptor_set_layout);
+
+        std::vector<vk::DescriptorSet> descriptor_sets;
+        bool success = m_descriptor_allocator->Allocate (vk_layouts, descriptor_sets);
+        if (!success)
+        {
+            BRR_LogError("DescriptorSet allocation failed.");
+            return {};
+        }
+
+        std::vector<DescriptorSetHandle> descriptor_sets_handles (number_sets, null_handle);
+        for (uint32_t idx = 0; idx < number_sets; idx++)
+        {
+            descriptor_sets_handles[idx] = m_descriptor_set_alloc.CreateResource();
+            DescriptorSet* descriptor_set = m_descriptor_set_alloc.GetResource(descriptor_sets_handles[idx]);
+
+            descriptor_set->descriptor_set = descriptor_sets[idx];
+        }
+
+        for (uint32_t write_idx = 0; write_idx < number_sets; write_idx++)
+        {
+            std::vector<vk::WriteDescriptorSet> descriptor_writes (shader_bindings[write_idx].size());
+            for (uint32_t binding = 0; binding< descriptor_writes.size(); binding++)
+            {
+                vk::DescriptorType descriptor_type = VkHelpers::VkDescriptorTypeFromDescriptorType(shader_bindings[write_idx][binding].descriptor_type);
+
+                vk::WriteDescriptorSet& write = descriptor_writes[binding];
+                write
+                    .setDstBinding(binding)
+                    .setDstSet(descriptor_sets[write_idx])
+                    .setDescriptorType(descriptor_type)
+                    .setDescriptorCount(1);
+
+                if (shader_bindings[write_idx][binding].buffer_handle != null_handle)
+                {
+                    Buffer* buffer = m_buffer_alloc.GetResource(shader_bindings[write_idx][binding].buffer_handle);
+                    if (!buffer)
+                    {
+                        BRR_LogError("Invalid BufferHandle passed as ShaderBinding. Could not update DescriptorSets succesfully.");
+                        break;
+                    }
+                    
+                    vk::DescriptorBufferInfo buffer_info;
+                    buffer_info
+                        .setBuffer(buffer->buffer)
+                        .setOffset(0)
+                        .setRange(buffer->buffer_size);
+
+                    write.setBufferInfo(buffer_info);
+                }
+                if (shader_bindings[write_idx][binding].texture_handle != null_handle)
+                {
+                    Texture2D* image = m_texture2d_alloc.GetResource(shader_bindings[write_idx][binding].texture_handle);
+                    if (!image)
+                    {
+                        BRR_LogError("Invalid Texture2DHandle passed as ShaderBinding. Could not update DescriptorSets succesfully.");
+                        break;
+                    }
+                    
+                    vk::DescriptorImageInfo image_info;
+                    image_info
+                        .setImageView(image->image_view)
+                        .setSampler(m_texture2DSampler)
+                        .setImageLayout(image->image_layout);
+
+                    write.setImageInfo(image_info);
+                }
+            }
+            m_device.updateDescriptorSets(descriptor_writes, {});
+        }
+
+        return descriptor_sets_handles;
     }
 
     void VulkanRenderDevice::Init_VkInstance(vis::Window* window)

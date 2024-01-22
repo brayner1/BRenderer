@@ -27,7 +27,8 @@ namespace brr::render
         ~DevicePipeline();
 
         void BindGraphicsPipeline();
-        void BindDescriptorSet(vk::DescriptorSet descriptor_set, uint32_t set_index);
+        void BindDescriptorSet(DescriptorSetHandle descriptor_set_handle,
+                               uint32_t            set_index);
 
         [[nodiscard]] FORCEINLINE explicit operator bool() const noexcept { return m_pipeline_handle; }
 

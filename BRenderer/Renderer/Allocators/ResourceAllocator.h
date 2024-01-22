@@ -1,6 +1,6 @@
 #ifndef BRR_RESOURCEALLOCATOR_H
 #define BRR_RESOURCEALLOCATOR_H
-
+#include <Core/LogSystem.h>
 #include <Renderer/ResourcesHandles.h>
 
 #include <set>

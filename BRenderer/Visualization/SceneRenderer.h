@@ -5,9 +5,6 @@
 #include <Renderer/Descriptors.h>
 #include <Renderer/DeviceBuffer.h>
 #include <Renderer/RenderDefs.h>
-#include <Renderer/Allocators/StagingAllocator.h>
-#include <Renderer/Vulkan/VulkanInc.h>
-#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Scene/Scene.h>
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Scene/Components/NodeComponent.h>
@@ -69,7 +66,7 @@ namespace brr::vis
             render::DescriptorLayout m_model_descriptor_layout;
             std::array<bool, render::FRAME_LAG> m_uniform_dirty { true };
             std::array<render::DeviceBuffer, render::FRAME_LAG>       m_uniform_buffers{}; // model transform
-            std::array<vk::DescriptorSet, render::FRAME_LAG>  m_descriptor_sets{};
+            std::array<render::DescriptorSetHandle, render::FRAME_LAG>  m_descriptor_sets{};
         };
 
         void SetupCameraUniforms();
@@ -89,18 +86,20 @@ namespace brr::vis
 
         struct CameraUniformInfo
         {
-            std::array<render::DeviceBuffer, render::FRAME_LAG> m_uniform_buffers;
-            std::array<vk::DescriptorSet, render::FRAME_LAG> m_descriptor_sets;
+            std::array<render::DeviceBuffer, render::FRAME_LAG>        m_uniform_buffers;
+            std::array<render::DescriptorSetHandle, render::FRAME_LAG> m_descriptor_sets;
         } m_camera_uniform_info;
 
         ContiguousPool<RenderData> m_render_data;
 
         render::DescriptorLayout m_material_descriptor_layout;
-        std::array<vk::DescriptorSet, render::FRAME_LAG>  m_material_descriptor_sets{};
+        std::array<render::DescriptorSetHandle, render::FRAME_LAG>  m_material_descriptor_sets{};
 
         std::unique_ptr<Image> m_image;
         render::Texture2DHandle m_texture_2d_handle;
         render::ResourceHandle m_graphics_pipeline;
+
+        render::Shader m_shader;
     };
 
 }

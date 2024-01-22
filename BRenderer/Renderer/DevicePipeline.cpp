@@ -52,8 +52,9 @@ namespace brr::render
         m_device->Bind_GraphicsPipeline(m_pipeline_handle);
     }
 
-    void DevicePipeline::BindDescriptorSet(vk::DescriptorSet descriptor_set, uint32_t set_index)
+    void DevicePipeline::BindDescriptorSet(DescriptorSetHandle descriptor_set_handle,
+                                           uint32_t            set_index)
     {
-        m_device->Bind_DescriptorSet(m_pipeline_handle, descriptor_set, set_index);
+        m_device->Bind_DescriptorSet(m_pipeline_handle, descriptor_set_handle, set_index);
     }
 }
