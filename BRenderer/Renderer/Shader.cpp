@@ -94,7 +94,7 @@ namespace brr::render
             return {};
         }
 
-        vk::Device vk_device = VKRD::GetSingleton()->Get_VkDevice();
+        vk::Device vk_device = VKRD::GetSingleton()->m_device;
         Shader shader;
         shader.m_pDevice = VKRD::GetSingleton();
         // Create vertex shader module
@@ -189,13 +189,13 @@ namespace brr::render
         LogStreamBuffer log_stream = BRR_InfoStrBuff();
         if (m_vert_shader_module)
         {
-            m_pDevice->Get_VkDevice().destroyShaderModule(m_vert_shader_module);
+            m_pDevice->m_device.destroyShaderModule(m_vert_shader_module);
             log_stream << "VertexShader ShaderModule destroyed.";
         }
         m_vert_shader_module = VK_NULL_HANDLE;
         if (m_frag_shader_module)
         {
-            m_pDevice->Get_VkDevice().destroyShaderModule(m_frag_shader_module);
+            m_pDevice->m_device.destroyShaderModule(m_frag_shader_module);
             log_stream << "FragmentShader ShaderModule destroyed.";
         }
         m_frag_shader_module = VK_NULL_HANDLE;

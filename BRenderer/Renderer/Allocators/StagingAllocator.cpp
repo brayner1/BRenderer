@@ -176,14 +176,12 @@ namespace brr::render
 		}
     }
 
-    void StagingAllocator::CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::Buffer dst_buffer,
-                                                   size_t size,
-                                                   uint32_t staging_buffer_offset, uint32_t dst_buffer_offset)
+    void StagingAllocator::CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::CommandBuffer transfer_cmd_buffer,
+                                                   vk::Buffer dst_buffer,
+                                                   size_t size, uint32_t staging_buffer_offset, uint32_t dst_buffer_offset)
     {
         assert((staging_buffer_offset + size) <= staging_buffer.m_size && "Can't make transfer bigger than passed staging buffer.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
-
-        vk::CommandBuffer transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
         
         vk::BufferCopy buffer_copy;
         buffer_copy
@@ -193,14 +191,12 @@ namespace brr::render
         transfer_cmd_buffer.copyBuffer(block.m_buffer, dst_buffer, buffer_copy);
     }
 
-    void StagingAllocator::CopyFromStagingToImage(StagingBufferHandle staging_buffer, vk::Image dst_image, vk::Extent3D image_extent,
-                                                  uint32_t src_offset, vk::Offset3D image_offset)
+    void StagingAllocator::CopyFromStagingToImage(StagingBufferHandle staging_buffer, vk::CommandBuffer transfer_cmd_buffer, vk::Image dst_image,
+                                                  vk::Extent3D image_extent, uint32_t src_offset, vk::Offset3D image_offset)
     {
         //TODO: CopyFromStagingToImage
         //assert((image_offset + image_extent) <= staging_buffer.m_size && "Can't make transfer bigger than passed staging buffer.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
-
-        vk::CommandBuffer transfer_cmd_buffer = m_render_device->GetCurrentTransferCommandBuffer();
 
         vk::ImageSubresourceLayers image_subresource;
         image_subresource

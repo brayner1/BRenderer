@@ -35,7 +35,7 @@ namespace brr{
 		private:
 			friend class WindowManager;
 
-			void Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer, SceneRenderer* scene_renderer);
+			void Record_CommandBuffer(SceneRenderer* scene_renderer);
 
 			void Recreate_Swapchain();
 

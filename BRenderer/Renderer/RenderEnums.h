@@ -4,6 +4,14 @@
 namespace brr::render
 {
     //
+    enum class MemoryUsage : int
+    {
+        AUTO,
+        AUTO_PREFER_DEVICE,
+        AUTO_PREFER_HOST
+    };
+
+    //
     enum BufferUsage : int
     {
         TransferSrc                             = 1 << 0,
@@ -12,6 +20,8 @@ namespace brr::render
         StorageTexelBuffer                      = 1 << 3,
         UniformBuffer                           = 1 << 4,
         StorageBuffer                           = 1 << 5,
+        HostAccessSequencial                    = 1 << 19,
+        HostAccessRandom                        = 1 << 20,
         //IndexBuffer                             = 1 << 6,
         //VertexBuffer                            = 1 << 7,
         //IndirectBuffer                          = 1 << 8,

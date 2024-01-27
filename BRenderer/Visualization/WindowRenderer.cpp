@@ -33,17 +33,17 @@ namespace brr::vis
         Recreate_Swapchain();
     }
 
-    void WindowRenderer::Record_CommandBuffer(vk::CommandBuffer graphics_cmd_buffer, SceneRenderer* scene_renderer)
+    void WindowRenderer::Record_CommandBuffer(SceneRenderer* scene_renderer)
     {
         scene_renderer->BeginRender();
 
         scene_renderer->UpdateDirtyInstances();
 
-        m_swapchain->BeginRendering(graphics_cmd_buffer);
+        m_swapchain->BeginRendering();
 
         scene_renderer->Render3D();
 
-        m_swapchain->EndRendering(graphics_cmd_buffer);
+        m_swapchain->EndRendering();
     }
 
     void WindowRenderer::RenderWindow(SceneRenderer* scene_renderer)
@@ -62,9 +62,7 @@ namespace brr::vis
 
         m_frame_count = m_render_device->BeginFrame();
 
-        vk::CommandBuffer current_graphics_cmd_buffer = m_render_device->GetCurrentGraphicsCommandBuffer();
-
-        Record_CommandBuffer(current_graphics_cmd_buffer, scene_renderer);
+        Record_CommandBuffer(scene_renderer);
 
         vk::Fence in_flight_fence = m_swapchain->GetCurrentInFlightFence();
 

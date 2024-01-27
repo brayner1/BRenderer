@@ -17,15 +17,15 @@ namespace brr::render
 
 	vk::Result Swapchain::AcquireNextImage(vk::Semaphore& image_available_semaphore)
 	{
-		if (m_render_device->Get_VkDevice().waitForFences(m_in_flight_fences[m_current_buffer_idx], true, UINT64_MAX) != vk::Result::eSuccess)
+		if (m_render_device->m_device.waitForFences(m_in_flight_fences[m_current_buffer_idx], true, UINT64_MAX) != vk::Result::eSuccess)
 		{
 			BRR_LogError("Error waiting for In Flight Fence");
 			exit(1);
 		}
 
-		m_render_device->Get_VkDevice().resetFences(m_in_flight_fences[m_current_buffer_idx]);
+		m_render_device->m_device.resetFences(m_in_flight_fences[m_current_buffer_idx]);
 
-		vk::Result result = m_render_device->Get_VkDevice().acquireNextImageKHR(m_swapchain, UINT64_MAX,
+		vk::Result result = m_render_device->m_device.acquireNextImageKHR(m_swapchain, UINT64_MAX,
 				m_image_available_semaphores[m_current_buffer_idx], VK_NULL_HANDLE, &m_current_image_idx);
 
 		image_available_semaphore = m_image_available_semaphores[m_current_buffer_idx];
@@ -41,7 +41,7 @@ namespace brr::render
 			.setSwapchains(m_swapchain)
 			.setImageIndices(m_current_image_idx);
 
-		vk::Result result = m_render_device->GetPresentQueue().presentKHR(present_info);
+		vk::Result result = m_render_device->m_presentation_queue.presentKHR(present_info);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		{
 			Recreate_Swapchain();
@@ -57,8 +57,9 @@ namespace brr::render
 		return result;
 	}
 
-    void Swapchain::BeginRendering(vk::CommandBuffer command_buffer)
+    void Swapchain::BeginRendering()
     {
+		vk::CommandBuffer command_buffer = m_render_device->GetCurrentGraphicsCommandBuffer();
 		// Image transition from Undefined to Color Attachment
 	    {
             m_render_device->TransitionImageLayout(command_buffer, m_image_resources[m_current_image_idx].m_image,
@@ -121,8 +122,9 @@ namespace brr::render
 		command_buffer.beginRendering(rendering_info);
     }
 
-    void Swapchain::EndRendering(vk::CommandBuffer command_buffer)
+    void Swapchain::EndRendering()
     {
+		vk::CommandBuffer command_buffer = m_render_device->GetCurrentGraphicsCommandBuffer();
 		command_buffer.endRendering();
 
 		// Image transition from Color Attachment to Present Src
@@ -144,15 +146,15 @@ namespace brr::render
 
 		for (uint32_t i = 0; i < FRAME_LAG; i++)
 		{
-			m_render_device->Get_VkDevice().destroySemaphore(m_image_available_semaphores[i]);
-			m_render_device->Get_VkDevice().destroyFence(m_in_flight_fences[i]);
+			m_render_device->m_device.destroySemaphore(m_image_available_semaphores[i]);
+			m_render_device->m_device.destroyFence(m_in_flight_fences[i]);
 		}
 	}
 
 	void Swapchain::Init_Swapchain(vis::Window* window)
 	{
-		vk::SurfaceKHR surface = window->GetVulkanSurface(m_render_device->Get_VkInstance());
-		VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_render_device->Get_VkPhysicalDevice(), surface);
+		vk::SurfaceKHR surface = window->GetVulkanSurface(m_render_device->m_vulkan_instance);
+		VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_render_device->m_phys_device, surface);
 
 		vk::SurfaceFormatKHR surface_format = VkHelpers::Select_SwapchainFormat(properties.m_surfFormats);
 		vk::PresentModeKHR present_mode     = VkHelpers::Select_SwapchainPresentMode(properties.m_presentModes, {vk::PresentModeKHR::eFifo});
@@ -217,7 +219,7 @@ namespace brr::render
 				.setQueueFamilyIndices(queue_family_indices);
 		}
 
-		 auto createSwapchainResult = m_render_device->Get_VkDevice().createSwapchainKHR(swapchain_create_info);
+		 auto createSwapchainResult = m_render_device->m_device.createSwapchainKHR(swapchain_create_info);
 		 if (createSwapchainResult.result != vk::Result::eSuccess)
 		 {
 			 BRR_LogError("Could not create SwapchainKHR! Result code: {}.", vk::to_string(createSwapchainResult.result).c_str());
@@ -239,7 +241,7 @@ namespace brr::render
 
 	void Swapchain::Init_SwapchainResources()
 	{
-        m_swapchain_depth_format = VkHelpers::Select_SupportedFormat(m_render_device->Get_VkPhysicalDevice(),
+        m_swapchain_depth_format = VkHelpers::Select_SupportedFormat(m_render_device->m_phys_device,
                                                                      {
                                                                          vk::Format::eD32Sfloat,
                                                                          vk::Format::eD32SfloatS8Uint,
@@ -247,7 +249,7 @@ namespace brr::render
                                                                      }, vk::ImageTiling::eOptimal,
                                                                      vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 		// Acquire swapchain images and create ImageViews
-		auto swapchainImagesKHRResult = m_render_device->Get_VkDevice().getSwapchainImagesKHR(m_swapchain);
+		auto swapchainImagesKHRResult = m_render_device->m_device.getSwapchainImagesKHR(m_swapchain);
 		std::vector<vk::Image> swapchain_images = swapchainImagesKHRResult.value;
 		m_image_resources.resize(swapchain_images.size());
 
@@ -270,7 +272,7 @@ namespace brr::render
                         .setBaseArrayLayer(0)
                     );
 
-			    auto createImgViewResult = m_render_device->Get_VkDevice().createImageView(image_view_create_info);
+			    auto createImgViewResult = m_render_device->m_device.createImageView(image_view_create_info);
 			    if (createImgViewResult.result != vk::Result::eSuccess)
 			    {
 			        BRR_LogError("Could not create ImageView for swapchain! Result code: {}.", vk::to_string(createImgViewResult.result).c_str());
@@ -306,7 +308,7 @@ namespace brr::render
 				VkImage new_depth_image;
 				VmaAllocation depth_image_allocation;
 				VmaAllocationInfo allocation_info;
-				const vk::Result createImageResult = vk::Result(vmaCreateImage(m_render_device->Get_VmaAllocator(),
+				const vk::Result createImageResult = vk::Result(vmaCreateImage(m_render_device->m_vma_allocator,
                                                                                reinterpret_cast<VkImageCreateInfo*>
                                                                                (&img_create_info),
                                                                                &alloc_create_info, &new_depth_image,
@@ -331,7 +333,7 @@ namespace brr::render
                         .setBaseArrayLayer(0)
                     );
 
-			    auto createImgViewResult = m_render_device->Get_VkDevice().createImageView(image_view_create_info);
+			    auto createImgViewResult = m_render_device->m_device.createImageView(image_view_create_info);
 			    if (createImgViewResult.result != vk::Result::eSuccess)
 			    {
 			        BRR_LogError("Could not create DepthBuffer ImageView for swapchain resources! Index {}. Result code: {}.", i, vk::to_string(createImgViewResult.result).c_str());
@@ -350,7 +352,7 @@ namespace brr::render
 	{
 		for (int i = 0; i < FRAME_LAG; i++)
 		{
-			 auto createImgAvailableSemaphoreResult = m_render_device->Get_VkDevice().createSemaphore(vk::SemaphoreCreateInfo{});
+			 auto createImgAvailableSemaphoreResult = m_render_device->m_device.createSemaphore(vk::SemaphoreCreateInfo{});
 			 if (createImgAvailableSemaphoreResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create Image Available Semaphore for swapchain! Result code: {}.", vk::to_string(createImgAvailableSemaphoreResult.result).c_str());
@@ -358,7 +360,7 @@ namespace brr::render
 			 }
 			 m_image_available_semaphores[i] = createImgAvailableSemaphoreResult.value;
 
-			 auto createInFlightFenceResult = m_render_device->Get_VkDevice().createFence(vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled });
+			 auto createInFlightFenceResult = m_render_device->m_device.createFence(vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled });
 			 if (createInFlightFenceResult.result != vk::Result::eSuccess)
 			 {
 				 BRR_LogError("Could not create In Flight Fence for swapchain! Result code: {}.", vk::to_string(createInFlightFenceResult.result).c_str());
@@ -385,19 +387,19 @@ namespace brr::render
 			ImageResources& resource = m_image_resources[i];
 			if (resource.m_image_view)
 			{
-				m_render_device->Get_VkDevice().destroyImageView(resource.m_image_view);
+				m_render_device->m_device.destroyImageView(resource.m_image_view);
 				resource.m_image_view = VK_NULL_HANDLE;
 				BRR_LogInfo("ImageView of Swapchain Image {} Destroyed.", i);
 			}
 			if (resource.m_depth_image_view)
 			{
-			    m_render_device->Get_VkDevice().destroyImageView(resource.m_depth_image_view);
+			    m_render_device->m_device.destroyImageView(resource.m_depth_image_view);
 				resource.m_depth_image_view = VK_NULL_HANDLE;
 				BRR_LogInfo("ImageView of Swapchain's DepthBuffer Image {} Destroyed.", i);
 			}
 			if (resource.m_depth_image)
 			{
-			    vmaDestroyImage(m_render_device->Get_VmaAllocator(), resource.m_depth_image, resource.m_depth_image_allocation);
+			    vmaDestroyImage(m_render_device->m_vma_allocator, resource.m_depth_image, resource.m_depth_image_allocation);
 				resource.m_depth_image = VK_NULL_HANDLE;
 				resource.m_depth_image_allocation = VK_NULL_HANDLE;
 				BRR_LogInfo("Image of Swapchain's DepthBuffer Image {} destroyed.", i);
@@ -405,7 +407,7 @@ namespace brr::render
 		}
 		if (m_swapchain)
 		{
-			m_render_device->Get_VkDevice().destroySwapchainKHR(m_swapchain);
+			m_render_device->m_device.destroySwapchainKHR(m_swapchain);
 			m_swapchain = VK_NULL_HANDLE;
 			BRR_LogInfo("Swapchain Destroyed.");
 		}

@@ -12,12 +12,12 @@ namespace brr
 		DeviceBuffer::DeviceBuffer() = default;
 
 		DeviceBuffer::DeviceBuffer(size_t buffer_size, BufferUsage buffer_usage,
-		                           VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
+		                           MemoryUsage memory_usage)
 	    : m_render_device(VKRD::GetSingleton()),
 	      m_buffer_size(buffer_size)
 		{
 			BRR_LogInfo("Creating Buffer. New buffer: [ size: {} ]", buffer_size);
-			m_buffer_handle = m_render_device->CreateBuffer(buffer_size, buffer_usage, memory_usage, allocation_create_flags);
+			m_buffer_handle = m_render_device->CreateBuffer(buffer_size, buffer_usage, memory_usage);
 		}
 
 		DeviceBuffer::DeviceBuffer(DeviceBuffer&& device_buffer) noexcept
@@ -59,7 +59,7 @@ namespace brr
 		}
 
 		void DeviceBuffer::Reset(size_t buffer_size, BufferUsage buffer_usage,
-                                 VKRD::MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
+                                 MemoryUsage memory_usage, VmaAllocationCreateFlags allocation_create_flags)
 		{
 			BRR_LogInfo("Resetting Buffer. New buffer: [ size: {} ]", buffer_size);
 			if (IsInitialized())
@@ -68,8 +68,8 @@ namespace brr
 			}
 
 			m_render_device = VKRD::GetSingleton();
-			m_buffer_handle = m_render_device->CreateBuffer(buffer_size, buffer_usage, memory_usage, allocation_create_flags);
-			m_buffer_size = buffer_size;
+			m_buffer_handle = m_render_device->CreateBuffer(buffer_size, buffer_usage, memory_usage);
+			m_buffer_size   = buffer_size;
 		}
 
 		void DeviceBuffer::WriteToBuffer(void* data, size_t size, uint32_t offset)
@@ -91,13 +91,6 @@ namespace brr
 				mem_start += offset;
 				memcpy(mem_start, data, size);
 			}
-		}
-
-		vk::DescriptorBufferInfo DeviceBuffer::GetDescriptorInfo(size_t size, size_t offset) const
-		{
-			assert(IsInitialized() && "DeviceBuffer must be initialized before getting its DescriptorBufferInfo.");
-			assert((size == VK_WHOLE_SIZE || size <= m_buffer_size) && "Parameter size must be either 'VK_WHOLE_SIZE' or <= DeviceBuffer size  ");
-			return m_render_device->GetBufferDescriptorInfo(m_buffer_handle, size, offset);
 		}
 
         void* DeviceBuffer::Map()

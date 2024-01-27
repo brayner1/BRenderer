@@ -44,24 +44,11 @@ namespace brr::render
 
         void WaitIdle() const;
 
-        /* Vulkan Objects (Instance, Device, CommandPools and Queues) */
-
-        [[nodiscard]] FORCEINLINE vk::Instance Get_VkInstance() const { return m_vulkan_instance; }
-
-        [[nodiscard]] FORCEINLINE vk::PhysicalDevice Get_VkPhysicalDevice() const { return m_phys_device; }
-        [[nodiscard]] FORCEINLINE vk::Device Get_VkDevice() const { return m_device; }
-
-        [[nodiscard]] FORCEINLINE VmaAllocator Get_VmaAllocator() const { return m_vma_allocator; }
-
         /**********
          * Queues *
          **********/
 
         [[nodiscard]] FORCEINLINE VkHelpers::QueueFamilyIndices GetQueueFamilyIndices() const { return m_queue_family_indices; }
-
-        [[nodiscard]] FORCEINLINE vk::Queue GetGraphicsQueue() const { return m_graphics_queue; }
-        [[nodiscard]] FORCEINLINE vk::Queue GetPresentQueue() const { return m_presentation_queue; }
-        [[nodiscard]] FORCEINLINE vk::Queue GetTransferQueue() const { return m_transfer_queue; }
 
         [[nodiscard]] FORCEINLINE bool IsDifferentPresentQueue() const noexcept { return m_different_present_queue; }
         [[nodiscard]] FORCEINLINE bool IsDifferentTransferQueue() const noexcept { return m_different_transfer_queue; }
@@ -76,9 +63,6 @@ namespace brr::render
             Secondary = (uint8_t)vk::CommandBufferLevel::eSecondary
         };
 
-        vk::CommandBuffer GetCurrentGraphicsCommandBuffer();
-        vk::CommandBuffer GetCurrentTransferCommandBuffer();
-
         /***************
          * Descriptors *
          ***************/
@@ -90,19 +74,12 @@ namespace brr::render
          * Memory *
          **********/
 
-        enum MemoryUsage : int
-        {
-            AUTO,
-            AUTO_PREFER_DEVICE,
-            AUTO_PREFER_HOST
-        };
-
         /***********
          * Buffers *
          ***********/
 
         BufferHandle CreateBuffer(size_t buffer_size, BufferUsage buffer_usage,
-                                  MemoryUsage memory_usage, VmaAllocationCreateFlags buffer_allocation_flags);
+                                  MemoryUsage memory_usage);
 
         bool DestroyBuffer(BufferHandle buffer_handle);
 
@@ -116,8 +93,6 @@ namespace brr::render
 
         bool CopyBuffer_Immediate(BufferHandle src_buffer, BufferHandle dst_buffer, size_t size,
                                   uint32_t src_buffer_offset = 0, uint32_t dst_buffer_offset = 0);
-
-        [[nodiscard]] vk::DescriptorBufferInfo GetBufferDescriptorInfo(BufferHandle buffer_handle, vk::DeviceSize size = VK_WHOLE_SIZE, vk::DeviceSize offset = 0);
 
         /******************
          * Vertex Buffers *
@@ -173,14 +148,6 @@ namespace brr::render
         bool UpdateTexture2DData(Texture2DHandle texture2d_handle, const void* data, size_t buffer_size,
                                  const glm::ivec2& image_offset, const glm::uvec2& image_extent);
 
-        bool TransitionImageLayout(vk::CommandBuffer cmd_buffer, vk::Image image,
-                                   vk::ImageLayout current_layout, vk::ImageLayout new_layout,
-                                   vk::AccessFlags2 src_access_mask, vk::PipelineStageFlags2 src_stage_mask,
-                                   vk::AccessFlags2 dst_access_mask, vk::PipelineStageFlags2 dst_stage_mask,
-                                   vk::ImageAspectFlags image_aspect, uint32_t src_queue_index = 0, uint32_t dst_queue_index = 0);
-
-        vk::DescriptorImageInfo GetImageDescriptorInfo(Texture2DHandle texture2d_handle);
-
         /*********************
          * Graphics Pipeline *
          *********************/
@@ -204,6 +171,18 @@ namespace brr::render
     protected:
 
         void UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size, uint32_t src_offset, uint32_t dst_offset);
+
+        static bool TransitionImageLayout(vk::CommandBuffer cmd_buffer, vk::Image image,
+                                          vk::ImageLayout current_layout, vk::ImageLayout new_layout,
+                                          vk::AccessFlags2 src_access_mask, vk::PipelineStageFlags2 src_stage_mask,
+                                          vk::AccessFlags2 dst_access_mask, vk::PipelineStageFlags2 dst_stage_mask,
+                                          vk::ImageAspectFlags image_aspect, uint32_t src_queue_index = 0, uint32_t dst_queue_index = 0);
+
+        static void BufferMemoryBarrier(vk::CommandBuffer cmd_buffer, vk::Buffer buffer,
+                                        size_t buffer_size, uint32_t buffer_offset,
+                                        vk::PipelineStageFlags2 src_stage_flags, vk::AccessFlags2 src_access_flags,
+                                        vk::PipelineStageFlags2 dst_stage_flags, vk::AccessFlags2 dst_access_flags,
+                                        uint32_t src_queue_family = 0, uint32_t dst_queue_family = 0);
 
         DescriptorLayoutHandle CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings);
 
@@ -238,6 +217,9 @@ namespace brr::render
         /***************************
          * CommandBuffer Functions *
          ***************************/
+
+        vk::CommandBuffer GetCurrentGraphicsCommandBuffer();
+        vk::CommandBuffer GetCurrentTransferCommandBuffer();
 
         [[nodiscard]] vk::Result BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer);
         [[nodiscard]] vk::Result BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer);
@@ -332,7 +314,9 @@ namespace brr::render
         ResourceAllocator<DescriptorSet> m_descriptor_set_alloc;
         
     private: // Data
-
+        friend class Swapchain;
+        friend class Shader;
+        friend class ShaderBuilder;
         friend class StagingAllocator;
         friend class DescriptorLayoutBuilder;
         template <uint32_t T> friend class DescriptorSetBuilder;

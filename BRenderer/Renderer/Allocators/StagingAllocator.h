@@ -47,13 +47,13 @@ namespace brr::render
                                       pixel_size);
 
 
-        void CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::Buffer dst_buffer,
-                                     size_t size,
-                                     uint32_t staging_buffer_offset = 0, uint32_t dst_buffer_offset = 0);
+        void CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::CommandBuffer transfer_cmd_buffer,
+                                     vk::Buffer dst_buffer,
+                                     size_t size, uint32_t staging_buffer_offset = 0, uint32_t dst_buffer_offset = 0);
 
-		void CopyFromStagingToImage(StagingBufferHandle staging_buffer, vk::Image dst_image,
-                                    vk::Extent3D image_extent,
-                                    uint32_t src_offset = 0, vk::Offset3D image_offset = 0);
+		void CopyFromStagingToImage(StagingBufferHandle staging_buffer, vk::CommandBuffer transfer_cmd_buffer,
+                                    vk::Image dst_image,
+                                    vk::Extent3D image_extent, uint32_t src_offset = 0, vk::Offset3D image_offset = 0);
 
     private:
 

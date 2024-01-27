@@ -186,9 +186,8 @@ namespace brr::vis
 		{
 			m_camera_uniform_info.m_uniform_buffers[idx] =
                 render::DeviceBuffer(sizeof(UniformBufferObject),
-					                 render::BufferUsage::UniformBuffer,
-                                     render::VKRD::AUTO,
-                                     VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+					                 render::BufferUsage::UniformBuffer | render::BufferUsage::HostAccessSequencial,
+                                     render::MemoryUsage::AUTO);
 		}
 
 		std::array<render::BufferHandle, render::FRAME_LAG> camera_descriptor_buffer_infos;
@@ -237,7 +236,8 @@ namespace brr::vis
 
 		render::VulkanRenderDevice::VertexFormatFlags vertex_format = render::VulkanRenderDevice::VertexFormatFlags::COLOR;
 
-        render_data.m_vertex_buffer_handle = m_render_device->CreateVertexBuffer(buffer_size, vertex_format, vertex_buffer.data());
+        render_data.m_vertex_buffer_handle = m_render_device->CreateVertexBuffer(buffer_size, vertex_format);
+		m_render_device->UpdateVertexBufferData(render_data.m_vertex_buffer_handle, vertex_buffer.data(), buffer_size, 0);
 
 		render_data.num_vertices = vertex_buffer.size();
     }
@@ -272,9 +272,8 @@ namespace brr::vis
 		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
 		{
             render_data.m_uniform_buffers[i] = render::DeviceBuffer(buffer_size,
-                                                                    render::BufferUsage::UniformBuffer,
-                                                                    render::VKRD::AUTO,
-                                                                    VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT);
+                                                                    render::BufferUsage::UniformBuffer | render::BufferUsage::HostAccessSequencial,
+                                                                    render::MemoryUsage::AUTO);
 		}
 
 		BRR_LogInfo("Uniform Buffers created.");

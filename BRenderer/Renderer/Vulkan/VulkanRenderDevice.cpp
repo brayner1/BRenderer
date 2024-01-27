@@ -137,35 +137,19 @@ namespace brr::render
         return result;
     }
 
-    VmaMemoryUsage VmaMemoryUsageFromDeviceMemoryUsage(VulkanRenderDevice::MemoryUsage memory_usage)
+    VmaMemoryUsage VmaMemoryUsageFromDeviceMemoryUsage(MemoryUsage memory_usage)
     {
         switch (memory_usage)
         {
-        case VulkanRenderDevice::AUTO:
+        case MemoryUsage::AUTO:
             return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO;
-        case VulkanRenderDevice::AUTO_PREFER_DEVICE:
+        case MemoryUsage::AUTO_PREFER_DEVICE:
             return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-        case VulkanRenderDevice::AUTO_PREFER_HOST:
+        case MemoryUsage::AUTO_PREFER_HOST:
             return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
         default:
             return VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO;
         }
-    }
-
-    static vk::ShaderModule Create_ShaderModule(VulkanRenderDevice* device, std::vector<char>& code)
-    {
-        vk::ShaderModuleCreateInfo shader_module_info{};
-        shader_module_info
-            .setCodeSize(code.size())
-            .setPCode(reinterpret_cast<const uint32_t*>(code.data()));
-
-        auto createShaderModuleResult = device->Get_VkDevice().createShaderModule(shader_module_info);
-        if (createShaderModuleResult.result != vk::Result::eSuccess)
-        {
-            BRR_LogError("Could not create ShaderModule! Result code: {}.", vk::to_string(createShaderModuleResult.result).c_str());
-            return VK_NULL_HANDLE;
-        }
-        return createShaderModuleResult.value;
     }
 
     std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_instance {};
@@ -185,6 +169,28 @@ namespace brr::render
     {
         assert(device_instance && "Can't get non-initialized VulkanRenderDevice. Run `VKRD::CreateRenderDevice(Window* window)` before this function.");
         return device_instance.get();
+    }
+
+    VulkanRenderDevice::VulkanRenderDevice(vis::Window* main_window)
+    {
+        BRR_LogInfo("Constructing VulkanRenderDevice");
+        Init_VkInstance(main_window);
+        vk::SurfaceKHR surface = main_window->GetVulkanSurface(m_vulkan_instance);
+        Init_PhysDevice(surface);
+        Init_Queues_Indices(surface);
+        Init_Device();
+        Init_Allocator();
+        Init_CommandPool();
+        Init_Frames();
+
+        m_staging_allocator.Init(this);
+
+        m_descriptor_layout_cache.reset(new DescriptorLayoutCache(m_device));
+        m_descriptor_allocator.reset(new DescriptorSetAllocator(m_device));
+
+        Init_Texture2DSampler();
+
+        BRR_LogInfo("VulkanRenderDevice {:#x} constructed", (size_t)this);
     }
 
     VulkanRenderDevice::~VulkanRenderDevice()
@@ -292,64 +298,15 @@ namespace brr::render
         return current_frame.render_finished_semaphore;
     }
 
-    VulkanRenderDevice::VulkanRenderDevice(vis::Window* main_window)
-    {
-        BRR_LogInfo("Constructing VulkanRenderDevice");
-        Init_VkInstance(main_window);
-        vk::SurfaceKHR surface = main_window->GetVulkanSurface(m_vulkan_instance);
-        Init_PhysDevice(surface);
-        Init_Queues_Indices(surface);
-        Init_Device();
-        Init_Allocator();
-        Init_CommandPool();
-        Init_Frames();
-
-        m_staging_allocator.Init(this);
-
-        m_descriptor_layout_cache.reset(new DescriptorLayoutCache(m_device));
-        m_descriptor_allocator.reset(new DescriptorSetAllocator(m_device));
-
-        Init_Texture2DSampler();
-
-        BRR_LogInfo("VulkanRenderDevice {:#x} constructed", (size_t)this);
-    }
-
     void VulkanRenderDevice::WaitIdle() const
     {
         BRR_LogTrace("Waiting for device idle.");
         m_device.waitIdle();
     }
 
-    static vk::Result allocateCommandBuffer(vk::Device device, vk::CommandPool cmd_pool, vk::CommandBufferLevel level,
-                                            uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers)
-    {
-        vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
-        command_buffer_alloc_info
-            .setCommandPool(cmd_pool)
-            .setLevel(vk::CommandBufferLevel(level))
-            .setCommandBufferCount(cmd_buffer_count);
-
-        auto allocCmdBufferResult = device.allocateCommandBuffers(command_buffer_alloc_info);
-        if (allocCmdBufferResult.result == vk::Result::eSuccess)
-        {
-            std::memcpy(out_command_buffers, allocCmdBufferResult.value.data(), cmd_buffer_count * sizeof(vk::CommandBuffer));
-        }
-        return allocCmdBufferResult.result;
-    }
-
-    vk::CommandBuffer VulkanRenderDevice::GetCurrentGraphicsCommandBuffer()
-    {
-        Frame& current_frame = m_frames[m_current_buffer];
-
-        return current_frame.graphics_cmd_buffer;
-    }
-
-    vk::CommandBuffer VulkanRenderDevice::GetCurrentTransferCommandBuffer()
-    {
-        Frame& current_frame = m_frames[m_current_buffer];
-
-        return current_frame.transfer_cmd_buffer;
-    }
+    /*********************************
+     * Descriptor Builders Functions *
+     *********************************/
 
     DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
     {
@@ -362,9 +319,12 @@ namespace brr::render
                                                                          const_cast<VulkanRenderDevice*>(this));
     }
 
+    /********************
+     * Buffer Functions *
+     ********************/
+
     BufferHandle VulkanRenderDevice::CreateBuffer(size_t buffer_size, BufferUsage buffer_usage,
-                                                   MemoryUsage memory_usage,
-                                                   VmaAllocationCreateFlags buffer_allocation_flags)
+                                                  MemoryUsage memory_usage)
     {
         BufferHandle buffer_handle;
         // Create Buffer
@@ -391,22 +351,32 @@ namespace brr::render
                 buffer_create_info.setQueueFamilyIndices(indices);
             }
 
+            VmaAllocationCreateFlags alloc_create_flag = 0;
+            if ((buffer_usage & BufferUsage::HostAccessSequencial) != 0)
+            {
+                alloc_create_flag |= VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            }
+            if ((buffer_usage & BufferUsage::HostAccessRandom) != 0)
+            {
+                alloc_create_flag |= VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+            }
+
             VmaMemoryUsage vma_memory_usage = VmaMemoryUsageFromDeviceMemoryUsage(memory_usage);
 
-            VmaAllocationCreateInfo allocInfo = {};
-            allocInfo.usage = vma_memory_usage;
-            allocInfo.flags = buffer_allocation_flags;
-            allocInfo.requiredFlags = 0;
-            allocInfo.preferredFlags = 0;
-            allocInfo.memoryTypeBits = 0;
-            allocInfo.pool = VK_NULL_HANDLE;
-            allocInfo.pUserData = nullptr;
-            allocInfo.priority = 1.0;
+            VmaAllocationCreateInfo alloc_info;
+            alloc_info.usage = vma_memory_usage;
+            alloc_info.flags = alloc_create_flag;
+            alloc_info.requiredFlags = 0;
+            alloc_info.preferredFlags = 0;
+            alloc_info.memoryTypeBits = 0;
+            alloc_info.pool = VK_NULL_HANDLE;
+            alloc_info.pUserData = nullptr;
+            alloc_info.priority = 1.0;
 
             VkBuffer new_buffer;
             VmaAllocation allocation;
             VmaAllocationInfo allocation_info;
-            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &allocInfo,
+            const vk::Result createBufferResult = vk::Result(vmaCreateBuffer(m_vma_allocator, reinterpret_cast<VkBufferCreateInfo*>(&buffer_create_info), &alloc_info,
                                                                              &new_buffer, &allocation, &allocation_info));
 
             if (createBufferResult != vk::Result::eSuccess)
@@ -483,17 +453,55 @@ namespace brr::render
     {
         Buffer* dst_buffer = m_buffer_alloc.GetResource(dst_buffer_handle);
 
-        uint32_t written_bytes = 0;
-        while (written_bytes != size)
+        UpdateBufferData(dst_buffer->buffer, data, size, 0, offset);
+
+        vk::PipelineStageFlags2 pipeline_stage_flags;
+        vk::AccessFlags2 access_flags;
+        if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eVertexBuffer)
         {
-            render::StagingBufferHandle staging_buffer{};
-            const uint32_t allocated = m_staging_allocator.AllocateStagingBuffer(m_current_frame, size - written_bytes, &staging_buffer);
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eVertexAttributeInput;
+            access_flags = vk::AccessFlagBits2::eVertexAttributeRead;
+        }
+        else if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eIndexBuffer)
+        {
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eIndexInput;
+            access_flags = vk::AccessFlagBits2::eIndexRead;
+        }
+        else if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eUniformBuffer)
+        {
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eFragmentShader;
+            access_flags = vk::AccessFlagBits2::eShaderRead;
+        }
+        else if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eStorageBuffer)
+        {
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eFragmentShader;
+        }
+           
 
-            m_staging_allocator.WriteLinearBufferToStaging(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
-
-            m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer->buffer, allocated, 0, written_bytes);
-
-            written_bytes += allocated;
+        vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
+        vk::CommandBuffer grapics_cmd_buffer = GetCurrentGraphicsCommandBuffer();
+        if (IsDifferentTransferQueue())
+        {
+            uint32_t src_queue_index = GetQueueFamilyIndices().m_transferFamily.value();
+            uint32_t dst_queue_index = GetQueueFamilyIndices().m_graphicsFamily.value();
+            { // Yield ownership from transfer -> graphics
+                BufferMemoryBarrier(transfer_cmd_buffer, dst_buffer->buffer, dst_buffer->buffer_size, offset,
+                                    vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                    vk::PipelineStageFlagBits2::eNone, vk::AccessFlagBits2::eNone,
+                                    src_queue_index, dst_queue_index);
+            }
+            { // Obtain ownership from transfer -> graphics
+                BufferMemoryBarrier(grapics_cmd_buffer, dst_buffer->buffer, dst_buffer->buffer_size, offset,
+                                    vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                    pipeline_stage_flags, access_flags,
+                                    src_queue_index, dst_queue_index);
+            }
+        }
+        else
+        {
+            BufferMemoryBarrier(grapics_cmd_buffer, dst_buffer->buffer, dst_buffer->buffer_size, offset,
+                                    vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                    pipeline_stage_flags, access_flags);
         }
 
         return true;
@@ -517,55 +525,52 @@ namespace brr::render
 
         cmd_buffer.copyBuffer(src_buffer->buffer, dst_buffer->buffer, copy_region);
 
+        vk::PipelineStageFlags2 pipeline_stage_flags;
+        vk::AccessFlags2 access_flags;
+        if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eVertexBuffer)
+        {
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eVertexAttributeInput;
+            access_flags = vk::AccessFlagBits2::eVertexAttributeRead;
+        }
+        else if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eIndexBuffer)
+        {
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eIndexInput;
+            access_flags = vk::AccessFlagBits2::eIndexRead;
+        }
+        else if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eUniformBuffer)
+        {
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eFragmentShader;
+            access_flags = vk::AccessFlagBits2::eShaderRead;
+        }
+        else if (dst_buffer->buffer_usage | vk::BufferUsageFlagBits::eStorageBuffer)
+        {
+            pipeline_stage_flags = vk::PipelineStageFlagBits2::eFragmentShader;
+            access_flags = vk::AccessFlagBits2::eShaderWrite;
+        }
+
         //TODO: Check if src buffer is on CPU or GPU to decide if uses transfer queue or no.
         if (use_transfer_queue)
         {
-            {
-                vk::BufferMemoryBarrier2 src_buffer_memory_barrier;
-                src_buffer_memory_barrier
-                    .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                    .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                    .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
-                    .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
-                    .setBuffer(dst_buffer->buffer)
-                    .setSize(size);
-
-                vk::DependencyInfo dependency_info;
-                dependency_info
-                    .setBufferMemoryBarriers(src_buffer_memory_barrier);
-
-                current_frame.transfer_cmd_buffer.pipelineBarrier2(dependency_info);
+            uint32_t src_queue_index = GetQueueFamilyIndices().m_transferFamily.value();
+            uint32_t dst_queue_index = GetQueueFamilyIndices().m_graphicsFamily.value();
+            { // Yield ownership from transfer -> graphics
+                BufferMemoryBarrier(current_frame.transfer_cmd_buffer, dst_buffer->buffer, dst_buffer->buffer_size, dst_buffer_offset,
+                                    vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                    vk::PipelineStageFlagBits2::eNone, vk::AccessFlagBits2::eNone,
+                                    src_queue_index, dst_queue_index);
             }
-
-            {
-                vk::BufferMemoryBarrier2 dst_buffer_memory_barrier {};
-                dst_buffer_memory_barrier
-                    .setBuffer(dst_buffer->buffer)
-                    .setSize(size)
-                    .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
-                    .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
-                    .setDstStageMask(vk::PipelineStageFlagBits2::eVertexAttributeInput)
-                    .setDstAccessMask(vk::AccessFlagBits2::eVertexAttributeRead);
-
-                vk::DependencyInfo dependency_info {};
-                dependency_info
-                    .setBufferMemoryBarriers(dst_buffer_memory_barrier);
-
-                current_frame.graphics_cmd_buffer.pipelineBarrier2(dependency_info);
+            { // Obtain ownership from transfer -> graphics
+                BufferMemoryBarrier(current_frame.graphics_cmd_buffer, dst_buffer->buffer, dst_buffer->buffer_size, dst_buffer_offset,
+                                    vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                    pipeline_stage_flags, access_flags,
+                                    src_queue_index, dst_queue_index);
             }
         }
         else
         {
-            //TODO: Select DstAccessMask and DstStageMask based on buffer usage.
-            vk::MemoryBarrier memory_barrier;
-            memory_barrier
-                .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead);
-
-            current_frame.graphics_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                                                              vk::PipelineStageFlagBits::eVertexInput,
-                                                              vk::DependencyFlags(), 1, &memory_barrier, 0,
-                                                              nullptr, 0, nullptr);
+            BufferMemoryBarrier(current_frame.graphics_cmd_buffer, dst_buffer->buffer, dst_buffer->buffer_size, dst_buffer_offset,
+                                    vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                    pipeline_stage_flags, access_flags);
         }
 
         return true;
@@ -614,7 +619,7 @@ namespace brr::render
 
         SubmitTransferCommandBuffers(1, &cmd_buffer, 0, nullptr, nullptr, 0, nullptr, VK_NULL_HANDLE);
 
-        GetTransferQueue().waitIdle();
+        m_transfer_queue.waitIdle();
 
         m_device.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
 
@@ -623,12 +628,9 @@ namespace brr::render
         return true;
     }
 
-    vk::DescriptorBufferInfo VulkanRenderDevice::GetBufferDescriptorInfo(BufferHandle buffer_handle, vk::DeviceSize size, vk::DeviceSize offset)
-    {
-        Buffer* buffer = m_buffer_alloc.GetResource(buffer_handle);
-
-        return vk::DescriptorBufferInfo{buffer->buffer, offset, size};
-    }
+    /***************************
+     * Vertex Buffer Functions *
+     ***************************/
 
     VertexBufferHandle VulkanRenderDevice::CreateVertexBuffer(size_t buffer_size, VertexFormatFlags format, void* data)
     {
@@ -698,7 +700,7 @@ namespace brr::render
 
         if (data != nullptr)
         {
-            UpdateBufferData(vertex_buffer->buffer, data, buffer_size, 0, 0);
+            UpdateVertexBufferData(vertex_buffer_handle, data, buffer_size, 0);
         }
 
         return vertex_buffer_handle;
@@ -720,7 +722,8 @@ namespace brr::render
         return m_vertex_buffer_alloc.DestroyResource(vertex_buffer_handle);
     }
 
-    bool VulkanRenderDevice::UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data, size_t data_size, uint32_t dst_offset)
+    bool VulkanRenderDevice::UpdateVertexBufferData(VertexBufferHandle vertex_buffer_handle, void* data,
+                                                    size_t data_size, uint32_t dst_offset)
     {
         const VertexBuffer* vertex_buffer = m_vertex_buffer_alloc.GetResource(vertex_buffer_handle);
         if (!vertex_buffer)
@@ -729,6 +732,31 @@ namespace brr::render
         }
 
         UpdateBufferData(vertex_buffer->buffer, data, data_size, 0, dst_offset);
+
+        vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
+        vk::CommandBuffer grapics_cmd_buffer = GetCurrentGraphicsCommandBuffer();
+        if (IsDifferentTransferQueue())
+        {
+            uint32_t src_queue_index = GetQueueFamilyIndices().m_transferFamily.value();
+            uint32_t dst_queue_index = GetQueueFamilyIndices().m_graphicsFamily.value();
+
+            BufferMemoryBarrier(transfer_cmd_buffer, vertex_buffer->buffer, vertex_buffer->buffer_size, dst_offset,
+                                vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                vk::PipelineStageFlagBits2::eNone, vk::AccessFlagBits2::eNone,
+                                src_queue_index, dst_queue_index);
+
+            BufferMemoryBarrier(grapics_cmd_buffer, vertex_buffer->buffer, vertex_buffer->buffer_size, dst_offset,
+                                vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                vk::PipelineStageFlagBits2::eVertexInput, vk::AccessFlagBits2::eVertexAttributeRead,
+                                src_queue_index, dst_queue_index);
+        }
+        else
+        {
+            BufferMemoryBarrier(grapics_cmd_buffer, vertex_buffer->buffer, vertex_buffer->buffer_size, dst_offset,
+                                vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                vk::PipelineStageFlagBits2::eVertexInput,
+                                vk::AccessFlagBits2::eVertexAttributeRead);
+        }
 
         return true;
     }
@@ -747,6 +775,10 @@ namespace brr::render
         command_buffer.bindVertexBuffers(0, vertex_buffer->buffer, offset);
         return true;
     }
+
+    /**************************
+     * Index Buffer Functions *
+     **************************/
 
     IndexBufferHandle VulkanRenderDevice::CreateIndexBuffer(size_t buffer_size, IndexType format, void* data)
     {
@@ -816,7 +848,7 @@ namespace brr::render
 
         if (data != nullptr)
         {
-            UpdateBufferData(index_buffer->buffer, data, buffer_size, 0, 0);
+            UpdateIndexBufferData(index_buffer_handle, data, buffer_size, 0);
         }
 
         return index_buffer_handle;
@@ -848,6 +880,31 @@ namespace brr::render
         }
 
         UpdateBufferData(index_buffer->buffer, data, data_size, 0, dst_offset);
+
+        vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
+        vk::CommandBuffer grapics_cmd_buffer = GetCurrentGraphicsCommandBuffer();
+        if (IsDifferentTransferQueue())
+        {
+            uint32_t src_queue_index = GetQueueFamilyIndices().m_transferFamily.value();
+            uint32_t dst_queue_index = GetQueueFamilyIndices().m_graphicsFamily.value();
+
+            BufferMemoryBarrier(transfer_cmd_buffer, index_buffer->buffer, index_buffer->buffer_size, dst_offset,
+                                vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                vk::PipelineStageFlagBits2::eNone, vk::AccessFlagBits2::eNone,
+                                src_queue_index, dst_queue_index);
+
+            BufferMemoryBarrier(grapics_cmd_buffer, index_buffer->buffer, index_buffer->buffer_size, dst_offset,
+                                vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                vk::PipelineStageFlagBits2::eVertexInput, vk::AccessFlagBits2::eVertexAttributeRead,
+                                src_queue_index, dst_queue_index);
+        }
+        else
+        {
+            BufferMemoryBarrier(grapics_cmd_buffer, index_buffer->buffer, index_buffer->buffer_size, dst_offset,
+                                vk::PipelineStageFlagBits2::eTransfer, vk::AccessFlagBits2::eTransferWrite,
+                                vk::PipelineStageFlagBits2::eVertexInput,
+                                vk::AccessFlagBits2::eVertexAttributeRead);
+        }
 
         return true;
     }
@@ -883,6 +940,10 @@ namespace brr::render
 
         return true;
     }
+
+    /***********************
+     * Texture2D Functions *
+     ***********************/
 
     Texture2DHandle VulkanRenderDevice::Create_Texture2D(size_t width, size_t height, ImageUsage image_usage, DataFormat image_format)
     {
@@ -1051,8 +1112,8 @@ namespace brr::render
 
                 m_staging_allocator.WriteBlockImageToStaging (staging_buffer, static_cast<const uint8_t*>(data), {x, y}, block_size, image_extent, 4); //(staging_buffer, 0, buffer.data(), block_size_bytes);
 
-                m_staging_allocator.CopyFromStagingToImage(staging_buffer, texture->image, {block_size.x, block_size.y, 1},
-                                                           0, {static_cast<int32_t>(x), static_cast<int32_t>(y), 0});
+                m_staging_allocator.CopyFromStagingToImage(staging_buffer, GetCurrentTransferCommandBuffer(), texture->image,
+                                                           {block_size.x, block_size.y, 1}, 0, {static_cast<int32_t>(x), static_cast<int32_t>(y), 0});
             }
         }
 
@@ -1083,52 +1144,11 @@ namespace brr::render
         return true;
     }
 
-    bool VulkanRenderDevice::TransitionImageLayout(vk::CommandBuffer cmd_buffer, vk::Image image,
-                                                   vk::ImageLayout current_layout, vk::ImageLayout new_layout,
-                                                   vk::AccessFlags2 src_access_mask,
-                                                   vk::PipelineStageFlags2 src_stage_mask,
-                                                   vk::AccessFlags2 dst_access_mask,
-                                                   vk::PipelineStageFlags2 dst_stage_mask,
-                                                   vk::ImageAspectFlags image_aspect,
-                                                   uint32_t src_queue_index, uint32_t dst_queue_index)
-    {
-        vk::ImageSubresourceRange img_subresource_range;
-        img_subresource_range
-            .setAspectMask(image_aspect)
-            .setBaseMipLevel(0)
-            .setLevelCount(1)
-            .setBaseArrayLayer(0)
-            .setLayerCount(1);
+    /*******************************
+     * Graphics Pipeline Functions *
+     *******************************/
 
-        vk::ImageMemoryBarrier2 img_mem_barrier;
-        img_mem_barrier
-            .setOldLayout(current_layout)
-            .setNewLayout(new_layout)
-            .setSrcAccessMask(src_access_mask)
-            .setDstAccessMask(dst_access_mask)
-            .setSrcStageMask(src_stage_mask)
-            .setDstStageMask(dst_stage_mask)
-            .setSrcQueueFamilyIndex(src_queue_index)
-            .setDstQueueFamilyIndex(dst_queue_index)
-            .setImage(image)
-            .setSubresourceRange(img_subresource_range);
-
-        vk::DependencyInfo dependency_info;
-        dependency_info
-            .setImageMemoryBarriers(img_mem_barrier);
-
-        cmd_buffer.pipelineBarrier2(dependency_info);
-
-        return true;
-    }
-
-    vk::DescriptorImageInfo VulkanRenderDevice::GetImageDescriptorInfo(Texture2DHandle texture2d_handle)
-    {
-        Texture2D* texture = m_texture2d_alloc.GetResource(texture2d_handle);
-
-        return vk::DescriptorImageInfo{m_texture2DSampler, texture->image_view, vk::ImageLayout::eShaderReadOnlyOptimal};
-    }
-
+    //
     ResourceHandle VulkanRenderDevice::Create_GraphicsPipeline(const Shader& shader, 
                                                                const std::vector<DataFormat>& color_attachment_formats,
                                                                DataFormat depth_attachment_format)
@@ -1330,6 +1350,10 @@ namespace brr::render
                                                              descriptor_set->descriptor_set, {});
     }
 
+    /******************
+     * Draw Functions *
+     ******************/
+
     void VulkanRenderDevice::Draw(uint32_t num_vertex, uint32_t num_instances, uint32_t first_vertex,
                                   uint32_t first_instance)
     {
@@ -1346,71 +1370,9 @@ namespace brr::render
         current_frame.graphics_cmd_buffer.drawIndexed(num_indices, num_instances, first_index, vertex_offset, first_instance);
     }
 
-    void VulkanRenderDevice::UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size,
-                                              uint32_t src_offset, uint32_t dst_offset)
-    {
-        { // Make transfer
-            uint32_t written_bytes = 0;
-            while (written_bytes != size)
-            {
-                render::StagingBufferHandle staging_buffer{};
-                const uint32_t allocated = m_staging_allocator.AllocateStagingBuffer(m_current_frame, size - written_bytes, &staging_buffer);
-
-                m_staging_allocator.WriteLinearBufferToStaging(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
-
-                m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, dst_buffer, allocated, src_offset, dst_offset + written_bytes);
-
-                written_bytes += allocated;
-            }
-        }
-
-        vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
-        vk::CommandBuffer grapics_cmd_buffer = GetCurrentGraphicsCommandBuffer();
-
-        if (IsDifferentTransferQueue())
-        {
-            vk::BufferMemoryBarrier2 buffer_memory_barrier;
-            buffer_memory_barrier
-                .setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-                .setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
-                .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
-                .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
-                .setBuffer(dst_buffer)
-                .setSize(size);
-
-            vk::DependencyInfo dependency_info;
-            dependency_info
-                .setBufferMemoryBarriers(buffer_memory_barrier);
-
-            transfer_cmd_buffer.pipelineBarrier2(dependency_info);
-
-            buffer_memory_barrier
-                .setDstStageMask(vk::PipelineStageFlagBits2::eVertexInput)
-                .setDstAccessMask(vk::AccessFlagBits2::eVertexAttributeRead)
-                .setSrcQueueFamilyIndex(GetQueueFamilyIndices().m_transferFamily.value())
-                .setDstQueueFamilyIndex(GetQueueFamilyIndices().m_graphicsFamily.value())
-                .setBuffer(dst_buffer)
-                .setSize(size);
-
-            dependency_info
-                .setBufferMemoryBarriers(buffer_memory_barrier);
-
-            grapics_cmd_buffer.pipelineBarrier2(dependency_info);
-        }
-        else
-        {
-            // TODO
-            vk::MemoryBarrier memory_barrier;
-            memory_barrier
-                .setSrcAccessMask(vk::AccessFlagBits::eTransferWrite)
-                .setDstAccessMask(vk::AccessFlagBits::eVertexAttributeRead);
-
-            transfer_cmd_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-                                                vk::PipelineStageFlagBits::eVertexInput,
-                                                vk::DependencyFlags(), 1, &memory_barrier, 0,
-                                                nullptr, 0, nullptr);
-        }
-    }
+    /************************
+     * Descriptor Functions *
+     ************************/
 
     DescriptorLayoutHandle VulkanRenderDevice::CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings)
     {
@@ -1497,6 +1459,224 @@ namespace brr::render
 
         return descriptor_sets_handles;
     }
+
+    /******************************
+     * Vulkan Utilities Functions *
+     ******************************/
+
+    void VulkanRenderDevice::UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size,
+                                              uint32_t src_offset, uint32_t dst_offset)
+    {
+        vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
+        // Make transfer
+        uint32_t written_bytes = 0;
+        while (written_bytes != size)
+        {
+            render::StagingBufferHandle staging_buffer{};
+            const uint32_t allocated = m_staging_allocator.AllocateStagingBuffer(m_current_frame, size - written_bytes, &staging_buffer);
+
+            m_staging_allocator.WriteLinearBufferToStaging(staging_buffer, 0, static_cast<char*>(data) + written_bytes, allocated);
+
+            m_staging_allocator.CopyFromStagingToBuffer(staging_buffer, transfer_cmd_buffer, dst_buffer, allocated, src_offset, dst_offset + written_bytes);
+
+            written_bytes += allocated;
+        }
+    }
+
+    bool VulkanRenderDevice::TransitionImageLayout(vk::CommandBuffer cmd_buffer, vk::Image image,
+                                                   vk::ImageLayout current_layout, vk::ImageLayout new_layout,
+                                                   vk::AccessFlags2 src_access_mask,
+                                                   vk::PipelineStageFlags2 src_stage_mask,
+                                                   vk::AccessFlags2 dst_access_mask,
+                                                   vk::PipelineStageFlags2 dst_stage_mask,
+                                                   vk::ImageAspectFlags image_aspect,
+                                                   uint32_t src_queue_index, uint32_t dst_queue_index)
+    {
+        vk::ImageSubresourceRange img_subresource_range;
+        img_subresource_range
+            .setAspectMask(image_aspect)
+            .setBaseMipLevel(0)
+            .setLevelCount(1)
+            .setBaseArrayLayer(0)
+            .setLayerCount(1);
+
+        vk::ImageMemoryBarrier2 img_mem_barrier;
+        img_mem_barrier
+            .setOldLayout(current_layout)
+            .setNewLayout(new_layout)
+            .setSrcAccessMask(src_access_mask)
+            .setDstAccessMask(dst_access_mask)
+            .setSrcStageMask(src_stage_mask)
+            .setDstStageMask(dst_stage_mask)
+            .setSrcQueueFamilyIndex(src_queue_index)
+            .setDstQueueFamilyIndex(dst_queue_index)
+            .setImage(image)
+            .setSubresourceRange(img_subresource_range);
+
+        vk::DependencyInfo dependency_info;
+        dependency_info
+            .setImageMemoryBarriers(img_mem_barrier);
+
+        cmd_buffer.pipelineBarrier2(dependency_info);
+
+        return true;
+    }
+
+    void VulkanRenderDevice::BufferMemoryBarrier(vk::CommandBuffer cmd_buffer, vk::Buffer buffer,
+                                                 size_t buffer_size, uint32_t buffer_offset,
+                                                 vk::PipelineStageFlags2 src_stage_flags,
+                                                 vk::AccessFlags2 src_access_flags,
+                                                 vk::PipelineStageFlags2 dst_stage_flags,
+                                                 vk::AccessFlags2 dst_access_flags,
+                                                 uint32_t src_queue_family, uint32_t dst_queue_family)
+    {
+        vk::BufferMemoryBarrier2 buffer_memory_barrier;
+        buffer_memory_barrier
+            .setSrcStageMask(src_stage_flags)
+            .setSrcAccessMask(src_access_flags)
+            .setDstStageMask(dst_stage_flags)
+            .setDstAccessMask(dst_access_flags)
+            .setSrcQueueFamilyIndex(src_queue_family)
+            .setDstQueueFamilyIndex(dst_queue_family)
+            .setBuffer(buffer)
+            .setSize(buffer_size)
+            .setOffset(buffer_offset);
+
+        vk::DependencyInfo dependency_info;
+        dependency_info
+            .setBufferMemoryBarriers(buffer_memory_barrier);
+
+        cmd_buffer.pipelineBarrier2(dependency_info);
+    }
+
+    vk::CommandBuffer VulkanRenderDevice::GetCurrentGraphicsCommandBuffer()
+    {
+        Frame& current_frame = m_frames[m_current_buffer];
+
+        return current_frame.graphics_cmd_buffer;
+    }
+
+    vk::CommandBuffer VulkanRenderDevice::GetCurrentTransferCommandBuffer()
+    {
+        Frame& current_frame = m_frames[m_current_buffer];
+
+        return current_frame.transfer_cmd_buffer;
+    }
+
+    vk::Result VulkanRenderDevice::BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
+    {
+        const vk::Result graph_reset_result = graphics_cmd_buffer.reset();
+        if (graph_reset_result != vk::Result::eSuccess)
+        {
+            BRR_LogError("Could not reset current graphics command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(graph_reset_result).c_str());
+            return graph_reset_result;
+        }
+
+        const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
+        return graphics_cmd_buffer.begin(cmd_buffer_begin_info);
+    }
+
+    vk::Result VulkanRenderDevice::BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer)
+    {
+        const vk::Result transf_reset_result = transfer_cmd_buffer.reset();
+        if (transf_reset_result != vk::Result::eSuccess)
+        {
+            BRR_LogError("Could not reset current transfer command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(transf_reset_result).c_str());
+            return transf_reset_result;
+        }
+
+        const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
+        return transfer_cmd_buffer.begin(cmd_buffer_begin_info);
+    }
+
+    vk::Result VulkanRenderDevice::SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+                                                                vk::PipelineStageFlags* wait_dst_stages,
+                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                                vk::Fence submit_fence)
+    {
+        vk::SubmitInfo submit_info{};
+        submit_info
+            .setPCommandBuffers(cmd_buffers)
+            .setCommandBufferCount(cmd_buffer_count)
+            .setPWaitSemaphores(wait_semaphores)
+            .setWaitSemaphoreCount(wait_semaphore_count)
+            .setPWaitDstStageMask(wait_dst_stages)
+            .setPSignalSemaphores(signal_semaphores)
+            .setSignalSemaphoreCount(signal_semaphore_count);
+
+        /*vk::CommandBufferSubmitInfo cmd_buffer_submit_info {cmd_buffer};
+
+        vk::SemaphoreSubmitInfo image_available_semaphore_info {};
+        image_available_semaphore_info
+            .setDeviceIndex(0)
+            .setSemaphore(m_current_image_available_semaphore)
+            .setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+        vk::SemaphoreSubmitInfo render_finished_semaphore_info {};
+        render_finished_semaphore_info
+            .setDeviceIndex(0)
+            .setSemaphore(current_render_finished_semaphore)
+            .setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
+
+        vk::SubmitInfo2 submit_info2 {};
+        submit_info2
+            .setCommandBufferInfos(cmd_buffer_submit_info)
+            .setWaitSemaphoreInfos(image_available_semaphore_info)
+            .setSignalSemaphoreInfos(render_finished_semaphore_info);*/
+
+        return m_graphics_queue.submit(submit_info, submit_fence);
+    }
+
+    vk::Result VulkanRenderDevice::SubmitPresentCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+                                                               vk::PipelineStageFlags* wait_dst_stages,
+                                                               uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                               vk::Fence submit_fence)
+    {
+        //TODO
+        return vk::Result::eErrorUnknown;
+    }
+
+    vk::Result VulkanRenderDevice::SubmitTransferCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
+                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
+                                                                vk::PipelineStageFlags* wait_dst_stages,
+                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
+                                                                vk::Fence submit_fence)
+    {
+        vk::SubmitInfo submit_info{};
+        submit_info
+            .setPCommandBuffers(cmd_buffers)
+            .setCommandBufferCount(cmd_buffer_count)
+            .setPWaitSemaphores(wait_semaphores)
+            .setWaitSemaphoreCount(wait_semaphore_count)
+            .setPWaitDstStageMask(wait_dst_stages)
+            .setPSignalSemaphores(signal_semaphores)
+            .setSignalSemaphoreCount(signal_semaphore_count);
+
+        return m_transfer_queue.submit(submit_info, submit_fence);
+    }
+
+    static vk::Result allocateCommandBuffer(vk::Device device, vk::CommandPool cmd_pool, vk::CommandBufferLevel level,
+                                            uint32_t cmd_buffer_count, vk::CommandBuffer* out_command_buffers)
+    {
+        vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
+        command_buffer_alloc_info
+            .setCommandPool(cmd_pool)
+            .setLevel(vk::CommandBufferLevel(level))
+            .setCommandBufferCount(cmd_buffer_count);
+
+        auto allocCmdBufferResult = device.allocateCommandBuffers(command_buffer_alloc_info);
+        if (allocCmdBufferResult.result == vk::Result::eSuccess)
+        {
+            std::memcpy(out_command_buffers, allocCmdBufferResult.value.data(), cmd_buffer_count * sizeof(vk::CommandBuffer));
+        }
+        return allocCmdBufferResult.result;
+    }
+
+    /****************************
+     * Initialization Functions *
+     ****************************/
 
     void VulkanRenderDevice::Init_VkInstance(vis::Window* window)
     {
@@ -1910,100 +2090,6 @@ namespace brr::render
         }
 
         m_texture2DSampler = sampler_create_result.value;
-    }
-
-    vk::Result VulkanRenderDevice::BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
-    {
-        const vk::Result graph_reset_result = graphics_cmd_buffer.reset();
-        if (graph_reset_result != vk::Result::eSuccess)
-        {
-            BRR_LogError("Could not reset current graphics command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(graph_reset_result).c_str());
-            return graph_reset_result;
-        }
-
-        const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
-        return graphics_cmd_buffer.begin(cmd_buffer_begin_info);
-    }
-
-    vk::Result VulkanRenderDevice::BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer)
-    {
-        const vk::Result transf_reset_result = transfer_cmd_buffer.reset();
-        if (transf_reset_result != vk::Result::eSuccess)
-        {
-            BRR_LogError("Could not reset current transfer command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(transf_reset_result).c_str());
-            return transf_reset_result;
-        }
-
-        const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
-        return transfer_cmd_buffer.begin(cmd_buffer_begin_info);
-    }
-
-    vk::Result VulkanRenderDevice::SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
-                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
-                                                                vk::PipelineStageFlags* wait_dst_stages,
-                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
-                                                                vk::Fence submit_fence)
-    {
-        vk::SubmitInfo submit_info{};
-        submit_info
-            .setPCommandBuffers(cmd_buffers)
-            .setCommandBufferCount(cmd_buffer_count)
-            .setPWaitSemaphores(wait_semaphores)
-            .setWaitSemaphoreCount(wait_semaphore_count)
-            .setPWaitDstStageMask(wait_dst_stages)
-            .setPSignalSemaphores(signal_semaphores)
-            .setSignalSemaphoreCount(signal_semaphore_count);
-
-        /*vk::CommandBufferSubmitInfo cmd_buffer_submit_info {cmd_buffer};
-
-        vk::SemaphoreSubmitInfo image_available_semaphore_info {};
-        image_available_semaphore_info
-            .setDeviceIndex(0)
-            .setSemaphore(m_current_image_available_semaphore)
-            .setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
-
-        vk::SemaphoreSubmitInfo render_finished_semaphore_info {};
-        render_finished_semaphore_info
-            .setDeviceIndex(0)
-            .setSemaphore(current_render_finished_semaphore)
-            .setStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput);
-
-        vk::SubmitInfo2 submit_info2 {};
-        submit_info2
-            .setCommandBufferInfos(cmd_buffer_submit_info)
-            .setWaitSemaphoreInfos(image_available_semaphore_info)
-            .setSignalSemaphoreInfos(render_finished_semaphore_info);*/
-
-        return GetGraphicsQueue().submit(submit_info, submit_fence);
-    }
-
-    vk::Result VulkanRenderDevice::SubmitPresentCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
-                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
-                                                               vk::PipelineStageFlags* wait_dst_stages,
-                                                               uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
-                                                               vk::Fence submit_fence)
-    {
-        //TODO
-        return vk::Result::eErrorUnknown;
-    }
-
-    vk::Result VulkanRenderDevice::SubmitTransferCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
-                                                                uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
-                                                                vk::PipelineStageFlags* wait_dst_stages,
-                                                                uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
-                                                                vk::Fence submit_fence)
-    {
-        vk::SubmitInfo submit_info{};
-        submit_info
-            .setPCommandBuffers(cmd_buffers)
-            .setCommandBufferCount(cmd_buffer_count)
-            .setPWaitSemaphores(wait_semaphores)
-            .setWaitSemaphoreCount(wait_semaphore_count)
-            .setPWaitDstStageMask(wait_dst_stages)
-            .setPSignalSemaphores(signal_semaphores)
-            .setSignalSemaphoreCount(signal_semaphore_count);
-
-        return GetTransferQueue().submit(submit_info, submit_fence);
     }
 
     void VulkanRenderDevice::Free_FramePendingResources(Frame& frame)

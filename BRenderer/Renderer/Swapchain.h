@@ -25,8 +25,8 @@ namespace brr::render
 
 		vk::Result AcquireNextImage(vk::Semaphore& image_available_semaphore);
 		vk::Result PresentCurrentImage(vk::Semaphore wait_semaphore);
-		void BeginRendering(vk::CommandBuffer command_buffer);
-		void EndRendering(vk::CommandBuffer command_buffer);
+		void BeginRendering();
+		void EndRendering();
 
 		void Recreate_Swapchain();
 		void Cleanup_Swapchain();
