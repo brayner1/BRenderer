@@ -165,7 +165,7 @@ namespace brr::render
         shader.m_descriptors_layouts.resize(m_sets_layouts.size());
         for (uint32_t set_idx = 0; set_idx < m_sets_layouts.size(); set_idx++)
         {
-            render::DescriptorLayoutBuilder layoutBuilder = shader.m_pDevice->GetDescriptorLayoutBuilder();
+            render::DescriptorLayoutBuilder layoutBuilder;
             const std::vector<SetBinding>& set_bindings = m_sets_layouts[set_idx].m_set_bindings;
             for (uint32_t binding_idx = 0; binding_idx < set_bindings.size(); binding_idx++)
             {

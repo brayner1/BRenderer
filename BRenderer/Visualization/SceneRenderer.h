@@ -17,6 +17,11 @@ namespace brr::vis
         NULL_ID = static_cast<uint64_t>(-1)
     };
 
+    enum class LightId : uint64_t
+    {
+        NULL_ID = static_cast<uint64_t>(-1)
+    };
+
     class SceneRenderer
     {
     public:
@@ -28,6 +33,8 @@ namespace brr::vis
         SurfaceId CreateNewSurface(Mesh3DComponent::SurfaceData& surface, const Entity& owner_entity);
         void RemoveSurface(SurfaceId surface_id);
 
+        LightId CreatePointLight(const glm::vec3& position, const glm::vec3& color, float intensity);
+
         void BeginRender();
 
         void UpdateDirtyInstances();
@@ -36,9 +43,18 @@ namespace brr::vis
 
     private:
 
-        struct UniformBufferObject
+        struct CameraUniform
         {
             glm::mat4 projection_view{ 1.f };
+        };
+
+        struct Light
+        {
+            glm::vec3    light_position;
+            glm::f32     light_intensity;
+            glm::vec3    light_direction;
+            glm::uint    light_type;
+            glm::vec4    light_color;
         };
 
         struct Mesh3DUniform
@@ -71,12 +87,11 @@ namespace brr::vis
 
         void SetupCameraUniforms();
         void SetupMaterialUniforms();
+        void InitRenderDataUniforms(RenderData& render_data);
 
         void CreateVertexBuffer(std::vector<Vertex3>& vertex_buffer, RenderData& render_data);
         void CreateIndexBuffer(std::vector<uint32_t>& index_buffer, RenderData& render_data);
         void DestroyBuffers(RenderData& render_data);
-
-        void Init_UniformBuffers(RenderData& render_data);
 
         Scene* m_scene;
         render::VulkanRenderDevice* m_render_device = nullptr;
@@ -84,10 +99,14 @@ namespace brr::vis
         uint32_t m_current_buffer = 0;
         size_t m_current_frame = 0;
 
+        ContiguousPool<Light> m_scene_lights;
+
         struct CameraUniformInfo
         {
-            std::array<render::DeviceBuffer, render::FRAME_LAG>        m_uniform_buffers;
+            std::array<render::DeviceBuffer, render::FRAME_LAG>        m_camera_uniforms;
+            std::array<render::DeviceBuffer, render::FRAME_LAG>        m_lights_buffers;
             std::array<render::DescriptorSetHandle, render::FRAME_LAG> m_descriptor_sets;
+            std::array<bool, render::FRAME_LAG> m_light_uniform_dirty { true };
         } m_camera_uniform_info;
 
         ContiguousPool<RenderData> m_render_data;

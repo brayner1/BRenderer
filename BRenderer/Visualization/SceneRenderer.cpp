@@ -27,6 +27,7 @@ namespace brr::vis
             .AddVertexAttributeDescription(0, 4, render::DataFormat::R32G32B32_Float, offsetof(Vertex3, tangent))
 		    .AddSet()
 		    .AddSetBinding(render::DescriptorType::UniformBuffer, render::ShaderStageFlag::VertexShader)
+			.AddSetBinding(render::DescriptorType::StorageBuffer, render::ShaderStageFlag::FragmentShader)
 		    .AddSet()
 		    .AddSetBinding(render::DescriptorType::UniformBuffer, render::ShaderStageFlag::VertexShader)
 		    .AddSet()
@@ -36,6 +37,7 @@ namespace brr::vis
 		    m_graphics_pipeline = m_render_device->Create_GraphicsPipeline(m_shader, {render::DataFormat::R8G8B8A8_SRGB}, render::DataFormat::D32_Float);
 			m_shader.DestroyShaderModules();
 		}
+		//CreatePointLight(glm::vec3(0.0, 6.0, 0.0), glm::vec3(1.0, 0.8, 0.8), 2.0);
 
 		SetupCameraUniforms();
 
@@ -91,6 +93,20 @@ namespace brr::vis
 		m_render_data.RemoveObject(object_id);
     }
 
+    LightId SceneRenderer::CreatePointLight(const glm::vec3& position, const glm::vec3& color, float intensity)
+    {
+		Light point_light;
+		point_light.light_position = position;
+		point_light.light_intensity = intensity;
+		point_light.light_direction = glm::vec3(0.0, -1.0, 0.0);
+		point_light.light_type = 0;
+		point_light.light_color = glm::vec4(color, 1.0);
+		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(point_light));
+		BRR_LogInfo("Created new PointLight. LightId: {}", static_cast<uint64_t>(light_id));
+		m_camera_uniform_info.m_light_uniform_dirty.fill(true);
+		return light_id;
+    }
+
     void SceneRenderer::BeginRender()
     {
 		m_current_buffer = (m_current_buffer + 1) % render::FRAME_LAG;
@@ -110,22 +126,7 @@ namespace brr::vis
 			{
 				if (!render_data.m_descriptor_sets[0])
 				{
-					Init_UniformBuffers(render_data);
-					// Init model descriptor set
-				    {
-					    render_data.m_model_descriptor_layout = m_shader.GetDescriptorSetLayouts()[1];
-
-					    std::array<render::BufferHandle, render::FRAME_LAG> model_descriptor_buffer_infos;
-					    for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
-					    {
-					        model_descriptor_buffer_infos[buffer_info_idx] = render_data.m_uniform_buffers[buffer_info_idx].GetHandle();
-					    }
-
-					    auto setBuilder = m_render_device->GetDescriptorSetBuilder(render_data.m_model_descriptor_layout);
-					    setBuilder.BindBuffer(0, model_descriptor_buffer_infos);
-
-					    setBuilder.BuildDescriptorSet(render_data.m_descriptor_sets);
-				    }
+					InitRenderDataUniforms(render_data);
 
 					BRR_LogInfo("Model Descriptor Sets created.");
 				}
@@ -146,13 +147,27 @@ namespace brr::vis
 			}
 		}
 
-		UniformBufferObject ubo;
-		ubo.projection_view = m_scene->GetMainCamera()->GetProjectionMatrix() * m_scene->GetMainCamera()->GetViewMatrix();;
+		CameraUniform ubo;
+		ubo.projection_view = m_scene->GetMainCamera()->GetProjectionMatrix() * m_scene->GetMainCamera()->GetViewMatrix();
 
-		m_camera_uniform_info.m_uniform_buffers[m_current_buffer].Map();
-		m_camera_uniform_info.m_uniform_buffers[m_current_buffer].WriteToBuffer(&ubo, sizeof(ubo));
-		m_camera_uniform_info.m_uniform_buffers[m_current_buffer].Unmap();
+		m_camera_uniform_info.m_camera_uniforms[m_current_buffer].Map();
+		m_camera_uniform_info.m_camera_uniforms[m_current_buffer].WriteToBuffer(&ubo, sizeof(ubo));
+		m_camera_uniform_info.m_camera_uniforms[m_current_buffer].Unmap();
 
+		if (m_camera_uniform_info.m_light_uniform_dirty[m_current_buffer])
+		{
+			m_camera_uniform_info.m_light_uniform_dirty[m_current_buffer] = false;
+
+			m_camera_uniform_info.m_lights_buffers[m_current_buffer].Map();
+		    m_camera_uniform_info.m_lights_buffers[m_current_buffer].WriteToBuffer(m_scene_lights.Data(), m_scene_lights.Size() * sizeof(Light));
+		    m_camera_uniform_info.m_lights_buffers[m_current_buffer].Unmap();
+
+			render::DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
+			auto setBuilder = render::DescriptorSetUpdater(layout);
+		    setBuilder.BindBuffer(1, m_camera_uniform_info.m_lights_buffers[m_current_buffer].GetHandle(), m_scene_lights.Size() * sizeof(Light));
+
+		    setBuilder.UpdateDescriptorSet(m_camera_uniform_info.m_descriptor_sets[m_current_buffer]);
+		}
     }
 
     void SceneRenderer::Render3D()
@@ -184,47 +199,81 @@ namespace brr::vis
     {
 		for (size_t idx = 0; idx < render::FRAME_LAG; idx++)
 		{
-			m_camera_uniform_info.m_uniform_buffers[idx] =
-                render::DeviceBuffer(sizeof(UniformBufferObject),
+			m_camera_uniform_info.m_camera_uniforms[idx] =
+                render::DeviceBuffer(sizeof(CameraUniform),
 					                 render::BufferUsage::UniformBuffer | render::BufferUsage::HostAccessSequencial,
+                                     render::MemoryUsage::AUTO);
+			m_camera_uniform_info.m_lights_buffers[idx] =
+				render::DeviceBuffer(sizeof(Light) * 256,
+					                 render::BufferUsage::StorageBuffer | render::BufferUsage::HostAccessSequencial,
                                      render::MemoryUsage::AUTO);
 		}
 
-		std::array<render::BufferHandle, render::FRAME_LAG> camera_descriptor_buffer_infos;
-		for (uint32_t buffer_info_idx = 0; buffer_info_idx < render::FRAME_LAG; buffer_info_idx++)
+		render::DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
+
+		std::vector<render::DescriptorSetHandle> descriptors_handles = m_render_device->AllocateDescriptorSet(layout.m_layout_handle, render::FRAME_LAG);
+		std::ranges::copy(descriptors_handles, m_camera_uniform_info.m_descriptor_sets.begin());
+
+		for (uint32_t set_idx = 0; set_idx < render::FRAME_LAG; set_idx++)
 		{
-			camera_descriptor_buffer_infos[buffer_info_idx] = m_camera_uniform_info.m_uniform_buffers[buffer_info_idx].GetHandle();
+		    auto setBuilder = render::DescriptorSetUpdater(layout);
+		    setBuilder.BindBuffer(0, m_camera_uniform_info.m_camera_uniforms[set_idx].GetHandle(), sizeof(CameraUniform));
+		    setBuilder.BindBuffer(1, m_camera_uniform_info.m_lights_buffers[set_idx].GetHandle(), sizeof(Light));
+
+		    setBuilder.UpdateDescriptorSet(m_camera_uniform_info.m_descriptor_sets[set_idx]);
 		}
-
-        render::DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
-		auto setBuilder = m_render_device->GetDescriptorSetBuilder(layout);
-		setBuilder.BindBuffer(0, camera_descriptor_buffer_infos);
-
-		setBuilder.BuildDescriptorSet(m_camera_uniform_info.m_descriptor_sets);
     }
 
     void SceneRenderer::SetupMaterialUniforms()
     {
 		// Init material descriptor set
 		{
-			render::DescriptorLayoutBuilder layoutBuilder = m_render_device->GetDescriptorLayoutBuilder();
-			layoutBuilder
-                .SetBinding(0, render::DescriptorType::CombinedImageSampler, render::ShaderStageFlag::FragmentShader);
+		    m_material_descriptor_layout = m_shader.GetDescriptorSetLayouts()[2];
 
-			m_material_descriptor_layout = m_shader.GetDescriptorSetLayouts()[2];
+			std::vector<render::DescriptorSetHandle> descriptors_handles = m_render_device->AllocateDescriptorSet(
+                m_material_descriptor_layout.m_layout_handle, render::FRAME_LAG);
+		    std::ranges::copy(descriptors_handles, m_material_descriptor_sets.begin());
 
-			std::array<render::Texture2DHandle, render::FRAME_LAG> model_descriptor_image_infos;
-			for (uint32_t image_info_idx = 0; image_info_idx < render::FRAME_LAG; image_info_idx++)
+			for (uint32_t set_idx = 0; set_idx < render::FRAME_LAG; set_idx++)
 			{
-				model_descriptor_image_infos[image_info_idx] = m_texture_2d_handle;
+				auto setBuilder = render::DescriptorSetUpdater(m_material_descriptor_layout);
+
+			    setBuilder.BindImage(0, m_texture_2d_handle);
+
+			    setBuilder.UpdateDescriptorSet(m_material_descriptor_sets[set_idx]);
 			}
-			auto setBuilder = m_render_device->GetDescriptorSetBuilder(m_material_descriptor_layout);
-
-			setBuilder.BindImage(0, model_descriptor_image_infos);
-
-			setBuilder.BuildDescriptorSet(m_material_descriptor_sets);
 		}
     }
+
+	void SceneRenderer::InitRenderDataUniforms(RenderData& render_data)
+	{
+		size_t buffer_size = sizeof(Mesh3DUniform);
+
+		BRR_LogInfo("Creating Uniform Buffers");
+		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
+		{
+            render_data.m_uniform_buffers[i] = render::DeviceBuffer(buffer_size,
+                                                                    render::BufferUsage::UniformBuffer | render::BufferUsage::HostAccessSequencial,
+                                                                    render::MemoryUsage::AUTO);
+		}
+
+		// Init model descriptor sets
+		render_data.m_model_descriptor_layout = m_shader.GetDescriptorSetLayouts()[1];
+
+        std::vector<render::DescriptorSetHandle> descriptors_handles = m_render_device->
+            AllocateDescriptorSet(render_data.m_model_descriptor_layout.m_layout_handle,
+                                  render::FRAME_LAG);
+		std::ranges::copy(descriptors_handles, render_data.m_descriptor_sets.begin());
+
+		for (uint32_t set_idx = 0; set_idx < render::FRAME_LAG; set_idx++)
+		{
+			auto setBuilder = render::DescriptorSetUpdater(render_data.m_model_descriptor_layout);
+		    setBuilder.BindBuffer(0, render_data.m_uniform_buffers[set_idx].GetHandle(), buffer_size);
+
+		    setBuilder.UpdateDescriptorSet(render_data.m_descriptor_sets[set_idx]);
+		}
+		BRR_LogInfo("Uniform Buffers created.");
+	}
 
     void SceneRenderer::CreateVertexBuffer(std::vector<Vertex3>& vertex_buffer, RenderData& render_data)
     {
@@ -263,19 +312,4 @@ namespace brr::vis
 		m_render_device->DestroyVertexBuffer(render_data.m_vertex_buffer_handle);
 		m_render_device->DestroyIndexBuffer(render_data.m_index_buffer_handle);
     }
-
-    void SceneRenderer::Init_UniformBuffers(RenderData& render_data)
-	{
-		size_t buffer_size = sizeof(Mesh3DUniform);
-
-		BRR_LogInfo("Creating Uniform Buffers");
-		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
-		{
-            render_data.m_uniform_buffers[i] = render::DeviceBuffer(buffer_size,
-                                                                    render::BufferUsage::UniformBuffer | render::BufferUsage::HostAccessSequencial,
-                                                                    render::MemoryUsage::AUTO);
-		}
-
-		BRR_LogInfo("Uniform Buffers created.");
-	}
 }

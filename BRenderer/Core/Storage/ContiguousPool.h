@@ -35,9 +35,11 @@ namespace brr
 
         void RemoveObject(ObjectId object_id);
 
+        [[nodiscard]] bool Contains(ObjectId object_id) const { return m_object_index_map.contains(object_id); }
+
         [[nodiscard]] size_t Size() const { return m_active_count; }
 
-        [[nodiscard]] bool Contains(ObjectId object_id) const { return m_object_index_map.contains(object_id); }
+        T* Data() { return m_pool.data(); }
 
         iterator begin();
         iterator end();

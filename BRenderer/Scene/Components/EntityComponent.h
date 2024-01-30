@@ -20,6 +20,10 @@ namespace brr
 
         NodeComponent* GetNodeComponent() const;
 
+    public:
+
+        void OnInit() {}
+
     private:
         friend class Entity;
 

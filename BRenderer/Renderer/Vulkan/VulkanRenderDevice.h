@@ -13,10 +13,9 @@
 
 namespace brr::render
 {
+    struct DescriptorSetBinding;
     struct DescriptorLayoutBindings;
     struct DescriptorLayout;
-    class DescriptorLayoutBuilder;
-    template <uint32_t N_Sets> class DescriptorSetBuilder;
     class DescriptorSetAllocator;
 
     //TODO: Inherit from a base class RenderDevice. Support multiple APIs in the future.
@@ -67,8 +66,12 @@ namespace brr::render
          * Descriptors *
          ***************/
 
-        [[nodiscard]] DescriptorLayoutBuilder GetDescriptorLayoutBuilder() const;
-        [[nodiscard]] DescriptorSetBuilder<FRAME_LAG> GetDescriptorSetBuilder(const DescriptorLayout& layout) const;
+        DescriptorLayoutHandle CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings);
+
+        std::vector<DescriptorSetHandle> AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
+                                                               uint32_t               number_sets);
+
+        bool UpdateDescriptorSetResources(DescriptorSetHandle descriptor_set_handle, const std::vector<DescriptorSetBinding>& shader_bindings);
 
         /**********
          * Memory *
@@ -183,19 +186,6 @@ namespace brr::render
                                         vk::PipelineStageFlags2 src_stage_flags, vk::AccessFlags2 src_access_flags,
                                         vk::PipelineStageFlags2 dst_stage_flags, vk::AccessFlags2 dst_access_flags,
                                         uint32_t src_queue_family = 0, uint32_t dst_queue_family = 0);
-
-        DescriptorLayoutHandle CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings);
-
-        struct DescriptorSetBinding
-        {
-            Texture2DHandle texture_handle = null_handle;
-            BufferHandle    buffer_handle = null_handle;
-            DescriptorType  descriptor_type;
-        };
-
-        std::vector<DescriptorSetHandle> AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
-                                                               uint32_t               number_sets,
-                                                               std::array<std::vector<DescriptorSetBinding>, FRAME_LAG> shader_bindings);
 
     private: // Initialization functions
 
@@ -319,7 +309,7 @@ namespace brr::render
         friend class ShaderBuilder;
         friend class StagingAllocator;
         friend class DescriptorLayoutBuilder;
-        template <uint32_t T> friend class DescriptorSetBuilder;
+        friend class DescriptorSetUpdater;
 
         // Singleton Device
         static std::unique_ptr<VulkanRenderDevice> device_instance;

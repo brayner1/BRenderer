@@ -43,6 +43,7 @@ set(BRenderer_SOURCE_FILES
     "Scene/Scene.cpp"
     
     "Scene/Components/EntityComponent.cpp"
+    "Scene/Components/LightComponents.cpp"
     "Scene/Components/MaterialComponent.cpp"
     "Scene/Components/Mesh3DComponent.cpp"
     "Scene/Components/NodeComponent.cpp"
@@ -69,7 +70,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Swapchain.cpp"
     
     "Files/FilesUtils.cpp" 
-  )
+   )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
@@ -90,6 +91,7 @@ set(BRenderer_HEADER_FILES
     "Scene/Entity.h"
     "Scene/Scene.h" 
     "Scene/Components/EntityComponent.h"
+    "Scene/Components/LightComponents.h"
     "Scene/Components/MaterialComponent.h"
     "Scene/Components/Mesh3DComponent.h"
     "Scene/Components/NodeComponent.h"
@@ -121,7 +123,7 @@ set(BRenderer_HEADER_FILES
    
     
     "Files/FilesUtils.h"
- ) 
+  ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")

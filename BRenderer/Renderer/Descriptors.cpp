@@ -44,12 +44,10 @@ namespace brr::render
     //--------  DescriptorLayoutBuilder  ---------//
     //--------------------------------------------//
 
-    //! MakeDescriptorLayoutBuilder
-    DescriptorLayoutBuilder DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(VulkanRenderDevice* render_device)
+    DescriptorLayoutBuilder::DescriptorLayoutBuilder()
+    : m_render_device (VKRD::GetSingleton())
     {
-        DescriptorLayoutBuilder builder { render_device };
-
-        return builder;
+        //
     }
 
     //! SetBinding
@@ -64,11 +62,80 @@ namespace brr::render
         return *this;
     }
 
-	DescriptorLayout DescriptorLayoutBuilder::BuildDescriptorLayout()
-	{
-		DescriptorLayout descriptor_layout;
-		descriptor_layout.m_layout_handle = m_render_device->CreateDescriptorSetLayout(m_descriptor_layout_bindings);
-		descriptor_layout.m_bindings = std::move(m_descriptor_layout_bindings);
-		return descriptor_layout;
-	}
+    DescriptorLayout DescriptorLayoutBuilder::BuildDescriptorLayout()
+    {
+        DescriptorLayout descriptor_layout;
+        descriptor_layout.m_layout_handle = m_render_device->CreateDescriptorSetLayout(m_descriptor_layout_bindings);
+        descriptor_layout.m_bindings = std::move(m_descriptor_layout_bindings);
+        return descriptor_layout;
+    }
+
+    //--------------------------------------------//
+    //----------  DescriptorSetUpdater  ----------//
+    //--------------------------------------------//
+
+    DescriptorSetUpdater& DescriptorSetUpdater::BindBuffer(
+        uint32_t binding,
+        const BufferHandle& bufferInfo,
+        uint32_t buffer_size)
+    {
+        if (!m_render_device)
+        {
+            BRR_LogError("Can't bind buffer with non-initialized DescriptorSetUpdater");
+            return *this;
+        }
+
+        if (binding >= m_descriptor_layout.m_bindings.m_bindings.size())
+        {
+            BRR_LogError("Binding buffer on invalid descriptor set binding index.");
+            return *this;
+        }
+
+        DescriptorSetBinding descriptor_write;
+        descriptor_write.buffer_handle = bufferInfo;
+        descriptor_write.descriptor_binding = binding;
+        descriptor_write.descriptor_type = m_descriptor_layout.m_bindings[binding].descriptor_type;
+        descriptor_write.buffer_size = buffer_size;
+        descriptor_write.buffer_offset = 0;
+        m_descriptor_writes.push_back(descriptor_write);
+
+        return *this;
+    }
+
+    DescriptorSetUpdater& DescriptorSetUpdater::BindImage(
+        uint32_t binding,
+        const Texture2DHandle& imageInfo
+    )
+    {
+        if (!m_render_device)
+        {
+            BRR_LogError("Can't bind image with non-initialized DescriptorSetUpdater");
+            return *this;
+        }
+
+        if (binding >= m_descriptor_layout.m_bindings.m_bindings.size())
+        {
+            BRR_LogError("Binding image on invalid descriptor set binding index.");
+            return *this;
+        }
+
+
+        DescriptorSetBinding descriptor_write;
+        descriptor_write.texture_handle = imageInfo;
+        descriptor_write.descriptor_binding = binding;
+        descriptor_write.descriptor_type = m_descriptor_layout.m_bindings[binding].descriptor_type;
+        m_descriptor_writes.push_back(descriptor_write);
+
+        return *this;
+    }
+
+    bool DescriptorSetUpdater::UpdateDescriptorSet(const DescriptorSetHandle& sets)
+    {
+        bool success = true;
+        // Allocate descriptor
+        success = success && m_render_device->UpdateDescriptorSetResources(sets, m_descriptor_writes);
+        if (!success) { return false; }
+
+        return success;
+    }
 }

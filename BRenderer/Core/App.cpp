@@ -5,6 +5,7 @@
 #include <Scene/Components/Mesh3DComponent.h>
 
 #include "Importer/Importer.h"
+#include "Scene/Components/LightComponents.h"
 
 
 namespace brr
@@ -37,6 +38,9 @@ namespace brr
 		m_scene->InitSceneRenderer();
 
 		m_window_manager->GetMainWindow()->SetScene(m_scene.get());
+
+		brr::Entity light_entity = m_scene->Add3DEntity({});
+		light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(1.0, 0.8, 0.8), 2.0);
 
 		brr::SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", m_scene.get());
 	}
@@ -88,7 +92,13 @@ namespace brr
 				break;
 			}
 			case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.
-			case SDL_KEYDOWN: break;
+		    case SDL_KEYDOWN: 
+				if (pEvent.key.keysym.sym == SDL_KeyCode::SDLK_l)
+				{
+				    brr::Entity light_entity = m_scene->Add3DEntity({});
+		            light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, -3.0), glm::vec3(0.7, 0.7, 1.0), 3.0);
+				}
+				break;
 			case SDL_KEYUP: break;
 			case SDL_TEXTEDITING: break;
 			case SDL_TEXTINPUT: break;
