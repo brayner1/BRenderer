@@ -102,8 +102,43 @@ namespace brr::vis
 		point_light.light_type = 0;
 		point_light.light_color = glm::vec4(color, 1.0);
 		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(point_light));
-		BRR_LogInfo("Created new PointLight. LightId: {}", static_cast<uint64_t>(light_id));
+
 		m_camera_uniform_info.m_light_uniform_dirty.fill(true);
+
+		BRR_LogInfo("Created new PointLight. LightId: {}", static_cast<uint32_t>(light_id));
+		return light_id;
+    }
+
+    LightId SceneRenderer::CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity)
+    {
+		Light point_light;
+		point_light.light_position = glm::vec3(0.0);
+		point_light.light_intensity = intensity;
+		point_light.light_direction = direction;
+		point_light.light_type = 1;
+		point_light.light_color = glm::vec4(color, 1.0);
+		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(point_light));
+
+		m_camera_uniform_info.m_light_uniform_dirty.fill(true);
+
+		BRR_LogInfo("Created new DirectionalLight. LightId: {}", static_cast<uint32_t>(light_id));
+		return light_id;
+    }
+
+    LightId SceneRenderer::CreateSpotLight(const glm::vec3& position, float cutoff_angle, const glm::vec3& direction,
+        float intensity, const glm::vec3& color)
+    {
+		Light point_light;
+		point_light.light_position = position;
+		point_light.light_intensity = intensity;
+		point_light.light_direction = direction;
+		point_light.light_type = 2;
+		point_light.light_color = glm::vec4(color, std::cos(cutoff_angle));
+		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(point_light));
+
+		m_camera_uniform_info.m_light_uniform_dirty.fill(true);
+
+		BRR_LogInfo("Created new SpotLight. LightId: {}", static_cast<uint32_t>(light_id));
 		return light_id;
     }
 

@@ -35,7 +35,7 @@ namespace brr
 			const std::vector<Vertex3>& GetVertices() const { return m_vertices; }
 			const std::vector<uint32_t>& GetIndices() const { return m_indices; }
 
-			uint64_t GetRenderSurfaceID() const { return m_surfaceId; }
+			uint32_t GetRenderSurfaceID() const { return m_surfaceId; }
 
 		private:
 			friend class Mesh3DComponent;
@@ -43,7 +43,7 @@ namespace brr
 			std::vector<Vertex3>		  m_vertices{};
 			std::vector<uint32_t>		  m_indices{};
 
-			uint64_t m_surfaceId = -1;
+			uint32_t m_surfaceId = -1;
 		};
 
 		uint32_t AddSurface(const std::vector<Vertex3>& vertices, const std::vector<uint32_t>& indices);

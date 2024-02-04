@@ -7,7 +7,6 @@
 
 namespace brr
 {
-
 	struct PointLightComponent : public EntityComponent
 	{
 		PointLightComponent(const glm::vec3& position, const glm::vec3& color, float intensity);
@@ -19,6 +18,34 @@ namespace brr
         float m_intensity;
         glm::vec3 m_color;
         vis::LightId m_light_id = vis::LightId::NULL_ID;
+	};
+
+	struct DirectionalLightComponent : public EntityComponent
+	{
+	    DirectionalLightComponent(const glm::vec3& direction, const glm::vec3& color, float intensity);
+
+		void OnInit();
+
+	private:
+		glm::vec3 m_direction;
+		float m_intensity;
+		glm::vec3 m_color;
+		vis::LightId m_light_id = vis::LightId::NULL_ID;
+	};
+
+	struct SpotLightComponent : public EntityComponent
+	{
+	    SpotLightComponent(const glm::vec3& position, const glm::vec3& direction, float cuttof_angle, const glm::vec3 color, float intensity);
+
+		void OnInit();
+
+	private:
+		glm::vec3 m_position;
+		float m_cutoff_angle;
+		glm::vec3 m_direction;
+		float m_intensity;
+		glm::vec3 m_color;
+		vis::LightId m_light_id = vis::LightId::NULL_ID;
 	};
 }
 

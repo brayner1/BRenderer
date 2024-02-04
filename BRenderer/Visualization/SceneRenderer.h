@@ -12,14 +12,14 @@
 
 namespace brr::vis
 {
-    enum class SurfaceId : uint64_t
+    enum class SurfaceId : uint32_t
     {
-        NULL_ID = static_cast<uint64_t>(-1)
+        NULL_ID = static_cast<uint32_t>(-1)
     };
 
-    enum class LightId : uint64_t
+    enum class LightId : uint32_t
     {
-        NULL_ID = static_cast<uint64_t>(-1)
+        NULL_ID = static_cast<uint32_t>(-1)
     };
 
     class SceneRenderer
@@ -34,6 +34,11 @@ namespace brr::vis
         void RemoveSurface(SurfaceId surface_id);
 
         LightId CreatePointLight(const glm::vec3& position, const glm::vec3& color, float intensity);
+
+        LightId CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity);
+
+        LightId CreateSpotLight(const glm::vec3& position, float cutoff_angle, const glm::vec3& direction,
+                                float intensity, const glm::vec3& color);
 
         void BeginRender();
 

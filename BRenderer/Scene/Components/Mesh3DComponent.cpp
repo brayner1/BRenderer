@@ -46,7 +46,7 @@ namespace brr
         SurfaceData& new_surface = m_surfaces.emplace_back(vertices, indices);
         if (!new_surface.GetVertices().empty())
         {
-            new_surface.m_surfaceId = static_cast<uint64_t>(GetScene()->GetSceneRenderer()->CreateNewSurface(
+            new_surface.m_surfaceId = static_cast<uint32_t>(GetScene()->GetSceneRenderer()->CreateNewSurface(
                 new_surface, GetEntity()));
         }
         return m_surfaces.size() - 1;
@@ -58,7 +58,7 @@ namespace brr
         SurfaceData& new_surface = m_surfaces.emplace_back(std::forward<SurfaceData&&>(surface));
         if (!new_surface.GetVertices().empty())
         {
-            new_surface.m_surfaceId = static_cast<uint64_t>(GetScene()->GetSceneRenderer()->CreateNewSurface(
+            new_surface.m_surfaceId = static_cast<uint32_t>(GetScene()->GetSceneRenderer()->CreateNewSurface(
                 new_surface, GetEntity()));
         }
         return m_surfaces.size() - 1;
