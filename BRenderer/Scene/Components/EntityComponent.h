@@ -14,6 +14,10 @@ namespace brr
 
         EntityComponent () {}
 
+        EntityComponent(EntityComponent&& other) noexcept;
+
+        EntityComponent& operator=(EntityComponent&& other) noexcept;
+
         Scene* GetScene() const { return m_entity.GetScene(); }
 
         Entity GetEntity() const { return m_entity; }

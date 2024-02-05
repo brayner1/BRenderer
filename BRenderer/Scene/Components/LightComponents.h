@@ -9,9 +9,25 @@ namespace brr
 {
 	struct PointLightComponent : public EntityComponent
 	{
-		PointLightComponent(const glm::vec3& position, const glm::vec3& color, float intensity);
+		PointLightComponent(const glm::vec3& position, const glm::vec3& color, float intensity) noexcept;
+		PointLightComponent(PointLightComponent&& other) noexcept;
+
+		~PointLightComponent();
+
+		PointLightComponent& operator=(PointLightComponent&& other) noexcept;
 
 		void OnInit();
+
+	public:
+
+		const glm::vec3& GetPosition() const { return m_position; }
+		void SetPosition(const glm::vec3& position);
+
+		float GetIntensity() const { return m_intensity; }
+		void SetIntensity(float intensity);
+
+		const glm::vec3& GetColor() const { return m_color; }
+		void SetColor(const glm::vec3& color);
 
 	private:
         glm::vec3 m_position;
@@ -22,9 +38,25 @@ namespace brr
 
 	struct DirectionalLightComponent : public EntityComponent
 	{
-	    DirectionalLightComponent(const glm::vec3& direction, const glm::vec3& color, float intensity);
+	    DirectionalLightComponent(const glm::vec3& direction, const glm::vec3& color, float intensity) noexcept;
+		DirectionalLightComponent(DirectionalLightComponent&& other) noexcept;
+
+		~DirectionalLightComponent();
+
+		DirectionalLightComponent& operator=(DirectionalLightComponent&& other) noexcept;
 
 		void OnInit();
+
+	public:
+
+		const glm::vec3& GetDirection() const { return m_direction; }
+		void SetDirection(const glm::vec3& direction);
+
+		float GetIntensity() const { return m_intensity; }
+		void SetIntensity(float intensity);
+
+		const glm::vec3& GetColor() const { return m_color; }
+		void SetColor(const glm::vec3& color);
 
 	private:
 		glm::vec3 m_direction;
@@ -35,9 +67,31 @@ namespace brr
 
 	struct SpotLightComponent : public EntityComponent
 	{
-	    SpotLightComponent(const glm::vec3& position, const glm::vec3& direction, float cuttof_angle, const glm::vec3 color, float intensity);
+	    SpotLightComponent(const glm::vec3& position, const glm::vec3& direction, float cuttof_angle, const glm::vec3 color, float intensity) noexcept;
+		SpotLightComponent(SpotLightComponent&& other) noexcept;
+
+		~SpotLightComponent();
+
+		SpotLightComponent& operator=(SpotLightComponent&& other) noexcept;
 
 		void OnInit();
+
+	public:
+
+		const glm::vec3& GetPosition() const { return m_position; }
+		void SetPosition(const glm::vec3& position);
+
+		const glm::vec3& GetDirection() const { return m_direction; }
+		void SetDirection(const glm::vec3& direction);
+
+		float GetCutoffAngle() const { return m_cutoff_angle; }
+		void SetCutoffAngle(float cutoff_angle);
+
+		float GetIntensity() const { return m_intensity; }
+		void SetIntensity(float intensity);
+
+		const glm::vec3& GetColor() const { return m_color; }
+		void SetColor(const glm::vec3& color);
 
 	private:
 		glm::vec3 m_position;

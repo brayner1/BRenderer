@@ -16,6 +16,7 @@ namespace brr
 
 	private:
 		friend struct Transform3DComponent;
+		friend class Scene;
 
 		void SetParent(NodeComponent* parent);
 		void RemoveChild(NodeComponent* child);

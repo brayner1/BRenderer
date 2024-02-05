@@ -5,6 +5,18 @@
 #include <Scene/Components/Transform3DComponent.h>
 #include <Core/LogSystem.h>
 
+#define MAX_LIGHTS 256
+
+struct CameraUniform
+{
+    glm::mat4 projection_view{ 1.f };
+};
+
+struct Transform3DUniform
+{
+    glm::mat4 model_matrix;
+};
+
 namespace brr::vis
 {
     SceneRenderer::SceneRenderer(Scene* scene)
@@ -96,50 +108,88 @@ namespace brr::vis
     LightId SceneRenderer::CreatePointLight(const glm::vec3& position, const glm::vec3& color, float intensity)
     {
 		Light point_light;
+		point_light.light_type = 0;
 		point_light.light_position = position;
 		point_light.light_intensity = intensity;
-		point_light.light_direction = glm::vec3(0.0, -1.0, 0.0);
-		point_light.light_type = 0;
-		point_light.light_color = glm::vec4(color, 1.0);
-		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(point_light));
-
-		m_camera_uniform_info.m_light_uniform_dirty.fill(true);
+		point_light.light_color = color;
+		LightId light_id = CreateNewLight(std::move(point_light));
 
 		BRR_LogInfo("Created new PointLight. LightId: {}", static_cast<uint32_t>(light_id));
 		return light_id;
     }
 
+    void SceneRenderer::UpdatePointLight(LightId light_id, const glm::vec3& position, const glm::vec3& color,
+        float intensity)
+    {
+		Light& point_light = m_scene_lights.Get(static_cast<ContiguousPool<Light>::ObjectId>(light_id));
+		point_light.light_position = position;
+		point_light.light_color = color;
+		point_light.light_intensity = intensity;
+
+		m_camera_uniform_info.m_light_storage_dirty.fill(true);
+    }
+
     LightId SceneRenderer::CreateDirectionalLight(const glm::vec3& direction, const glm::vec3& color, float intensity)
     {
-		Light point_light;
-		point_light.light_position = glm::vec3(0.0);
-		point_light.light_intensity = intensity;
-		point_light.light_direction = direction;
-		point_light.light_type = 1;
-		point_light.light_color = glm::vec4(color, 1.0);
-		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(point_light));
-
-		m_camera_uniform_info.m_light_uniform_dirty.fill(true);
+		Light directional_light;
+		directional_light.light_type = 1;
+		directional_light.light_intensity = intensity;
+		directional_light.light_direction = direction;
+		directional_light.light_color = color;
+		LightId light_id = CreateNewLight(std::move(directional_light));
 
 		BRR_LogInfo("Created new DirectionalLight. LightId: {}", static_cast<uint32_t>(light_id));
 		return light_id;
     }
 
-    LightId SceneRenderer::CreateSpotLight(const glm::vec3& position, float cutoff_angle, const glm::vec3& direction,
-        float intensity, const glm::vec3& color)
+    void SceneRenderer::UpdateDirectionalLight(LightId light_id, const glm::vec3& direction, const glm::vec3& color,
+        float intensity)
     {
-		Light point_light;
-		point_light.light_position = position;
-		point_light.light_intensity = intensity;
-		point_light.light_direction = direction;
-		point_light.light_type = 2;
-		point_light.light_color = glm::vec4(color, std::cos(cutoff_angle));
-		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(point_light));
+		Light& directional_light = m_scene_lights.Get(static_cast<ContiguousPool<Light>::ObjectId>(light_id));
+		directional_light.light_intensity = intensity;
+		directional_light.light_direction = direction;
+		directional_light.light_color = color;
 
-		m_camera_uniform_info.m_light_uniform_dirty.fill(true);
+		m_camera_uniform_info.m_light_storage_dirty.fill(true);
+    }
+
+    LightId SceneRenderer::CreateSpotLight(const glm::vec3& position, float cutoff_angle, const glm::vec3& direction,
+                                           float intensity, const glm::vec3& color)
+    {
+		Light spot_light;
+		spot_light.light_type = 2;
+		spot_light.light_position = position;
+		spot_light.light_intensity = intensity;
+		spot_light.light_direction = direction;
+		spot_light.light_color = color;
+        spot_light.light_cutoff = std::cos(cutoff_angle);
+		LightId light_id = CreateNewLight(std::move(spot_light));
 
 		BRR_LogInfo("Created new SpotLight. LightId: {}", static_cast<uint32_t>(light_id));
 		return light_id;
+    }
+
+    void SceneRenderer::UpdateSpotLight(LightId light_id, const glm::vec3& position, float cutoff_angle,
+        const glm::vec3& direction, float intensity, const glm::vec3& color)
+    {
+		Light& spot_light = m_scene_lights.Get(static_cast<ContiguousPool<Light>::ObjectId>(light_id));
+		spot_light.light_position = position;
+		spot_light.light_intensity = intensity;
+		spot_light.light_direction = direction;
+		spot_light.light_color = color;
+        spot_light.light_cutoff = std::cos(cutoff_angle);
+
+		m_camera_uniform_info.m_light_storage_dirty.fill(true);
+    }
+
+    void SceneRenderer::RemoveLight(LightId light_id)
+    {
+		m_scene_lights.RemoveObject(static_cast<ContiguousPool<Light>::ObjectId>(light_id));
+
+        m_camera_uniform_info.m_light_storage_dirty.fill(true);
+        m_camera_uniform_info.m_light_storage_size_changed.fill(true);
+
+		BRR_LogInfo("Removed Light. LightId: {}", static_cast<uint32_t>(light_id));
     }
 
     void SceneRenderer::BeginRender()
@@ -171,7 +221,7 @@ namespace brr::vis
 					render_data.m_uniform_dirty.fill(true);
 				}
 
-				Mesh3DUniform uniform{};
+				Transform3DUniform uniform{};
 				uniform.model_matrix = transform.GetGlobalTransform();
 
 				render_data.m_uniform_buffers[m_current_buffer].Map();
@@ -189,19 +239,24 @@ namespace brr::vis
 		m_camera_uniform_info.m_camera_uniforms[m_current_buffer].WriteToBuffer(&ubo, sizeof(ubo));
 		m_camera_uniform_info.m_camera_uniforms[m_current_buffer].Unmap();
 
-		if (m_camera_uniform_info.m_light_uniform_dirty[m_current_buffer])
+		if (m_camera_uniform_info.m_light_storage_dirty[m_current_buffer])
 		{
-			m_camera_uniform_info.m_light_uniform_dirty[m_current_buffer] = false;
+			m_camera_uniform_info.m_light_storage_dirty[m_current_buffer] = false;
 
 			m_camera_uniform_info.m_lights_buffers[m_current_buffer].Map();
 		    m_camera_uniform_info.m_lights_buffers[m_current_buffer].WriteToBuffer(m_scene_lights.Data(), m_scene_lights.Size() * sizeof(Light));
 		    m_camera_uniform_info.m_lights_buffers[m_current_buffer].Unmap();
 
-			render::DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
-			auto setBuilder = render::DescriptorSetUpdater(layout);
-		    setBuilder.BindBuffer(1, m_camera_uniform_info.m_lights_buffers[m_current_buffer].GetHandle(), m_scene_lights.Size() * sizeof(Light));
+			if (m_camera_uniform_info.m_light_storage_size_changed[m_current_buffer])
+			{
+				m_camera_uniform_info.m_light_storage_size_changed[m_current_buffer] = false;
 
-		    setBuilder.UpdateDescriptorSet(m_camera_uniform_info.m_descriptor_sets[m_current_buffer]);
+			    render::DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
+			    auto setBuilder = render::DescriptorSetUpdater(layout);
+			    setBuilder.BindBuffer(1, m_camera_uniform_info.m_lights_buffers[m_current_buffer].GetHandle(), m_scene_lights.Size() * sizeof(Light));
+
+			    setBuilder.UpdateDescriptorSet(m_camera_uniform_info.m_descriptor_sets[m_current_buffer]);
+			}
 		}
     }
 
@@ -239,7 +294,7 @@ namespace brr::vis
 					                 render::BufferUsage::UniformBuffer | render::BufferUsage::HostAccessSequencial,
                                      render::MemoryUsage::AUTO);
 			m_camera_uniform_info.m_lights_buffers[idx] =
-				render::DeviceBuffer(sizeof(Light) * 256,
+				render::DeviceBuffer(sizeof(Light) * MAX_LIGHTS,
 					                 render::BufferUsage::StorageBuffer | render::BufferUsage::HostAccessSequencial,
                                      render::MemoryUsage::AUTO);
 		}
@@ -282,7 +337,7 @@ namespace brr::vis
 
 	void SceneRenderer::InitRenderDataUniforms(RenderData& render_data)
 	{
-		size_t buffer_size = sizeof(Mesh3DUniform);
+		size_t buffer_size = sizeof(Transform3DUniform);
 
 		BRR_LogInfo("Creating Uniform Buffers");
 		for (uint32_t i = 0; i < render::FRAME_LAG; i++)
@@ -309,6 +364,21 @@ namespace brr::vis
 		}
 		BRR_LogInfo("Uniform Buffers created.");
 	}
+
+    LightId SceneRenderer::CreateNewLight(Light&& new_light)
+    {
+		// TODO: Recreate lights buffer when adding more than MAX_LIGHTS
+		if (m_scene_lights.Size() == MAX_LIGHTS)
+		{
+		    BRR_LogError("Currently it is not possible to add more than 256 lights for rendering.");
+			return LightId::NULL_ID;
+		}
+		LightId light_id = static_cast<LightId>(m_scene_lights.AddNewObject(std::move(new_light)));
+
+		m_camera_uniform_info.m_light_storage_dirty.fill(true);
+		m_camera_uniform_info.m_light_storage_size_changed.fill(true);
+		return light_id;
+    }
 
     void SceneRenderer::CreateVertexBuffer(std::vector<Vertex3>& vertex_buffer, RenderData& render_data)
     {

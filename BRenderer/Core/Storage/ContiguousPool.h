@@ -1,5 +1,7 @@
 #ifndef BRR_DYNAMICPOOL_H
 #define BRR_DYNAMICPOOL_H
+#include <Core/LogSystem.h>
+
 #include <cassert>
 #include <cstdint>
 #include <vector>
@@ -126,7 +128,12 @@ namespace brr
     template <typename T>
     void ContiguousPool<T>::RemoveObject(ObjectId object_id)
     {
-        assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
+        //assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
+        if (!m_object_index_map.contains(object_id))
+        {
+            BRR_LogError("Need to pass valid ObjectId. Passed ObjectId '{}' does not exist is this ContiguousPool.", uint32_t(object_id));
+            return;
+        }
 
         const uint32_t last_index = m_active_count - 1;
         const uint32_t index = m_object_index_map.at(object_id);

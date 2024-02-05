@@ -1,3 +1,4 @@
+#include <random>
 #include <Core/App.h>
 #include <Core/LogSystem.h>
 #include <Scene/Scene.h>
@@ -7,7 +8,8 @@
 #include "Importer/Importer.h"
 #include "Scene/Components/LightComponents.h"
 
-
+static bool isLightOn = false;
+static brr::Entity light_entity;
 namespace brr
 {
 	App::App() : m_scene(nullptr)
@@ -92,14 +94,30 @@ namespace brr
 				break;
 			}
 			case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.
-		    case SDL_KEYDOWN: 
+		case SDL_KEYDOWN: 
 				if (pEvent.key.keysym.sym == SDL_KeyCode::SDLK_l)
 				{
-				    brr::Entity light_entity = m_scene->Add3DEntity({});
-		            //light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, -3.0), glm::vec3(0.7, 0.7, 1.0), 3.0);
-                    //light_entity.AddComponent<SpotLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(0.0, -1.0, 0.0),
-                    //                                              glm::radians(45.0/2.0), glm::vec3(1.0), 3.0);
-					light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(0.0, -0.42, 0.91), glm::vec3(1.0), 1.0);
+					if (!isLightOn)
+					{
+						isLightOn = true;
+					    light_entity = m_scene->Add3DEntity({});
+					    //light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, -3.0), glm::vec3(0.7, 0.7, 1.0), 3.0);
+					    light_entity.AddComponent<SpotLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(0.0, -1.0, 0.0),
+					                                                  glm::radians(45.0/2.0), glm::vec3(1.0), 3.0);
+					    //light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(0.0, -0.42, 0.91), glm::vec3(1.0), 1.0);
+					}
+					else
+					{
+						isLightOn = false;
+					    m_scene->RemoveEntity(light_entity);
+					}
+				}
+				else if (pEvent.key.keysym.sym == SDL_KeyCode::SDLK_u)
+				{
+				    SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
+					static std::default_random_engine random_engine;
+					std::uniform_real_distribution<float> distrib (0.0, 1.0);
+					spot_light.SetColor({distrib(random_engine), distrib(random_engine), distrib(random_engine)});
 				}
 				break;
 			case SDL_KEYUP: break;

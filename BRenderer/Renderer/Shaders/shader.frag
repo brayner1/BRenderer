@@ -20,7 +20,8 @@ struct Light
     float   light_intensity;
     vec3    light_direction;
     uint    light_type;
-    vec4    light_color;
+    vec3    light_color;
+    float   spotlight_cutoff;
 };
 
 layout(set = 0, binding = 1) buffer Lights
@@ -30,7 +31,8 @@ layout(set = 0, binding = 1) buffer Lights
 
 vec4 ComputeDirectionalLightIntensity(vec3 normal, Light light)
 {
-    return light.light_color * light.light_intensity * max(0.0, dot(normal, -light.light_direction));
+    vec4 light_color = vec4(light.light_color, 1.0);
+    return light_color * light.light_intensity * max(0.0, dot(normal, -light.light_direction));
 }
 
 vec4 ComputePointLightIntensity(vec3 position, vec3 normal, Light light)
@@ -38,7 +40,8 @@ vec4 ComputePointLightIntensity(vec3 position, vec3 normal, Light light)
     vec3 light_dir = light.light_position - position;
     float light_distance = length(light_dir);
     light_dir = normalize(light_dir); // normalize light direction
-    return light.light_color * light.light_intensity * max(0.0, dot(normal, light_dir)) / (light_distance * light_distance);
+    vec4 light_color = vec4(light.light_color, 1.0);
+    return light_color * light.light_intensity * max(0.0, dot(normal, light_dir)) / (light_distance * light_distance);
 }
 
 vec4 ComputeSpotLightIntensity(vec3 position, vec3 normal, Light light)
@@ -46,11 +49,10 @@ vec4 ComputeSpotLightIntensity(vec3 position, vec3 normal, Light light)
     vec3 light_dir = normalize(light.light_position - position);
 
     float spot_factor = dot(-light_dir, light.light_direction);
-    float cuttof_cos = light.light_color.w;
 
-    if (spot_factor > cuttof_cos)
+    if (spot_factor > light.spotlight_cutoff)
     {
-        vec4 light_color = vec4(light.light_color.xyz, 1.0);
+        vec4 light_color = vec4(light.light_color, 1.0);
         return light_color * light.light_intensity * max(0.0, dot(normal, light_dir)) * (1.0 - (1.0 - spot_factor) / (1.0 - cuttof_cos));
     }
 
