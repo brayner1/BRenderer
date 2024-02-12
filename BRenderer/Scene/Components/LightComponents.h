@@ -101,6 +101,32 @@ namespace brr
 		glm::vec3 m_color;
 		vis::LightId m_light_id = vis::LightId::NULL_ID;
 	};
+
+	struct AmbientLightComponent : public EntityComponent
+	{
+	    AmbientLightComponent(const glm::vec3& color, float intensity);
+		AmbientLightComponent(AmbientLightComponent&& other) noexcept;
+
+		~AmbientLightComponent();
+
+		AmbientLightComponent& operator=(AmbientLightComponent&& other) noexcept;
+
+		void OnInit();
+
+	public:
+
+		const glm::vec3& GetColor() const { return m_color; }
+		void SetColor(const glm::vec3& color);
+
+        float GetIntensity() const { return m_intensity; }
+		void SetIntensity(float intensity);
+
+	private:
+
+		glm::vec3 m_color;
+		float m_intensity;
+		vis::LightId m_light_id = vis::LightId::NULL_ID;
+	};
 }
 
 #endif

@@ -182,6 +182,27 @@ namespace brr::vis
 		m_camera_uniform_info.m_light_storage_dirty.fill(true);
     }
 
+    LightId SceneRenderer::CreateAmbientLight(const glm::vec3& color, float intensity)
+    {
+		Light ambient_light;
+		ambient_light.light_type = 3;
+		ambient_light.light_intensity = intensity;
+		ambient_light.light_color = color;
+		LightId light_id = CreateNewLight(std::move(ambient_light));
+
+		BRR_LogInfo("Created new AmbientLight. LightId: {}", static_cast<uint32_t>(light_id));
+		return light_id;
+    }
+
+    void SceneRenderer::UpdateAmbientLight(LightId light_id, const glm::vec3& color, float intensity)
+    {
+		Light& ambient_light = m_scene_lights.Get(static_cast<ContiguousPool<Light>::ObjectId>(light_id));
+		ambient_light.light_intensity = intensity;
+		ambient_light.light_color = color;
+
+		m_camera_uniform_info.m_light_storage_dirty.fill(true);
+    }
+
     void SceneRenderer::RemoveLight(LightId light_id)
     {
 		m_scene_lights.RemoveObject(static_cast<ContiguousPool<Light>::ObjectId>(light_id));

@@ -23,11 +23,11 @@ namespace brr
 
     PointLightComponent& PointLightComponent::operator=(PointLightComponent&& other) noexcept
     {
-        EntityComponent::operator=(std::move(other));
         m_position = other.m_position;
         m_intensity = other.m_intensity;
         m_color = other.m_color;
         m_light_id = other.m_light_id;
+        EntityComponent::operator=(std::move(other));
 
         other.m_light_id = vis::LightId::NULL_ID;
         return *this;
@@ -87,11 +87,11 @@ namespace brr
 
     DirectionalLightComponent& DirectionalLightComponent::operator=(DirectionalLightComponent&& other) noexcept
     {
-        EntityComponent::operator=(std::move(other));
         m_direction = other.m_direction;
         m_intensity = other.m_intensity;
         m_color = other.m_color;
         m_light_id = other.m_light_id;
+        EntityComponent::operator=(std::move(other));
 
         other.m_light_id = vis::LightId::NULL_ID;
         return *this;
@@ -152,13 +152,13 @@ namespace brr
 
     SpotLightComponent& SpotLightComponent::operator=(SpotLightComponent&& other) noexcept
     {
-        EntityComponent::operator=(std::move(other));
         m_position = other.m_position;
         m_cutoff_angle = other.m_cutoff_angle;
         m_direction = other.m_direction;
         m_intensity = other.m_intensity;
         m_color = other.m_color;
         m_light_id = other.m_light_id;
+        EntityComponent::operator=(std::move(other));
 
         other.m_light_id = vis::LightId::NULL_ID;
         return *this;
@@ -211,6 +211,59 @@ namespace brr
         {
             m_color = color;
             GetScene()->GetSceneRenderer()->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+        }
+    }
+
+    AmbientLightComponent::AmbientLightComponent(const glm::vec3& color, float intensity)
+    : m_color(color), m_intensity(intensity)
+    {
+    }
+
+    AmbientLightComponent::AmbientLightComponent(AmbientLightComponent&& other) noexcept
+    {
+        *this = std::move(other);
+    }
+
+    AmbientLightComponent::~AmbientLightComponent()
+    {
+        if (m_light_id != vis::LightId::NULL_ID)
+        {
+            GetScene()->GetSceneRenderer()->RemoveLight(m_light_id);
+            m_light_id = vis::LightId::NULL_ID;
+        }
+    }
+
+    AmbientLightComponent& AmbientLightComponent::operator=(AmbientLightComponent&& other) noexcept
+    {
+        m_intensity = other.m_intensity;
+        m_color = other.m_color;
+        m_light_id = other.m_light_id;
+        EntityComponent::operator=(std::move(other));
+
+        other.m_light_id = vis::LightId::NULL_ID;
+        return *this;
+    }
+
+    void AmbientLightComponent::OnInit()
+    {
+        m_light_id = GetScene()->GetSceneRenderer()->CreateAmbientLight(m_color, m_intensity);
+    }
+
+    void AmbientLightComponent::SetColor(const glm::vec3& color)
+    {
+        if (m_color != color)
+        {
+            m_color = color;
+            GetScene()->GetSceneRenderer()->UpdateAmbientLight(m_light_id, m_color, m_intensity);
+        }
+    }
+
+    void AmbientLightComponent::SetIntensity(float intensity)
+    {
+        if (m_intensity != intensity)
+        {
+            m_intensity = intensity;
+            GetScene()->GetSceneRenderer()->UpdateAmbientLight(m_light_id, m_color, m_intensity);
         }
     }
 }

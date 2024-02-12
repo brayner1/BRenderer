@@ -105,6 +105,7 @@ namespace brr
 					    light_entity.AddComponent<SpotLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(0.0, -1.0, 0.0),
 					                                                  glm::radians(45.0/2.0), glm::vec3(1.0), 3.0);
 					    //light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(0.0, -0.42, 0.91), glm::vec3(1.0), 1.0);
+					    //light_entity.AddComponent<AmbientLightComponent>(glm::vec3(0.2, 0.2, 0.2), 1);
 					}
 					else
 					{

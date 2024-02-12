@@ -57,6 +57,10 @@ namespace brr::vis
                              const glm::vec3& direction,
                              float intensity, const glm::vec3& color);
 
+        LightId CreateAmbientLight(const glm::vec3& color, float intensity);
+
+        void UpdateAmbientLight(LightId light_id, const glm::vec3& color, float intensity);
+
         void RemoveLight(LightId light_id);
 
         //-------------------------//

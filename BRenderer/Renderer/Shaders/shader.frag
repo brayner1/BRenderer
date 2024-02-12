@@ -3,6 +3,7 @@
 #define LIGHT_TYPE_POINT       0
 #define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_SPOT        2
+#define LIGHT_TYPE_AMBIENT     3
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
@@ -53,10 +54,16 @@ vec4 ComputeSpotLightIntensity(vec3 position, vec3 normal, Light light)
     if (spot_factor > light.spotlight_cutoff)
     {
         vec4 light_color = vec4(light.light_color, 1.0);
-        return light_color * light.light_intensity * max(0.0, dot(normal, light_dir)) * (1.0 - (1.0 - spot_factor) / (1.0 - cuttof_cos));
+        return light_color * light.light_intensity * max(0.0, dot(normal, light_dir)) * (1.0 - (1.0 - spot_factor) / (1.0 - light.spotlight_cutoff));
     }
 
     return vec4(0.0);
+}
+
+vec4 ComputeAmbientLightIntensity(Light light)
+{
+    vec4 light_color = vec4(light.light_color, 1.0);
+    return light_color * light.light_intensity;
 }
 
 vec4 ComputeLighting(vec3 position, vec3 normal, Light light)
@@ -72,6 +79,10 @@ vec4 ComputeLighting(vec3 position, vec3 normal, Light light)
     else if (light.light_type == LIGHT_TYPE_SPOT)
     {
         return ComputeSpotLightIntensity(position, normal, light);
+    }
+    else if (light.light_type == LIGHT_TYPE_AMBIENT)
+    {
+        return ComputeAmbientLightIntensity(light);
     }
 }
 
