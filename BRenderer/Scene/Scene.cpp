@@ -44,4 +44,27 @@ namespace brr
 
 		return Entity{new_entity, this};
 	}
+
+    void Scene::RemoveEntity(Entity entity)
+    {
+		if (!m_registry.valid(entity.m_entity))
+		{
+		    BRR_LogError("Trying to remove invalid entity. Entity Id '{}' is not valid.", uint32_t(entity.m_entity));
+			return;
+		}
+
+		NodeComponent& node = entity.GetComponent<NodeComponent>();
+
+        if (NodeComponent* parent_node = node.GetParentNode())
+		{
+		    parent_node->RemoveChild(&node);
+		}
+
+		for (NodeComponent* children : node.GetChildren())
+		{
+		    RemoveEntity(children->GetEntity());
+		}
+
+		m_registry.destroy(entity.m_entity);
+    }
 }

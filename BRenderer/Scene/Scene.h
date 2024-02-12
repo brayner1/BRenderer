@@ -23,6 +23,8 @@ namespace brr
 
 		Entity Add3DEntity(Entity parent);
 
+		void RemoveEntity(Entity entity);
+
 		PerspectiveCamera* GetMainCamera() const { return m_camera.get(); }
 
 		vis::SceneRenderer* GetSceneRenderer() const { return m_scene_renderer.get(); }

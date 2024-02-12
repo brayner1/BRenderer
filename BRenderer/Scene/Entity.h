@@ -51,6 +51,7 @@ namespace brr
 		assert(!m_scene->m_registry.all_of<T>(m_entity) && "Entities can't have two or more components of the same type.");
 		T& component = m_scene->m_registry.emplace<T>(m_entity, std::forward<Args>(args)...);
 		component.Init(Entity{m_entity, m_scene });
+		component.OnInit();
 
 		return component;
 	}

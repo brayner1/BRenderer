@@ -304,19 +304,102 @@ namespace brr::render
         m_device.waitIdle();
     }
 
-    /*********************************
-     * Descriptor Builders Functions *
-     *********************************/
+    /************************
+     * Descriptor Functions *
+     ************************/
 
-    DescriptorLayoutBuilder VulkanRenderDevice::GetDescriptorLayoutBuilder() const
+    DescriptorLayoutHandle VulkanRenderDevice::CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings)
     {
-        return DescriptorLayoutBuilder::MakeDescriptorLayoutBuilder(const_cast<VulkanRenderDevice*>(this));
+        return m_descriptor_layout_cache->CreateDescriptorLayout(descriptor_layout_bindings);
     }
 
-    DescriptorSetBuilder<FRAME_LAG> VulkanRenderDevice::GetDescriptorSetBuilder(const DescriptorLayout& layout) const
+    std::vector<DescriptorSetHandle> VulkanRenderDevice::AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
+                                                                               uint32_t number_sets)
     {
-        return DescriptorSetBuilder<FRAME_LAG>::MakeDescriptorSetBuilder(layout, 
-                                                                         const_cast<VulkanRenderDevice*>(this));
+        vk::DescriptorSetLayout descriptor_set_layout = m_descriptor_layout_cache->GetDescriptorLayout(descriptor_layout);
+        std::vector<vk::DescriptorSetLayout> vk_layouts (number_sets, descriptor_set_layout);
+
+        std::vector<vk::DescriptorSet> descriptor_sets;
+        bool success = m_descriptor_allocator->Allocate (vk_layouts, descriptor_sets);
+        if (!success)
+        {
+            BRR_LogError("DescriptorSet allocation failed.");
+            return {};
+        }
+
+        std::vector<DescriptorSetHandle> descriptor_sets_handles (number_sets, null_handle);
+        for (uint32_t idx = 0; idx < number_sets; idx++)
+        {
+            descriptor_sets_handles[idx] = m_descriptor_set_alloc.CreateResource();
+            DescriptorSet* descriptor_set = m_descriptor_set_alloc.GetResource(descriptor_sets_handles[idx]);
+
+            descriptor_set->descriptor_set = descriptor_sets[idx];
+        }
+
+        return descriptor_sets_handles;
+    }
+
+    bool VulkanRenderDevice::UpdateDescriptorSetResources(DescriptorSetHandle descriptor_set_handle,
+                                                          const std::vector<DescriptorSetBinding>& shader_bindings)
+    {
+        DescriptorSet* descriptor_set = m_descriptor_set_alloc.GetResource(descriptor_set_handle);
+        if (!descriptor_set)
+        {
+            return false;
+        }
+
+        std::vector<vk::WriteDescriptorSet> descriptor_writes (shader_bindings.size());
+        std::vector<vk::DescriptorBufferInfo> desc_buffer_infos;
+        desc_buffer_infos.reserve(shader_bindings.size());
+        std::vector<vk::DescriptorImageInfo> desc_image_infos;
+        desc_image_infos.reserve(shader_bindings.size());
+        for (uint32_t binding = 0; binding< descriptor_writes.size(); binding++)
+        {
+            vk::DescriptorType descriptor_type = VkHelpers::VkDescriptorTypeFromDescriptorType(shader_bindings[binding].descriptor_type);
+
+            vk::WriteDescriptorSet& write = descriptor_writes[binding];
+            write
+                .setDstBinding(shader_bindings[binding].descriptor_binding)
+                .setDstSet(descriptor_set->descriptor_set)
+                .setDescriptorType(descriptor_type)
+                .setDescriptorCount(1);
+
+            if (shader_bindings[binding].buffer_handle != null_handle)
+            {
+                Buffer* buffer = m_buffer_alloc.GetResource(shader_bindings[binding].buffer_handle);
+                if (!buffer)
+                {
+                    BRR_LogError("Invalid BufferHandle passed as ShaderBinding. Could not update DescriptorSets succesfully.");
+                    break;
+                }
+
+                uint32_t buffer_size = shader_bindings[binding].buffer_size;
+                if (shader_bindings[binding].buffer_size > buffer->buffer_size)
+                {
+                    BRR_LogError("Trying to bind buffer with size bigger than the buffer total size. Reverting to buffer size.");
+                    buffer_size = buffer->buffer_size;
+                }
+                
+                vk::DescriptorBufferInfo& buffer_info = desc_buffer_infos.emplace_back(buffer->buffer, 0, buffer_size);
+
+                write.setBufferInfo(buffer_info);
+            }
+            if (shader_bindings[binding].texture_handle != null_handle)
+            {
+                Texture2D* image = m_texture2d_alloc.GetResource(shader_bindings[binding].texture_handle);
+                if (!image)
+                {
+                    BRR_LogError("Invalid Texture2DHandle passed as ShaderBinding. Could not update DescriptorSets succesfully.");
+                    break;
+                }
+                
+                vk::DescriptorImageInfo& image_info = desc_image_infos.emplace_back(m_texture2DSampler, image->image_view, image->image_layout);
+
+                write.setImageInfo(image_info);
+            }
+        }
+        m_device.updateDescriptorSets(descriptor_writes, {});
+        return true;
     }
 
     /********************
@@ -1368,96 +1451,6 @@ namespace brr::render
         Frame& current_frame = m_frames[m_current_buffer];
 
         current_frame.graphics_cmd_buffer.drawIndexed(num_indices, num_instances, first_index, vertex_offset, first_instance);
-    }
-
-    /************************
-     * Descriptor Functions *
-     ************************/
-
-    DescriptorLayoutHandle VulkanRenderDevice::CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings)
-    {
-        return m_descriptor_layout_cache->CreateDescriptorLayout(descriptor_layout_bindings);
-    }
-
-    std::vector<DescriptorSetHandle> VulkanRenderDevice::AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
-                                                                               uint32_t number_sets,
-                                                                               std::array<std::vector<
-                                                                                   DescriptorSetBinding>, FRAME_LAG>
-                                                                               shader_bindings)
-    {
-        vk::DescriptorSetLayout descriptor_set_layout = m_descriptor_layout_cache->GetDescriptorLayout(descriptor_layout);
-        std::vector<vk::DescriptorSetLayout> vk_layouts (number_sets, descriptor_set_layout);
-
-        std::vector<vk::DescriptorSet> descriptor_sets;
-        bool success = m_descriptor_allocator->Allocate (vk_layouts, descriptor_sets);
-        if (!success)
-        {
-            BRR_LogError("DescriptorSet allocation failed.");
-            return {};
-        }
-
-        std::vector<DescriptorSetHandle> descriptor_sets_handles (number_sets, null_handle);
-        for (uint32_t idx = 0; idx < number_sets; idx++)
-        {
-            descriptor_sets_handles[idx] = m_descriptor_set_alloc.CreateResource();
-            DescriptorSet* descriptor_set = m_descriptor_set_alloc.GetResource(descriptor_sets_handles[idx]);
-
-            descriptor_set->descriptor_set = descriptor_sets[idx];
-        }
-
-        for (uint32_t write_idx = 0; write_idx < number_sets; write_idx++)
-        {
-            std::vector<vk::WriteDescriptorSet> descriptor_writes (shader_bindings[write_idx].size());
-            for (uint32_t binding = 0; binding< descriptor_writes.size(); binding++)
-            {
-                vk::DescriptorType descriptor_type = VkHelpers::VkDescriptorTypeFromDescriptorType(shader_bindings[write_idx][binding].descriptor_type);
-
-                vk::WriteDescriptorSet& write = descriptor_writes[binding];
-                write
-                    .setDstBinding(binding)
-                    .setDstSet(descriptor_sets[write_idx])
-                    .setDescriptorType(descriptor_type)
-                    .setDescriptorCount(1);
-
-                if (shader_bindings[write_idx][binding].buffer_handle != null_handle)
-                {
-                    Buffer* buffer = m_buffer_alloc.GetResource(shader_bindings[write_idx][binding].buffer_handle);
-                    if (!buffer)
-                    {
-                        BRR_LogError("Invalid BufferHandle passed as ShaderBinding. Could not update DescriptorSets succesfully.");
-                        break;
-                    }
-                    
-                    vk::DescriptorBufferInfo buffer_info;
-                    buffer_info
-                        .setBuffer(buffer->buffer)
-                        .setOffset(0)
-                        .setRange(buffer->buffer_size);
-
-                    write.setBufferInfo(buffer_info);
-                }
-                if (shader_bindings[write_idx][binding].texture_handle != null_handle)
-                {
-                    Texture2D* image = m_texture2d_alloc.GetResource(shader_bindings[write_idx][binding].texture_handle);
-                    if (!image)
-                    {
-                        BRR_LogError("Invalid Texture2DHandle passed as ShaderBinding. Could not update DescriptorSets succesfully.");
-                        break;
-                    }
-                    
-                    vk::DescriptorImageInfo image_info;
-                    image_info
-                        .setImageView(image->image_view)
-                        .setSampler(m_texture2DSampler)
-                        .setImageLayout(image->image_layout);
-
-                    write.setImageInfo(image_info);
-                }
-            }
-            m_device.updateDescriptorSets(descriptor_writes, {});
-        }
-
-        return descriptor_sets_handles;
     }
 
     /******************************

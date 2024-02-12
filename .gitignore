@@ -35,9 +35,15 @@
 /.vs
 /CMakePresets.json
 
+# VS Code
+/.vscode
+
 # Build
 /out
 /CMakeSettings.json
 
 #shader spv files
 *.spv
+
+# Struct Layout Visual Studio Extension
+/StructLayoutSettings.json
