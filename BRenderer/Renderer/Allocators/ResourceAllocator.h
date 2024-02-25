@@ -14,7 +14,7 @@ namespace brr::render
 
         ResourceAllocator() = default;
 
-        ResourceHandle CreateResource();
+        ResourceHandle CreateResource(T** new_resource_ref = nullptr);
 
         bool DestroyResource(const ResourceHandle& handle);
 
@@ -52,7 +52,7 @@ namespace brr::render
     }
 
     template <typename T>
-    ResourceHandle ResourceAllocator<T>::CreateResource()
+    ResourceHandle ResourceAllocator<T>::CreateResource(T** new_resource_ref)
     {
         ResourceHandle handle;
 
@@ -72,6 +72,11 @@ namespace brr::render
             handle.validation = m_validation[free_idx] = ValidatorGen::GetNextValidation();
 
             m_resources[handle.index] = T();
+        }
+
+        if (new_resource_ref)
+        {
+            *new_resource_ref = &m_resources[handle.index];
         }
 
         return handle;

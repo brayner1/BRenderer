@@ -4,6 +4,8 @@
 #include <Renderer/DeviceSwapchain.h>
 #include <Renderer/Descriptors.h>
 
+#include "SceneRenderer.h"
+
 namespace brr{
     class Scene;
 	
@@ -30,7 +32,9 @@ namespace brr{
 
 			void Window_Resized();
 
-            void RenderWindow(SceneRenderer* scene_renderer);
+            void RenderWindow();
+
+			void SetSceneRenderer(SceneRenderer* scene_renderer);
 
 		private:
 			friend class WindowManager;
@@ -44,8 +48,14 @@ namespace brr{
 			// Window
 			Window* m_owner_window{};
 
+			ViewportId m_viewport = ViewportId::NULL_ID;
+
+			SceneRenderer* m_scene_renderer;
+
 			// DeviceSwapchain
 			std::unique_ptr<render::DeviceSwapchain> m_swapchain{};
+			std::vector<render::Texture2DHandle> m_swapchain_images;
+			uint32_t m_swapchain_current_image_idx;
 
             vk::Semaphore m_current_image_available_semaphore {};
 

@@ -22,6 +22,11 @@ namespace brr::vis
         NULL_ID = static_cast<uint32_t>(-1)
     };
 
+    enum class ViewportId : uint32_t
+    {
+        NULL_ID = static_cast<uint32_t>(-1)
+    };
+
     class SceneRenderer
     {
     public:
@@ -63,15 +68,23 @@ namespace brr::vis
 
         void RemoveLight(LightId light_id);
 
+        //------------------------//
+        //-- Viewport Functions --//
+        //------------------------//
+
+        ViewportId CreateViewport(glm::uvec2 viewport_size);
+
+        void ResizeViewport(ViewportId viewport_id, glm::uvec2 new_size);
+
+        void RemoveViewport(ViewportId viewport_id);
+
         //-------------------------//
         //-- Rendering Functions --//
         //-------------------------//
 
-        void BeginRender();
-
         void UpdateDirtyInstances();
 
-        void Render3D();
+        void Render3D(ViewportId viewport, render::Texture2DHandle render_target);
 
     private:
 
@@ -120,6 +133,15 @@ namespace brr::vis
 
         Scene* m_scene;
         render::VulkanRenderDevice* m_render_device = nullptr;
+
+        struct Viewport
+        {
+            uint32_t width, heigth;
+            std::array<render::Texture2DHandle, render::FRAME_LAG> color_attachment {};
+            std::array<render::Texture2DHandle, render::FRAME_LAG> depth_attachment {};
+        };
+
+        ContiguousPool<Viewport> m_viewports;
 
         uint32_t m_current_buffer = 0;
         size_t m_current_frame = 0;

@@ -206,6 +206,7 @@ namespace brr::render
             Free_FramePendingResources(m_frames[idx]);
             m_device.destroySemaphore(m_frames[idx].render_finished_semaphore);
             m_device.destroySemaphore(m_frames[idx].transfer_finished_semaphore);
+            m_device.destroyFence(m_frames[idx].in_flight_fences);
         }
         BRR_LogTrace("Destroyed frame sync semaphores.");
 
@@ -250,7 +251,7 @@ namespace brr::render
 
     uint32_t VulkanRenderDevice::BeginFrame()
     {
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
         if (current_frame.frame_in_progress)
         {
             BRR_LogDebug("Frame is already in progress. Aborting BeginFrame.");
@@ -269,13 +270,13 @@ namespace brr::render
 
         if (!current_frame.graphics_cmd_buffer_begin)
         {
-            vk::Result graph_begin_result = BeginGraphicsCommandBuffer(current_frame.graphics_cmd_buffer);
+            vk::Result graph_begin_result = BeginCommandBuffer(current_frame.graphics_cmd_buffer);
             current_frame.graphics_cmd_buffer_begin = true;
         }
 
         if (!current_frame.transfer_cmd_buffer_begin)
         {
-            vk::Result transf_begin_result = BeginTransferCommandBuffer(current_frame.transfer_cmd_buffer);
+            vk::Result transf_begin_result = BeginCommandBuffer(current_frame.transfer_cmd_buffer);
             current_frame.transfer_cmd_buffer_begin = true;
         }
         current_frame.frame_in_progress = true;
@@ -287,7 +288,7 @@ namespace brr::render
 
     void VulkanRenderDevice::EndFrame()
     {
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         current_frame.graphics_cmd_buffer.end();
         current_frame.transfer_cmd_buffer.end();
@@ -306,8 +307,10 @@ namespace brr::render
         std::vector<vk::PipelineStageFlags> wait_stages (wait_semaphores.size(), vk::PipelineStageFlagBits::eColorAttachmentOutput);
         wait_stages.back() = vk::PipelineStageFlagBits::eVertexInput;
 
+        bool will_present = current_frame.swapchain_present_infos.size() > 0;
+
         vk::Result result = SubmitGraphicsCommandBuffers(1, &current_frame.graphics_cmd_buffer, wait_semaphores.size(),
-                                                         wait_semaphores.data(), wait_stages.data(), 1,
+                                                         wait_semaphores.data(), wait_stages.data(), will_present? 1 : 0,
                                                          &current_frame.render_finished_semaphore,
                                                          current_frame.in_flight_fences);
         BRR_LogTrace("Graphics command buffer submitted. Buffer: {:#x}. Frame {}. Buffer Index: {}",
@@ -348,7 +351,7 @@ namespace brr::render
      * Swapchain *
      *************/
 
-    ResourceHandle VulkanRenderDevice::Swapchain_Create(vis::Window* window)
+    SwapchainHandle VulkanRenderDevice::Swapchain_Create(vis::Window* window)
     {
         if (!window)
         {
@@ -368,13 +371,14 @@ namespace brr::render
         return swapchain_handle;
     }
 
-    void VulkanRenderDevice::Swapchain_Recreate(ResourceHandle swapchain_handle)
+    void VulkanRenderDevice::Swapchain_Recreate(SwapchainHandle swapchain_handle)
     {
         if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
         {
             BRR_LogError("Can't recreate Swapchain that does not exist.");
             return;
         }
+        BRR_LogInfo("Recreating Swapchain");
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
         WaitIdle();
 
@@ -382,7 +386,7 @@ namespace brr::render
         Init_SwapchainResources(*swapchain);
     }
 
-    void VulkanRenderDevice::Swapchain_Destroy(ResourceHandle swapchain_handle)
+    void VulkanRenderDevice::Swapchain_Destroy(SwapchainHandle swapchain_handle)
     {
         if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
         {
@@ -392,17 +396,28 @@ namespace brr::render
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
 
         Cleanup_Swapchain(*swapchain);
+
+        for (uint32_t idx = 0; idx < FRAME_LAG; idx++)
+        {
+            if (swapchain->image_available_semaphores[idx])
+            {
+                m_device.destroySemaphore(swapchain->image_available_semaphores[idx]);
+                swapchain->image_available_semaphores[idx] = VK_NULL_HANDLE;
+            }
+        }
+
+        m_swapchain_alloc.DestroyResource(swapchain_handle);
     }
 
-    bool VulkanRenderDevice::Swapchain_AcquireNextImage(ResourceHandle swapchain_handle)
+    uint32_t VulkanRenderDevice::Swapchain_AcquireNextImage(SwapchainHandle swapchain_handle)
     {
         if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
         {
             BRR_LogError("Can't acquire image of Swapchain that does not exist.");
-            return false;
+            return -1;
         }
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         vk::Result result = m_device.acquireNextImageKHR(swapchain->swapchain, UINT64_MAX,
                 swapchain->image_available_semaphores[swapchain->current_buffer_idx], VK_NULL_HANDLE, &swapchain->current_image_idx);
@@ -421,10 +436,10 @@ namespace brr::render
 
         current_frame.images_available_semaphore.push_back(swapchain->image_available_semaphores[swapchain->current_buffer_idx]);
 
-        return true;
+        return swapchain->current_image_idx;
     }
 
-    bool VulkanRenderDevice::Swapchain_PresentCurrentImage(ResourceHandle swapchain_handle)
+    bool VulkanRenderDevice::Swapchain_PresentCurrentImage(SwapchainHandle swapchain_handle)
     {
         if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
         {
@@ -432,7 +447,7 @@ namespace brr::render
             return false;
         }
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         vk::PresentInfoKHR present_info{};
         present_info
@@ -446,7 +461,19 @@ namespace brr::render
         return true;
     }
 
-    void VulkanRenderDevice::Swapchain_BeginRendering(ResourceHandle swapchain_handle)
+    std::vector<Texture2DHandle> VulkanRenderDevice::GetSwapchainImages(SwapchainHandle swapchain_handle)
+    {
+        if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
+        {
+            BRR_LogError("Can't get swapchain images. Provided SwapchainHandle does not exist.");
+            return {};
+        }
+        Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
+
+        return swapchain->image_resources;
+    }
+
+    void VulkanRenderDevice::Swapchain_BeginRendering(SwapchainHandle swapchain_handle, Texture2DHandle depth_image_handle)
     {
         if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
         {
@@ -454,12 +481,17 @@ namespace brr::render
             return;
         }
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
-        Swapchain::ImageResources& image_resource = swapchain->image_resources[swapchain->current_image_idx];
+        Texture2D* swapchain_image = m_texture2d_alloc.GetResource(swapchain->image_resources[swapchain->current_image_idx]);
+        Texture2D* depth_image = nullptr;
+        if (m_texture2d_alloc.OwnsResource(depth_image_handle))
+        {
+            depth_image = m_texture2d_alloc.GetResource(depth_image_handle);
+        }
 
         vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
         // Image transition from Undefined to Color Attachment
         {
-            TransitionImageLayout(command_buffer, image_resource.image,
+            TransitionImageLayout(command_buffer, swapchain_image->image,
                                   vk::ImageLayout::eUndefined,
                                   vk::ImageLayout::eColorAttachmentOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
@@ -470,8 +502,9 @@ namespace brr::render
         }
 
         // DepthImage transition from Undefined to Depth Attachment
+        if (depth_image)
         {
-            TransitionImageLayout(command_buffer, image_resource.depth_image,
+            TransitionImageLayout(command_buffer, depth_image->image,
                                   vk::ImageLayout::eUndefined,
                                   vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
@@ -497,29 +530,33 @@ namespace brr::render
         color_attachment_info
             .setClearValue(clear_values[0])
             .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
-            .setImageView(image_resource.image_view)
-            .setLoadOp(vk::AttachmentLoadOp::eClear)
-            .setStoreOp(vk::AttachmentStoreOp::eStore);
-
-        vk::RenderingAttachmentInfo depth_attachment_info {};
-        depth_attachment_info
-            .setClearValue(clear_values[1])
-            .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-            .setImageView(image_resource.depth_image_view)
+            .setImageView(swapchain_image->image_view)
             .setLoadOp(vk::AttachmentLoadOp::eClear)
             .setStoreOp(vk::AttachmentStoreOp::eStore);
 
         vk::RenderingInfo rendering_info {};
         rendering_info
             .setColorAttachments(color_attachment_info)
-            .setPDepthAttachment(&depth_attachment_info)
             .setLayerCount(1)
             .setRenderArea(scissor);
+
+        if (depth_image)
+        {
+            vk::RenderingAttachmentInfo depth_attachment_info {};
+            depth_attachment_info
+                .setClearValue(clear_values[1])
+                .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+                .setImageView(depth_image->image_view)
+                .setLoadOp(vk::AttachmentLoadOp::eClear)
+                .setStoreOp(vk::AttachmentStoreOp::eStore);
+
+            rendering_info.setPDepthAttachment(&depth_attachment_info);
+        }
 
         command_buffer.beginRendering(rendering_info);
     }
 
-    void VulkanRenderDevice::Swapchain_EndRendering(ResourceHandle swapchain_handle)
+    void VulkanRenderDevice::Swapchain_EndRendering(SwapchainHandle swapchain_handle)
     {
         if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
         {
@@ -533,11 +570,129 @@ namespace brr::render
 
         // Image transition from Color Attachment to Present Src
         {
-            TransitionImageLayout(command_buffer, swapchain->image_resources[swapchain->current_image_idx].image,
+            Texture2D* swapchain_image = m_texture2d_alloc.GetResource(swapchain->image_resources[swapchain->current_image_idx]);
+            TransitionImageLayout(command_buffer, swapchain_image->image,
                                   vk::ImageLayout::eColorAttachmentOptimal,
                                   vk::ImageLayout::ePresentSrcKHR,
                                   vk::AccessFlagBits2::eMemoryWrite,
                                   vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                                  vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::ImageAspectFlagBits::eColor);
+        }
+    }
+
+    void VulkanRenderDevice::RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle,
+                                                         Texture2DHandle depth_attachment_handle,
+                                                         bool use_stencil)
+    {
+        if (!m_texture2d_alloc.OwnsResource(color_attachment_handle))
+        {
+            BRR_LogError("Can't begin rendering using color attachment that does not exist.");
+            return;
+        }
+        if (!m_texture2d_alloc.OwnsResource(depth_attachment_handle))
+        {
+            BRR_LogError("Can't begin rendering using depth attachment that does not exist.");
+            return;
+        }
+
+        Texture2D* color_attachment = m_texture2d_alloc.GetResource(color_attachment_handle);
+        Texture2D* depth_attachment = m_texture2d_alloc.GetResource(depth_attachment_handle);
+
+        if (color_attachment->image_extent != depth_attachment->image_extent)
+        {
+            BRR_LogError(
+                "Can't begin rendering using color attachment and depth attachment of different sizes.\nColor Attachment: {}. Size: {}x{}\nDepth Attachment: {}. Size: {}x{}",
+                (size_t)color_attachment, color_attachment->image_extent.width, color_attachment->image_extent.height, 
+                (size_t)depth_attachment, depth_attachment->image_extent.width, depth_attachment->image_extent.height);
+            return;
+        }
+        uint32_t width  = color_attachment->image_extent.width;
+        uint32_t height = color_attachment->image_extent.height;
+
+        vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
+        // Image transition from Undefined to Color Attachment
+        {
+            TransitionImageLayout(command_buffer, color_attachment->image,
+                                  vk::ImageLayout::eUndefined,
+                                  vk::ImageLayout::eColorAttachmentOptimal,
+                                  vk::AccessFlagBits2::eMemoryWrite,
+                                  vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::AccessFlagBits2::eColorAttachmentWrite | vk::AccessFlagBits2::eColorAttachmentRead,
+                                  vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                                  vk::ImageAspectFlagBits::eColor);
+        }
+
+        // DepthImage transition from Undefined to Depth Attachment
+        {
+            TransitionImageLayout(command_buffer, depth_attachment->image,
+                                  vk::ImageLayout::eUndefined,
+                                  vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                                  vk::AccessFlagBits2::eMemoryWrite,
+                                  vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::AccessFlagBits2::eDepthStencilAttachmentWrite | vk::AccessFlagBits2::eDepthStencilAttachmentRead,
+                                  vk::PipelineStageFlagBits2::eEarlyFragmentTests,
+                                  vk::ImageAspectFlagBits::eDepth);
+        }
+
+        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.2f, 0.2f, 0.2f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
+        
+
+        vk::Viewport viewport{
+            0, 0,
+            static_cast<float>(width), static_cast<float>(height), 0.0, 1.0
+        };
+        vk::Rect2D scissor {{0, 0}, color_attachment->image_extent};
+
+        command_buffer.setViewport(0, viewport);
+        command_buffer.setScissor(0, scissor);
+
+        vk::RenderingAttachmentInfo color_attachment_info {};
+        color_attachment_info
+            .setClearValue(clear_values[0])
+            .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+            .setImageView(color_attachment->image_view)
+            .setLoadOp(vk::AttachmentLoadOp::eClear)
+            .setStoreOp(vk::AttachmentStoreOp::eStore);
+
+        vk::RenderingAttachmentInfo depth_attachment_info {};
+        depth_attachment_info
+            .setClearValue(clear_values[1])
+            .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+            .setImageView(depth_attachment->image_view)
+            .setLoadOp(vk::AttachmentLoadOp::eClear)
+            .setStoreOp(vk::AttachmentStoreOp::eStore);
+
+        vk::RenderingInfo rendering_info {};
+        rendering_info
+            .setColorAttachments(color_attachment_info)
+            .setPDepthAttachment(&depth_attachment_info)
+            .setLayerCount(1)
+            .setRenderArea(scissor);
+
+        command_buffer.beginRendering(rendering_info);
+    }
+
+    void VulkanRenderDevice::RenderTarget_EndRendering(Texture2DHandle color_attachment_handle)
+    {
+        if (!m_texture2d_alloc.OwnsResource(color_attachment_handle))
+        {
+            BRR_LogError("Can't end rendering using color attachment that does not exist.");
+            return;
+        }
+        Texture2D* color_attachment = m_texture2d_alloc.GetResource(color_attachment_handle);
+
+        vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
+        command_buffer.endRendering();
+
+        // Image transition from Color Attachment to Present Src
+        {
+            TransitionImageLayout(command_buffer, color_attachment->image,
+                                  vk::ImageLayout::eColorAttachmentOptimal,
+                                  color_attachment->image_layout,
+                                  vk::AccessFlagBits2::eColorAttachmentWrite,
+                                  vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                                   vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
                                   vk::PipelineStageFlagBits2::eAllCommands,
                                   vk::ImageAspectFlagBits::eColor);
@@ -591,7 +746,7 @@ namespace brr::render
             .setImageColorSpace(surface_format.colorSpace)
             .setImageExtent(swapchain.swapchain_extent)
             .setImageArrayLayers(1)
-            .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+            .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
             .setPresentMode(present_mode)
             .setClipped(true)
             .setPreTransform(preTransform)
@@ -634,13 +789,6 @@ namespace brr::render
 
     void VulkanRenderDevice::Init_SwapchainResources(Swapchain& swapchain)
     {
-        swapchain.swapchain_depth_format = VkHelpers::Select_SupportedFormat(m_phys_device,
-                                                                     {
-                                                                         vk::Format::eD32Sfloat,
-                                                                         vk::Format::eD32SfloatS8Uint,
-                                                                         vk::Format::eD24UnormS8Uint
-                                                                     }, vk::ImageTiling::eOptimal,
-                                                                     vk::FormatFeatureFlagBits::eDepthStencilAttachment);
         // Acquire swapchain images and create ImageViews
         auto swapchainImagesKHRResult = m_device.getSwapchainImagesKHR(swapchain.swapchain);
         std::vector<vk::Image> swapchain_images = swapchainImagesKHRResult.value;
@@ -648,94 +796,35 @@ namespace brr::render
 
         for (uint32_t i = 0; i < swapchain.image_resources.size(); i++)
         {
+            Texture2D* swapchain_image;
+            swapchain.image_resources[i] = m_texture2d_alloc.CreateResource(&swapchain_image);
+            swapchain_image->image_extent = swapchain.swapchain_extent;
+            swapchain_image->image_format = swapchain.swapchain_image_format;
+            swapchain_image->image_layout = vk::ImageLayout::ePresentSrcKHR;
+
             // Create swapchain image ImageView
+            swapchain_image->image = swapchain_images[i];
+
+            vk::ImageViewCreateInfo image_view_create_info{};
+            image_view_create_info
+                .setImage(swapchain_images[i])
+                .setViewType(vk::ImageViewType::e2D)
+                .setFormat(swapchain.swapchain_image_format)
+                .setSubresourceRange(vk::ImageSubresourceRange{}
+                    .setAspectMask(vk::ImageAspectFlagBits::eColor)
+                    .setBaseMipLevel(0)
+                    .setLevelCount(1)
+                    .setLayerCount(1)
+                    .setBaseArrayLayer(0)
+                );
+
+            auto createImgViewResult = m_device.createImageView(image_view_create_info);
+            if (createImgViewResult.result != vk::Result::eSuccess)
             {
-                swapchain.image_resources[i].image = swapchain_images[i];
-
-                vk::ImageViewCreateInfo image_view_create_info{};
-                image_view_create_info
-                    .setImage(swapchain_images[i])
-                    .setViewType(vk::ImageViewType::e2D)
-                    .setFormat(swapchain.swapchain_image_format)
-                    .setSubresourceRange(vk::ImageSubresourceRange{}
-                        .setAspectMask(vk::ImageAspectFlagBits::eColor)
-                        .setBaseMipLevel(0)
-                        .setLevelCount(1)
-                        .setLayerCount(1)
-                        .setBaseArrayLayer(0)
-                    );
-
-                auto createImgViewResult = m_device.createImageView(image_view_create_info);
-                if (createImgViewResult.result != vk::Result::eSuccess)
-                {
-                    BRR_LogError("Could not create ImageView for swapchain! Result code: {}.", vk::to_string(createImgViewResult.result).c_str());
-                    exit(1);
-                }
-                swapchain.image_resources[i].image_view = createImgViewResult.value;
+                BRR_LogError("Could not create ImageView for swapchain! Result code: {}.", vk::to_string(createImgViewResult.result).c_str());
+                exit(1);
             }
-            // Create depth Image and ImageView
-            {
-                vk::ImageCreateInfo img_create_info;
-                img_create_info
-                    .setInitialLayout(vk::ImageLayout::eUndefined)
-                    .setUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment)
-                    .setExtent(vk::Extent3D(swapchain.swapchain_extent.width, swapchain.swapchain_extent.height, 1))
-                    .setFormat(swapchain.swapchain_depth_format)
-                    .setImageType(vk::ImageType::e2D)
-                    .setSamples(vk::SampleCountFlagBits::e1)
-                    .setTiling(vk::ImageTiling::eOptimal)
-                    .setSharingMode(vk::SharingMode::eExclusive)
-                    .setMipLevels(1)
-                    .setArrayLayers(1);
-
-                VmaAllocationCreateInfo alloc_create_info;
-                alloc_create_info.usage = VmaMemoryUsage::VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-                alloc_create_info.flags = VmaAllocationCreateFlagBits::VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
-                alloc_create_info.requiredFlags = 0;
-                alloc_create_info.preferredFlags = 0;
-                alloc_create_info.memoryTypeBits = 0;
-                alloc_create_info.pool = VK_NULL_HANDLE;
-                alloc_create_info.pUserData = nullptr;
-                alloc_create_info.priority = 1.0;
-
-                VkImage new_depth_image;
-                VmaAllocation depth_image_allocation;
-                VmaAllocationInfo allocation_info;
-                const vk::Result createImageResult = vk::Result(vmaCreateImage(m_vma_allocator,
-                                                                               reinterpret_cast<VkImageCreateInfo*>
-                                                                               (&img_create_info),
-                                                                               &alloc_create_info, &new_depth_image,
-                                                                               &depth_image_allocation, &allocation_info));
-
-                if (createImageResult != vk::Result::eSuccess)
-                {
-                    BRR_LogError("Could not create DepthBuffer Image for swapchain resources! Index {}. Result code: {}.", i, vk::to_string(createImageResult).c_str());
-                    exit(1);
-                }
-
-                vk::ImageViewCreateInfo image_view_create_info{};
-                image_view_create_info
-                    .setImage(new_depth_image)
-                    .setViewType(vk::ImageViewType::e2D)
-                    .setFormat(swapchain.swapchain_depth_format)
-                    .setSubresourceRange(vk::ImageSubresourceRange{}
-                        .setAspectMask(vk::ImageAspectFlagBits::eDepth)
-                        .setBaseMipLevel(0)
-                        .setLevelCount(1)
-                        .setLayerCount(1)
-                        .setBaseArrayLayer(0)
-                    );
-
-                auto createImgViewResult = m_device.createImageView(image_view_create_info);
-                if (createImgViewResult.result != vk::Result::eSuccess)
-                {
-                    BRR_LogError("Could not create DepthBuffer ImageView for swapchain resources! Index {}. Result code: {}.", i, vk::to_string(createImgViewResult.result).c_str());
-                    exit(1);
-                }
-                swapchain.image_resources[i].depth_image = new_depth_image;
-                swapchain.image_resources[i].depth_image_view = createImgViewResult.value;
-                swapchain.image_resources[i].depth_image_allocation = depth_image_allocation;
-            }
+            swapchain_image->image_view = createImgViewResult.value;
         }
 
         BRR_LogInfo("Swapchain ImagesResources initialized.");
@@ -761,27 +850,19 @@ namespace brr::render
     {
         for (int i = 0; i < swapchain.image_resources.size(); ++i)
         {
-            Swapchain::ImageResources& resource = swapchain.image_resources[i];
-            if (resource.image_view)
+            Texture2DHandle& swapchain_image_handle = swapchain.image_resources[i];
+            Texture2D* swapchain_image = m_texture2d_alloc.GetResource(swapchain_image_handle);
+            swapchain_image->image = VK_NULL_HANDLE;
+            if (swapchain_image->image_view)
             {
-                m_device.destroyImageView(resource.image_view);
-                resource.image_view = VK_NULL_HANDLE;
+                m_device.destroyImageView(swapchain_image->image_view);
+                swapchain_image->image_view = VK_NULL_HANDLE;
                 BRR_LogInfo("ImageView of Swapchain Image {} Destroyed.", i);
             }
-            if (resource.depth_image_view)
-            {
-                m_device.destroyImageView(resource.depth_image_view);
-                resource.depth_image_view = VK_NULL_HANDLE;
-                BRR_LogInfo("ImageView of Swapchain's DepthBuffer Image {} Destroyed.", i);
-            }
-            if (resource.depth_image)
-            {
-                vmaDestroyImage(m_vma_allocator, resource.depth_image, resource.depth_image_allocation);
-                resource.depth_image = VK_NULL_HANDLE;
-                resource.depth_image_allocation = VK_NULL_HANDLE;
-                BRR_LogInfo("Image of Swapchain's DepthBuffer Image {} destroyed.", i);
-            }
+            m_texture2d_alloc.DestroyResource(swapchain.image_resources[i]);
+            swapchain.image_resources[i] = null_handle;
         }
+
         if (swapchain.swapchain)
         {
             m_device.destroySwapchainKHR(swapchain.swapchain);
@@ -973,7 +1054,7 @@ namespace brr::render
             return false;
         }
 
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
         current_frame.buffer_delete_list.emplace_back(buffer->buffer, buffer->buffer_allocation);
 
         m_buffer_alloc.DestroyResource(buffer_handle);
@@ -1079,7 +1160,7 @@ namespace brr::render
     bool VulkanRenderDevice::CopyBuffer(BufferHandle src_buffer_handle, BufferHandle dst_buffer_handle, size_t size,
                                         uint32_t src_buffer_offset, uint32_t dst_buffer_offset, bool use_transfer_queue)
     {
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         vk::CommandBuffer cmd_buffer = use_transfer_queue? current_frame.transfer_cmd_buffer : current_frame.graphics_cmd_buffer;
 
@@ -1283,7 +1364,7 @@ namespace brr::render
             return false;
         }
 
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
         current_frame.buffer_delete_list.emplace_back(vertex_buffer->buffer, vertex_buffer->buffer_allocation);
 
         BRR_LogDebug("Destroyed vertex buffer. Buffer: {:#x}", (size_t)(static_cast<VkBuffer>(vertex_buffer->buffer)));
@@ -1431,7 +1512,7 @@ namespace brr::render
             return false;
         }
 
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
         current_frame.buffer_delete_list.emplace_back(index_buffer->buffer, index_buffer->buffer_allocation);
 
         BRR_LogDebug("Destroyed index buffer. Buffer: {:#x}", (size_t)(static_cast<VkBuffer>(index_buffer->buffer)));
@@ -1514,7 +1595,7 @@ namespace brr::render
      * Texture2D Functions *
      ***********************/
 
-    Texture2DHandle VulkanRenderDevice::Create_Texture2D(size_t width, size_t height, ImageUsage image_usage, DataFormat image_format)
+    Texture2DHandle VulkanRenderDevice::Create_Texture2D(uint32_t width, uint32_t height, ImageUsage image_usage, DataFormat image_format)
     {
         Texture2DHandle texture2d_handle;
         Texture2D* texture2d;
@@ -1571,9 +1652,13 @@ namespace brr::render
 
         // Create ImageView
 
+        vk::ImageAspectFlags img_aspect_flags = VkHelpers::IsDepthStencilDataFormat(image_format)
+                                                    ? vk::ImageAspectFlagBits::eDepth
+                                                    : vk::ImageAspectFlagBits::eColor;
+
         vk::ImageSubresourceRange subresource_range;
         subresource_range
-            .setAspectMask(vk::ImageAspectFlagBits::eColor)
+            .setAspectMask(img_aspect_flags)
             .setBaseMipLevel(0)
             .setLevelCount(1)
             .setBaseArrayLayer(0)
@@ -1598,11 +1683,11 @@ namespace brr::render
         texture2d->image_view = view_result.value;
         texture2d->image_allocation = allocation;
         texture2d->allocation_info = allocation_info;
-        texture2d->width = width;
-        texture2d->height = height;
+        texture2d->image_extent = vk::Extent2D{width, height};
         texture2d->image_format = vk_format;
 
-        if ((image_usage & ImageUsage::SampledImage) != 0)
+        if ((image_usage & ImageUsage::SampledImage) != 0
+         || (image_usage & ImageUsage::InputAttachmentImage) != 0)
         {
             texture2d->image_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
         }
@@ -1639,7 +1724,7 @@ namespace brr::render
             return false;
         }
 
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
         current_frame.texture_delete_list.emplace_back(texture->image, texture->image_view, texture->image_allocation);
 
         BRR_LogDebug("Destroyed Texture2D. Image: {:#x}", (size_t)(static_cast<VkImage>(texture->image)));
@@ -1711,6 +1796,108 @@ namespace brr::render
                                   vk::ImageAspectFlagBits::eColor);
         }
         return true;
+    }
+
+    void VulkanRenderDevice::Texture2D_Blit(Texture2DHandle src_texture2d_handle, Texture2DHandle dst_texture2d_handle)
+    {
+        if (!m_texture2d_alloc.OwnsResource(src_texture2d_handle))
+        {
+            BRR_LogError("Can't blit Texture2D. Src Texture2D doesn't exist.");
+            return;
+        }
+
+        if (!m_texture2d_alloc.OwnsResource(src_texture2d_handle))
+        {
+            BRR_LogError("Can't blit Texture2D. Dst Texture2D doesn't exist.");
+            return;
+        }
+        Texture2D* src_image = m_texture2d_alloc.GetResource(src_texture2d_handle);
+        Texture2D* dst_image = m_texture2d_alloc.GetResource(dst_texture2d_handle);
+
+        vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
+
+        // Src Image transition from Undefined to TransferSrc
+        {
+            TransitionImageLayout(command_buffer, src_image->image,
+                                  src_image->image_layout,
+                                  vk::ImageLayout::eTransferSrcOptimal,
+                                  vk::AccessFlagBits2::eMemoryWrite,
+                                  vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::AccessFlagBits2::eMemoryRead,
+                                  vk::PipelineStageFlagBits2::eTransfer,
+                                  vk::ImageAspectFlagBits::eColor);
+        }
+
+        // Swapchain Image transition from Undefined to TransferDst
+        {
+            TransitionImageLayout(command_buffer, dst_image->image,
+                                  vk::ImageLayout::eUndefined,
+                                  vk::ImageLayout::eTransferDstOptimal,
+                                  vk::AccessFlagBits2::eMemoryWrite,
+                                  vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::AccessFlagBits2::eMemoryWrite,
+                                  vk::PipelineStageFlagBits2::eTransfer,
+                                  vk::ImageAspectFlagBits::eColor);
+        }
+
+        vk::ImageBlit2 image_blit {};
+        image_blit.srcOffsets[1]
+            .setX(src_image->image_extent.width)
+            .setY(src_image->image_extent.height)
+            .setZ(1);
+
+        image_blit.dstOffsets[1]
+            .setX(dst_image->image_extent.width)
+            .setY(dst_image->image_extent.height)
+            .setZ(1);
+
+        image_blit.srcSubresource
+            .setAspectMask(vk::ImageAspectFlagBits::eColor)
+            .setBaseArrayLayer(0)
+            .setLayerCount(1)
+            .setMipLevel(0);
+
+        image_blit.dstSubresource
+            .setAspectMask(vk::ImageAspectFlagBits::eColor)
+            .setBaseArrayLayer(0)
+            .setLayerCount(1)
+            .setMipLevel(0);
+
+        vk::BlitImageInfo2 blit_info {};
+        blit_info
+            .setDstImage(dst_image->image)
+            .setDstImageLayout(vk::ImageLayout::eTransferDstOptimal)
+            .setSrcImage(src_image->image)
+            .setSrcImageLayout(vk::ImageLayout::eTransferSrcOptimal)
+            .setFilter(vk::Filter::eLinear)
+            .setRegionCount(1)
+            .setRegions(image_blit);
+
+        command_buffer.blitImage2(blit_info);
+
+        // Src Image transition from TransferSrc to image`s default layout
+        {
+            TransitionImageLayout(command_buffer, src_image->image,
+                                  vk::ImageLayout::eTransferSrcOptimal,
+                                  src_image->image_layout,
+                                  vk::AccessFlagBits2::eMemoryRead,
+                                  vk::PipelineStageFlagBits2::eTransfer,
+                                  vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                                  vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::ImageAspectFlagBits::eColor);
+        }
+
+        // Image transition from TransferDst to PresentSrc
+        {
+            TransitionImageLayout(command_buffer, dst_image->image,
+                                  vk::ImageLayout::eTransferDstOptimal,
+                                  dst_image->image_layout,
+                                  vk::AccessFlagBits2::eMemoryWrite,
+                                  vk::PipelineStageFlagBits2::eTransfer,
+                                  vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
+                                  vk::PipelineStageFlagBits2::eAllCommands,
+                                  vk::ImageAspectFlagBits::eColor);
+        }
     }
 
     /*******************************
@@ -1891,7 +2078,7 @@ namespace brr::render
             return;
         }
 
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         current_frame.graphics_cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphics_pipeline->pipeline);
     }
@@ -1912,7 +2099,7 @@ namespace brr::render
             return;
         }
 
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         current_frame.graphics_cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                                              graphics_pipeline->pipeline_layout, set_index,
@@ -1926,7 +2113,7 @@ namespace brr::render
     void VulkanRenderDevice::Draw(uint32_t num_vertex, uint32_t num_instances, uint32_t first_vertex,
                                   uint32_t first_instance)
     {
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         current_frame.graphics_cmd_buffer.draw(num_vertex, num_instances, first_vertex, first_instance);
     }
@@ -1934,7 +2121,7 @@ namespace brr::render
     void VulkanRenderDevice::DrawIndexed(uint32_t num_indices, uint32_t num_instances, uint32_t first_index,
                                          uint32_t vertex_offset, uint32_t first_instance)
     {
-        Frame& current_frame = m_frames[m_current_buffer];
+        Frame& current_frame = GetCurrentFrame();
 
         current_frame.graphics_cmd_buffer.drawIndexed(num_indices, num_instances, first_index, vertex_offset, first_instance);
     }
@@ -2028,44 +2215,17 @@ namespace brr::render
         cmd_buffer.pipelineBarrier2(dependency_info);
     }
 
-    vk::CommandBuffer VulkanRenderDevice::GetCurrentGraphicsCommandBuffer()
+    vk::Result VulkanRenderDevice::BeginCommandBuffer(vk::CommandBuffer cmd_buffer)
     {
-        Frame& current_frame = m_frames[m_current_buffer];
-
-        return current_frame.graphics_cmd_buffer;
-    }
-
-    vk::CommandBuffer VulkanRenderDevice::GetCurrentTransferCommandBuffer()
-    {
-        Frame& current_frame = m_frames[m_current_buffer];
-
-        return current_frame.transfer_cmd_buffer;
-    }
-
-    vk::Result VulkanRenderDevice::BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer)
-    {
-        const vk::Result graph_reset_result = graphics_cmd_buffer.reset();
+        const vk::Result graph_reset_result = cmd_buffer.reset();
         if (graph_reset_result != vk::Result::eSuccess)
         {
-            BRR_LogError("Could not reset current graphics command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(graph_reset_result).c_str());
+            BRR_LogError("Could not reset command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(graph_reset_result).c_str());
             return graph_reset_result;
         }
 
         const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
-        return graphics_cmd_buffer.begin(cmd_buffer_begin_info);
-    }
-
-    vk::Result VulkanRenderDevice::BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer)
-    {
-        const vk::Result transf_reset_result = transfer_cmd_buffer.reset();
-        if (transf_reset_result != vk::Result::eSuccess)
-        {
-            BRR_LogError("Could not reset current transfer command buffer of frame {}. Result code: {}", m_current_frame, vk::to_string(transf_reset_result).c_str());
-            return transf_reset_result;
-        }
-
-        const vk::CommandBufferBeginInfo cmd_buffer_begin_info{};
-        return transfer_cmd_buffer.begin(cmd_buffer_begin_info);
+        return cmd_buffer.begin(cmd_buffer_begin_info);
     }
 
     vk::Result VulkanRenderDevice::SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,

@@ -33,9 +33,11 @@ namespace brr::render
         /* Frame */
 
         uint32_t BeginFrame();
-        void EndFrame(/*vk::Semaphore wait_semaphore*/);
+        void EndFrame();
 
-        uint32_t GetCurrentFrame() const { return m_current_frame; }
+        constexpr uint32_t GetCurrentFrame() const { return m_current_frame; }
+
+        constexpr uint32_t GetCurrentFrameBufferIndex() const { return m_current_buffer; }
 
         /* Shader */
 
@@ -47,25 +49,23 @@ namespace brr::render
          * Swapchain *
          *************/
 
-        enum class SwapchainAcquireResult
-        {
-            Success,
-            Outdated,
-            Error
-        };
+        SwapchainHandle Swapchain_Create(vis::Window* window);
 
-        ResourceHandle Swapchain_Create(vis::Window* window);
+        void Swapchain_Recreate(SwapchainHandle swapchain_handle);
 
-        void Swapchain_Recreate(ResourceHandle swapchain_handle);
+        void Swapchain_Destroy(SwapchainHandle swapchain_handle);
 
-        void Swapchain_Destroy(ResourceHandle swapchain_handle);
+        uint32_t Swapchain_AcquireNextImage(SwapchainHandle swapchain_handle);
 
-        bool Swapchain_AcquireNextImage(ResourceHandle swapchain_handle);
+        bool Swapchain_PresentCurrentImage(SwapchainHandle swapchain_handle);
 
-        bool Swapchain_PresentCurrentImage(ResourceHandle swapchain_handle);
+        std::vector<Texture2DHandle> GetSwapchainImages(SwapchainHandle swapchain_handle);
 
-        void Swapchain_BeginRendering(ResourceHandle swapchain_handle);
-        void Swapchain_EndRendering(ResourceHandle swapchain_handle);
+        void Swapchain_BeginRendering(SwapchainHandle swapchain_handle, Texture2DHandle depth_image_handle = null_handle);
+        void Swapchain_EndRendering(SwapchainHandle swapchain_handle);
+
+        void RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle, Texture2DHandle depth_attachment_handle, bool use_stencil = false);
+        void RenderTarget_EndRendering(Texture2DHandle color_attachment_handle);
 
         /**********
          * Queues *
@@ -168,12 +168,14 @@ namespace brr::render
          ************/
         
         // 
-        Texture2DHandle Create_Texture2D(size_t width, size_t height, ImageUsage image_usage, DataFormat image_format);
+        Texture2DHandle Create_Texture2D(uint32_t width, uint32_t height, ImageUsage image_usage, DataFormat image_format);
 
         bool DestroyTexture2D(Texture2DHandle texture2d_handle);
 
         bool UpdateTexture2DData(Texture2DHandle texture2d_handle, const void* data, size_t buffer_size,
                                  const glm::ivec2& image_offset, const glm::uvec2& image_extent);
+
+        void Texture2D_Blit(Texture2DHandle src_texture2d_handle, Texture2DHandle dst_texture2d_handle);
 
         /*********************
          * Graphics Pipeline *
@@ -239,15 +241,22 @@ namespace brr::render
 
         void Cleanup_Swapchain(Swapchain& swapchain);
 
+        /***********************
+         * Frame Functions *
+         ***********************/
+
+        struct Frame;
+
+        constexpr Frame& GetCurrentFrame() { return m_frames[m_current_buffer]; }
+
         /***************************
          * CommandBuffer Functions *
          ***************************/
 
-        vk::CommandBuffer GetCurrentGraphicsCommandBuffer();
-        vk::CommandBuffer GetCurrentTransferCommandBuffer();
+        constexpr vk::CommandBuffer GetCurrentGraphicsCommandBuffer() { return GetCurrentFrame().graphics_cmd_buffer; }
+        constexpr vk::CommandBuffer GetCurrentTransferCommandBuffer() { return GetCurrentFrame().transfer_cmd_buffer; }
 
-        [[nodiscard]] vk::Result BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer);
-        [[nodiscard]] vk::Result BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer);
+        [[nodiscard]] vk::Result BeginCommandBuffer(vk::CommandBuffer cmd_buffer);
 
         [[nodiscard]] vk::Result SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
@@ -314,7 +323,7 @@ namespace brr::render
             VmaAllocation image_allocation {};
             VmaAllocationInfo allocation_info {};
 
-            uint32_t width, height;
+            vk::Extent2D image_extent {};
             vk::DeviceSize buffer_size {};
             vk::Format image_format {};
             vk::ImageLayout image_layout {};
@@ -342,24 +351,13 @@ namespace brr::render
         {
             vis::Window* window = nullptr;
 
-            // Swapchain
-            struct ImageResources
-            {
-                vk::Image image {};
-                vk::ImageView image_view {};
-
-                vk::Image depth_image {};
-                vk::ImageView depth_image_view {};
-                VmaAllocation depth_image_allocation {};
-            };
-
             vk::SwapchainKHR swapchain {};
 
             vk::Format swapchain_image_format {};
             vk::Format swapchain_depth_format {};
             vk::Extent2D swapchain_extent {};
 
-            std::vector<ImageResources> image_resources {};
+            std::vector<Texture2DHandle> image_resources {};
 
             // Synchronization
 

@@ -13,7 +13,7 @@ namespace brr::render
         m_swapchain_handle = m_render_device->Swapchain_Create(window);
     }
 
-    bool DeviceSwapchain::AcquireNextImage()
+    uint32_t DeviceSwapchain::AcquireNextImage()
     {
         return m_render_device->Swapchain_AcquireNextImage(m_swapchain_handle);
     }
@@ -41,5 +41,10 @@ namespace brr::render
     void DeviceSwapchain::Recreate_Swapchain()
     {
         m_render_device->Swapchain_Recreate(m_swapchain_handle);
+    }
+
+    std::vector<Texture2DHandle> DeviceSwapchain::GetSwapchainImages()
+    {
+        return m_render_device->GetSwapchainImages(m_swapchain_handle);
     }
 }

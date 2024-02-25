@@ -24,18 +24,22 @@ namespace brr::render
         DeviceSwapchain(vis::Window* window);
         ~DeviceSwapchain();
 
-        bool AcquireNextImage();
+        uint32_t AcquireNextImage();
         bool PresentCurrentImage();
         void BeginRendering();
         void EndRendering();
 
         void Recreate_Swapchain();
 
+        std::vector<Texture2DHandle> GetSwapchainImages();
+
+        constexpr SwapchainHandle GetHandle() const { return m_swapchain_handle; }
+
     private:
         // Device
         VulkanRenderDevice* m_render_device = nullptr;
 
-        ResourceHandle m_swapchain_handle {};
+        SwapchainHandle m_swapchain_handle {};
     };
 
 }

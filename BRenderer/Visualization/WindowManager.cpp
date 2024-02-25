@@ -47,7 +47,7 @@ namespace brr::vis
 		{
 			m_render_device->BeginFrame();
 			m_main_window->RenderWindow();
-			m_render_device->EndFrame ();
+			m_render_device->EndFrame();
 		}
 	}
 
