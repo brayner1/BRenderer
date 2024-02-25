@@ -18,7 +18,7 @@ namespace brr::vis
     : m_owner_window(window),
       m_render_device(render::VKRD::GetSingleton())
     {
-        m_swapchain = std::make_unique<render::Swapchain>(m_owner_window);
+        m_swapchain = std::make_unique<render::DeviceSwapchain>(m_owner_window);
     }
 
     WindowRenderer::~WindowRenderer()
@@ -48,28 +48,15 @@ namespace brr::vis
 
     void WindowRenderer::RenderWindow(SceneRenderer* scene_renderer)
     {
-        vk::Result result = m_swapchain->AcquireNextImage(m_current_image_available_semaphore);
-
-        if (result == vk::Result::eErrorOutOfDateKHR)
+        bool result = m_swapchain->AcquireNextImage();
+        if (!result)
         {
-            m_swapchain->Recreate_Swapchain();
             return;
         }
-        else if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
-        {
-            throw std::runtime_error("Failed to acquire Swapchain image!");
-        }
-
-        m_frame_count = m_render_device->BeginFrame();
 
         Record_CommandBuffer(scene_renderer);
 
-        vk::Fence in_flight_fence = m_swapchain->GetCurrentInFlightFence();
-
-        vk::Semaphore render_finished_semaphore = m_render_device->EndFrame (m_current_image_available_semaphore,
-                                                                             in_flight_fence);
-
-        m_swapchain->PresentCurrentImage(render_finished_semaphore);
+        m_swapchain->PresentCurrentImage();
 
         return;
     }
@@ -83,7 +70,7 @@ namespace brr::vis
 
     void WindowRenderer::Destroy()
     {
-        // Destroy Windows Swapchain and its Resources
+        // Destroy Windows DeviceSwapchain and its Resources
         {
             m_swapchain = nullptr;
         }

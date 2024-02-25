@@ -19,8 +19,10 @@ namespace brr::vis
 
 		render::VKRD::CreateRenderDevice(m_main_window.get());
 
+		m_render_device = render::VKRD::GetSingleton();
+
 		// Begin frame earlier to initialize command buffers and start transferring data to GPU.
-		render::VKRD::GetSingleton()->BeginFrame(); 
+		m_render_device->BeginFrame(); 
 
 		m_main_window->InitWindowRenderer();
 
@@ -43,7 +45,9 @@ namespace brr::vis
 	{
 		if (!m_main_window_closed)
 		{
+			m_render_device->BeginFrame();
 			m_main_window->RenderWindow();
+			m_render_device->EndFrame ();
 		}
 	}
 

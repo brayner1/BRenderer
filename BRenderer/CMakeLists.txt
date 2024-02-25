@@ -67,7 +67,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/DeviceImage.cpp"
     "Renderer/DevicePipeline.cpp"
     "Renderer/Shader.cpp" 
-    "Renderer/Swapchain.cpp"
+    "Renderer/DeviceSwapchain.cpp"
     
     "Files/FilesUtils.cpp" 
    )
@@ -119,7 +119,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/RenderEnums.h"
     "Renderer/ResourcesHandles.h"
     "Renderer/Shader.h"
-    "Renderer/Swapchain.h"
+    "Renderer/DeviceSwapchain.h"
    
     
     "Files/FilesUtils.h"

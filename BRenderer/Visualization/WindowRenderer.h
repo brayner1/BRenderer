@@ -1,7 +1,7 @@
 #ifndef BRR_RENDERER_H
 #define BRR_RENDERER_H
 #include <Core/thirdpartiesInc.h>
-#include <Renderer/Swapchain.h>
+#include <Renderer/DeviceSwapchain.h>
 #include <Renderer/Descriptors.h>
 
 namespace brr{
@@ -44,9 +44,8 @@ namespace brr{
 			// Window
 			Window* m_owner_window{};
 
-			// Swapchain
-			std::unique_ptr<render::Swapchain> m_swapchain{};
-			size_t m_frame_count = 0;
+			// DeviceSwapchain
+			std::unique_ptr<render::DeviceSwapchain> m_swapchain{};
 
             vk::Semaphore m_current_image_available_semaphore {};
 

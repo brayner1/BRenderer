@@ -2,7 +2,6 @@
 
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/Shader.h>
-#include <Renderer/Swapchain.h>
 
 #include <Core/LogSystem.h>
 

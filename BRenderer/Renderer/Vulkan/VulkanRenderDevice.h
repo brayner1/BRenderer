@@ -33,7 +33,7 @@ namespace brr::render
         /* Frame */
 
         uint32_t BeginFrame();
-        vk::Semaphore EndFrame(vk::Semaphore wait_semaphore, vk::Fence wait_fence);
+        void EndFrame(/*vk::Semaphore wait_semaphore*/);
 
         uint32_t GetCurrentFrame() const { return m_current_frame; }
 
@@ -42,6 +42,30 @@ namespace brr::render
         /* Synchronization */
 
         void WaitIdle() const;
+
+        /*************
+         * Swapchain *
+         *************/
+
+        enum class SwapchainAcquireResult
+        {
+            Success,
+            Outdated,
+            Error
+        };
+
+        ResourceHandle Swapchain_Create(vis::Window* window);
+
+        void Swapchain_Recreate(ResourceHandle swapchain_handle);
+
+        void Swapchain_Destroy(ResourceHandle swapchain_handle);
+
+        bool Swapchain_AcquireNextImage(ResourceHandle swapchain_handle);
+
+        bool Swapchain_PresentCurrentImage(ResourceHandle swapchain_handle);
+
+        void Swapchain_BeginRendering(ResourceHandle swapchain_handle);
+        void Swapchain_EndRendering(ResourceHandle swapchain_handle);
 
         /**********
          * Queues *
@@ -204,6 +228,17 @@ namespace brr::render
         void Init_Frames();
         void Init_Texture2DSampler();
 
+        /***********************
+         * Swapchain Functions *
+         ***********************/
+        struct Swapchain;
+
+        void Init_Swapchain(Swapchain& swapchain);
+        void Init_SwapchainResources(Swapchain& swapchain);
+        void Init_SwapchainSynchronization(Swapchain& swapchain);
+
+        void Cleanup_Swapchain(Swapchain& swapchain);
+
         /***************************
          * CommandBuffer Functions *
          ***************************/
@@ -302,9 +337,42 @@ namespace brr::render
         };
 
         ResourceAllocator<DescriptorSet> m_descriptor_set_alloc;
+
+        struct Swapchain
+        {
+            vis::Window* window = nullptr;
+
+            // Swapchain
+            struct ImageResources
+            {
+                vk::Image image {};
+                vk::ImageView image_view {};
+
+                vk::Image depth_image {};
+                vk::ImageView depth_image_view {};
+                VmaAllocation depth_image_allocation {};
+            };
+
+            vk::SwapchainKHR swapchain {};
+
+            vk::Format swapchain_image_format {};
+            vk::Format swapchain_depth_format {};
+            vk::Extent2D swapchain_extent {};
+
+            std::vector<ImageResources> image_resources {};
+
+            // Synchronization
+
+            vk::Semaphore image_available_semaphores[FRAME_LAG];
+
+            uint32_t current_image_idx  = 0;
+            uint32_t current_buffer_idx = 0;
+        };
+        
+        ResourceAllocator<Swapchain> m_swapchain_alloc;
         
     private: // Data
-        friend class Swapchain;
+        friend class DeviceSwapchain;
         friend class Shader;
         friend class ShaderBuilder;
         friend class StagingAllocator;
@@ -345,6 +413,16 @@ namespace brr::render
 
             vk::Semaphore transfer_finished_semaphore {};
             vk::Semaphore render_finished_semaphore {};
+            vk::Fence     in_flight_fences {};
+            std::vector<vk::Semaphore> images_available_semaphore {};
+
+            struct SwapchainPresent
+            {
+                vk::PresentInfoKHR present_info;
+                ResourceHandle swapchain_handle;
+            };
+
+            std::vector<SwapchainPresent> swapchain_present_infos {};
 
             typedef std::pair<vk::Buffer, VmaAllocation> BufferDeleteElem;
             struct TextureDeleteElem
@@ -355,6 +433,8 @@ namespace brr::render
             };
             std::vector<BufferDeleteElem> buffer_delete_list;
             std::vector<TextureDeleteElem> texture_delete_list;
+
+            bool frame_in_progress = false;
 
             bool graphics_cmd_buffer_begin = false;
             bool transfer_cmd_buffer_begin = false;
