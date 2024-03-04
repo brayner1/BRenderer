@@ -32,6 +32,8 @@ namespace brr::vis
 		//TODO: Here for posterior support for multiple windows
 		std::unordered_map<WindowId, uint32_t> m_secondaryWindowsID_index_map{};
 		std::vector<std::unique_ptr<Window>> m_secondary_windows{};
+
+		render::VulkanRenderDevice* m_render_device {};
 	};
 }
 

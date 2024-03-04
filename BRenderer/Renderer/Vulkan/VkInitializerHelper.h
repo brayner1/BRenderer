@@ -73,6 +73,8 @@ namespace brr::render::VkHelpers
 	// Return DataFormat equivalent to the given VkFormat
 	DataFormat DataFormatFromVkFormat(vk::Format vk_format);
 
+	bool IsDepthStencilDataFormat(DataFormat data_format);
+
 }
 
 #endif

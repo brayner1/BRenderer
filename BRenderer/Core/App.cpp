@@ -115,10 +115,13 @@ namespace brr
 				}
 				else if (pEvent.key.keysym.sym == SDL_KeyCode::SDLK_u)
 				{
-				    SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
-					static std::default_random_engine random_engine;
-					std::uniform_real_distribution<float> distrib (0.0, 1.0);
-					spot_light.SetColor({distrib(random_engine), distrib(random_engine), distrib(random_engine)});
+					if (isLightOn)
+					{
+					    SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
+					    static std::default_random_engine random_engine;
+					    std::uniform_real_distribution<float> distrib (0.0, 1.0);
+					    spot_light.SetColor({distrib(random_engine), distrib(random_engine), distrib(random_engine)});
+					}
 				}
 				break;
 			case SDL_KEYUP: break;

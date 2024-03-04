@@ -759,4 +759,18 @@ namespace brr::render::VkHelpers
             return DataFormat::Undefined;
         }
     }
+
+    bool IsDepthStencilDataFormat(DataFormat data_format)
+    {
+        if (data_format == DataFormat::D16_UNorm
+         || data_format == DataFormat::D32_Float
+         || data_format == DataFormat::S8_UInt
+         || data_format == DataFormat::D16_UNorm_S8_UInt
+         || data_format == DataFormat::D24_UNorm_S8_UInt
+         || data_format == DataFormat::D32_Float_S8_UInt)
+        {
+            return true;
+        }
+        return false;
+    }
 }

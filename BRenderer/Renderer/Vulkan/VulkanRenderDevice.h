@@ -33,15 +33,39 @@ namespace brr::render
         /* Frame */
 
         uint32_t BeginFrame();
-        vk::Semaphore EndFrame(vk::Semaphore wait_semaphore, vk::Fence wait_fence);
+        void EndFrame();
 
-        uint32_t GetCurrentFrame() const { return m_current_frame; }
+        constexpr uint32_t GetCurrentFrame() const { return m_current_frame; }
+
+        constexpr uint32_t GetCurrentFrameBufferIndex() const { return m_current_buffer; }
 
         /* Shader */
 
         /* Synchronization */
 
         void WaitIdle() const;
+
+        /*************
+         * Swapchain *
+         *************/
+
+        SwapchainHandle Swapchain_Create(vis::Window* window);
+
+        void Swapchain_Recreate(SwapchainHandle swapchain_handle);
+
+        void Swapchain_Destroy(SwapchainHandle swapchain_handle);
+
+        uint32_t Swapchain_AcquireNextImage(SwapchainHandle swapchain_handle);
+
+        bool Swapchain_PresentCurrentImage(SwapchainHandle swapchain_handle);
+
+        std::vector<Texture2DHandle> GetSwapchainImages(SwapchainHandle swapchain_handle);
+
+        void Swapchain_BeginRendering(SwapchainHandle swapchain_handle, Texture2DHandle depth_image_handle = null_handle);
+        void Swapchain_EndRendering(SwapchainHandle swapchain_handle);
+
+        void RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle, Texture2DHandle depth_attachment_handle, bool use_stencil = false);
+        void RenderTarget_EndRendering(Texture2DHandle color_attachment_handle);
 
         /**********
          * Queues *
@@ -144,12 +168,14 @@ namespace brr::render
          ************/
         
         // 
-        Texture2DHandle Create_Texture2D(size_t width, size_t height, ImageUsage image_usage, DataFormat image_format);
+        Texture2DHandle Create_Texture2D(uint32_t width, uint32_t height, ImageUsage image_usage, DataFormat image_format);
 
         bool DestroyTexture2D(Texture2DHandle texture2d_handle);
 
         bool UpdateTexture2DData(Texture2DHandle texture2d_handle, const void* data, size_t buffer_size,
                                  const glm::ivec2& image_offset, const glm::uvec2& image_extent);
+
+        void Texture2D_Blit(Texture2DHandle src_texture2d_handle, Texture2DHandle dst_texture2d_handle);
 
         /*********************
          * Graphics Pipeline *
@@ -204,15 +230,33 @@ namespace brr::render
         void Init_Frames();
         void Init_Texture2DSampler();
 
+        /***********************
+         * Swapchain Functions *
+         ***********************/
+        struct Swapchain;
+
+        void Init_Swapchain(Swapchain& swapchain);
+        void Init_SwapchainResources(Swapchain& swapchain);
+        void Init_SwapchainSynchronization(Swapchain& swapchain);
+
+        void Cleanup_Swapchain(Swapchain& swapchain);
+
+        /***********************
+         * Frame Functions *
+         ***********************/
+
+        struct Frame;
+
+        constexpr Frame& GetCurrentFrame() { return m_frames[m_current_buffer]; }
+
         /***************************
          * CommandBuffer Functions *
          ***************************/
 
-        vk::CommandBuffer GetCurrentGraphicsCommandBuffer();
-        vk::CommandBuffer GetCurrentTransferCommandBuffer();
+        constexpr vk::CommandBuffer GetCurrentGraphicsCommandBuffer() { return GetCurrentFrame().graphics_cmd_buffer; }
+        constexpr vk::CommandBuffer GetCurrentTransferCommandBuffer() { return GetCurrentFrame().transfer_cmd_buffer; }
 
-        [[nodiscard]] vk::Result BeginGraphicsCommandBuffer(vk::CommandBuffer graphics_cmd_buffer);
-        [[nodiscard]] vk::Result BeginTransferCommandBuffer(vk::CommandBuffer transfer_cmd_buffer);
+        [[nodiscard]] vk::Result BeginCommandBuffer(vk::CommandBuffer cmd_buffer);
 
         [[nodiscard]] vk::Result SubmitGraphicsCommandBuffers(uint32_t cmd_buffer_count, vk::CommandBuffer* cmd_buffers,
                                                               uint32_t wait_semaphore_count, vk::Semaphore* wait_semaphores,
@@ -279,7 +323,7 @@ namespace brr::render
             VmaAllocation image_allocation {};
             VmaAllocationInfo allocation_info {};
 
-            uint32_t width, height;
+            vk::Extent2D image_extent {};
             vk::DeviceSize buffer_size {};
             vk::Format image_format {};
             vk::ImageLayout image_layout {};
@@ -302,9 +346,31 @@ namespace brr::render
         };
 
         ResourceAllocator<DescriptorSet> m_descriptor_set_alloc;
+
+        struct Swapchain
+        {
+            vis::Window* window = nullptr;
+
+            vk::SwapchainKHR swapchain {};
+
+            vk::Format swapchain_image_format {};
+            vk::Format swapchain_depth_format {};
+            vk::Extent2D swapchain_extent {};
+
+            std::vector<Texture2DHandle> image_resources {};
+
+            // Synchronization
+
+            vk::Semaphore image_available_semaphores[FRAME_LAG];
+
+            uint32_t current_image_idx  = 0;
+            uint32_t current_buffer_idx = 0;
+        };
+        
+        ResourceAllocator<Swapchain> m_swapchain_alloc;
         
     private: // Data
-        friend class Swapchain;
+        friend class DeviceSwapchain;
         friend class Shader;
         friend class ShaderBuilder;
         friend class StagingAllocator;
@@ -345,6 +411,16 @@ namespace brr::render
 
             vk::Semaphore transfer_finished_semaphore {};
             vk::Semaphore render_finished_semaphore {};
+            vk::Fence     in_flight_fences {};
+            std::vector<vk::Semaphore> images_available_semaphore {};
+
+            struct SwapchainPresent
+            {
+                vk::PresentInfoKHR present_info;
+                ResourceHandle swapchain_handle;
+            };
+
+            std::vector<SwapchainPresent> swapchain_present_infos {};
 
             typedef std::pair<vk::Buffer, VmaAllocation> BufferDeleteElem;
             struct TextureDeleteElem
@@ -355,6 +431,8 @@ namespace brr::render
             };
             std::vector<BufferDeleteElem> buffer_delete_list;
             std::vector<TextureDeleteElem> texture_delete_list;
+
+            bool frame_in_progress = false;
 
             bool graphics_cmd_buffer_begin = false;
             bool transfer_cmd_buffer_begin = false;

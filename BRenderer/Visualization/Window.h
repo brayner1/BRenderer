@@ -25,9 +25,9 @@ namespace brr::vis
 
 		// Window API
 
-		[[nodiscard]] WindowId GetWindowID() const { return m_pWindowID; }
-		[[nodiscard]] SDL_Window* GetSDLWindowHandle() const { return m_pWindow; }
-		[[nodiscard]] bool NeedToClose() const { return m_pNeedToClose; }
+		[[nodiscard]] WindowId GetWindowID() const { return m_window_id; }
+		[[nodiscard]] SDL_Window* GetSDLWindowHandle() const { return m_window; }
+		[[nodiscard]] bool NeedToClose() const { return m_need_to_close; }
 
 		void RenderWindow();
 
@@ -38,18 +38,20 @@ namespace brr::vis
 		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance);
 
 		Scene* GetScene() const { return m_scene; }
-		void SetScene(Scene* scene) { m_scene = scene; }
+		void SetScene(Scene* scene);
 
-	private:
-		bool m_pNeedToClose = false;
-		WindowId m_pWindowID = 0;
-		SDL_Window* m_pWindow = nullptr;
+    private:
+		WindowId m_window_id = 0;
+		SDL_Window* m_window = nullptr;
 
 		vk::SurfaceKHR window_surface_ {};
 
-		std::unique_ptr<WindowRenderer> m_pWindowRenderer;
+		std::unique_ptr<WindowRenderer> m_window_renderer;
 
 		Scene* m_scene = nullptr;
+
+		bool m_need_to_close = false;
+		bool m_minimized = false;
 	};
 }
 

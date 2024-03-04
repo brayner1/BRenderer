@@ -44,6 +44,15 @@ namespace brr::render
         uint32_t validation;
     };
 
+    struct SwapchainHandle : public ResourceHandle
+    {
+        SwapchainHandle() = default;
+
+        SwapchainHandle(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
+
     struct BufferHandle : public ResourceHandle
     {
         BufferHandle() = default;

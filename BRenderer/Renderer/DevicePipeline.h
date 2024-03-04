@@ -11,7 +11,6 @@ namespace brr::render
 {
     class VulkanRenderDevice;
     class Shader;
-    class Swapchain;
 
     class DevicePipeline
     {
