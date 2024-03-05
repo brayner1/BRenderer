@@ -30,7 +30,7 @@ endif()
 set(BRenderer_SOURCE_FILES
     "BRenderer.cpp" 
     
-    
+    "Core/Storage/ArenaAllocator.cpp"
     "Core/App.cpp"
     "Core/LogSystem.cpp"
     "Core/PerspectiveCamera.cpp"
@@ -70,12 +70,13 @@ set(BRenderer_SOURCE_FILES
     "Renderer/DeviceSwapchain.cpp"
     
     "Files/FilesUtils.cpp" 
-   )
+    )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
     
     "Core/Storage/ContiguousPool.h"
+    "Core/Storage/ArenaAllocator.h"
     "Core/Threading/Barrier.h" 
     "Core/Threading/Threading.h" 
     "Core/Threading/ThreadPool.h" 
