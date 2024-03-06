@@ -41,7 +41,7 @@ namespace brr::vis
 		SDL_Quit();
 	}
 
-	void WindowManager::Update()
+	void WindowManager::RenderWindows()
 	{
 		if (!m_main_window_closed)
 		{

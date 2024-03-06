@@ -57,7 +57,9 @@ namespace brr
 				ProcessEvent(sdl_event);
 			}
 
-			m_window_manager->Update();
+			m_scene->UpdateSceneSystems();
+
+			m_window_manager->RenderWindows();
 
 		}
 	}

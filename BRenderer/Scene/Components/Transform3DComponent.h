@@ -10,10 +10,11 @@ namespace brr
 	{
         explicit Transform3DComponent ();
 
-		enum DirtyFlags
+		enum DirtyFlags : uint8_t
 		{
 			NOT_DIRTY = 0,
-			GLOBAL_DIRTY = 1
+			GLOBAL_DIRTY = 1,
+			RENDER_DIRTY = 2
 		};
 
 		void SetTransform(const glm::mat4& transform);

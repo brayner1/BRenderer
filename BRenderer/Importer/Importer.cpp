@@ -46,6 +46,7 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 			if (node->mNumMeshes > 0)
 			{
 				brr::Mesh3DComponent& mesh_component = entity.AddComponent<brr::Mesh3DComponent>();
+				entity.AddComponent<brr::Mesh3DRendererComponent>();
 			
 				for (size_t i = 0; i < node->mNumMeshes; i++)
 				{

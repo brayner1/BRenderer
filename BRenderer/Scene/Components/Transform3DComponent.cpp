@@ -129,7 +129,7 @@ namespace brr
 
 	const glm::mat4& Transform3DComponent::GetGlobalTransform()
 	{
-		if (m_dirty_ & GLOBAL_DIRTY)
+		if (m_dirty_ & DirtyFlags::GLOBAL_DIRTY)
 		{
 			m_global_transform_ = GetTransform();
 			if (NodeComponent* parent = GetNodeComponent()->GetParentNode())
@@ -137,7 +137,7 @@ namespace brr
 				Transform3DComponent& parent_transform = parent->GetEntity().GetComponent<Transform3DComponent>();
 				m_global_transform_ = parent_transform.GetGlobalTransform() * m_global_transform_;
 			}
-			m_dirty_ &= ~GLOBAL_DIRTY;
+			m_dirty_ &= ~DirtyFlags::GLOBAL_DIRTY;
 		}
 		return m_global_transform_;
 	}
@@ -157,7 +157,7 @@ namespace brr
 
 	void Transform3DComponent::PropagateTransformChange()
 	{
-		m_dirty_ |= DirtyFlags::GLOBAL_DIRTY;
+		m_dirty_ |= DirtyFlags::GLOBAL_DIRTY | DirtyFlags::RENDER_DIRTY;
 
 		for (NodeComponent* child : GetNodeComponent()->mChildren_)
 		{

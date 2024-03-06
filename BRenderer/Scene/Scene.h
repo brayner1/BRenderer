@@ -29,6 +29,8 @@ namespace brr
 
 		vis::SceneRenderer* GetSceneRenderer() const { return m_scene_renderer.get(); }
 
+		void UpdateSceneSystems();
+
 	private:
 		
 		friend class Entity;

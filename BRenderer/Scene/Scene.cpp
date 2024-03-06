@@ -13,6 +13,7 @@ namespace brr
 
 	Scene::Scene(PerspectiveCamera* camera) : m_camera(camera)
 	{
+		auto render_system_group = m_registry.group<Mesh3DComponent, Transform3DComponent, Mesh3DRendererComponent>();
 	}
 
 	Scene::~Scene()
@@ -66,5 +67,17 @@ namespace brr
 		}
 
 		m_registry.destroy(entity.m_entity);
+    }
+
+    void Scene::UpdateSceneSystems()
+    {
+		auto render_system_group = m_registry.group<Mesh3DComponent, Transform3DComponent, Mesh3DRendererComponent>();
+        render_system_group.each([](auto entity,
+			                        Mesh3DComponent& mesh_component, 
+			                        Transform3DComponent& transform_component,
+                                    Mesh3DRendererComponent& mesh_renderer_component)
+        {
+			BRR_LogInfo("updating entity {}", (uint32_t)entity);
+        });
     }
 }

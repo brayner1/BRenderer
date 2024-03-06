@@ -70,7 +70,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/DeviceSwapchain.cpp"
     
     "Files/FilesUtils.cpp" 
-   )
+    "Scene/Systems/UpdateRendererSystem.cpp")
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
@@ -94,8 +94,10 @@ set(BRenderer_HEADER_FILES
     "Scene/Components/LightComponents.h"
     "Scene/Components/MaterialComponent.h"
     "Scene/Components/Mesh3DComponent.h"
+    "Scene/Components/Mesh3DRendererComponent.h"
     "Scene/Components/NodeComponent.h"
     "Scene/Components/Transform3DComponent.h"
+    "Scene/Systems/UpdateRendererSystem.h"
 
     "Visualization/Image.h"
     "Visualization/SceneRenderer.h"
@@ -107,6 +109,7 @@ set(BRenderer_HEADER_FILES
     
     "Renderer/Allocators/ResourceAllocator.h"
     "Renderer/Allocators/StagingAllocator.h"
+    "Renderer/Internal/RenderCommandQueue.h"
     "Renderer/Vulkan/VKDescriptors.h"
     "Renderer/Vulkan/VkInitializerHelper.h"
     "Renderer/Vulkan/VulkanInc.h"
@@ -123,7 +126,7 @@ set(BRenderer_HEADER_FILES
    
     
     "Files/FilesUtils.h"
-  ) 
+    ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")

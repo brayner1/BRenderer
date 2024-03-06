@@ -12,7 +12,7 @@ namespace brr::vis
 
 		~WindowManager();
 
-		void Update();
+		void RenderWindows();
 
 		void CloseWindow(WindowId pWindowID);
 

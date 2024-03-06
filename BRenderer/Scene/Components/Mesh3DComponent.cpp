@@ -38,7 +38,7 @@ namespace brr
     : m_vertices(std::move(vertices)),
       m_indices(std::move(indices))
     {}
-
+    //TODO: When changing surface (add/remove/update), Mesh3DRendererComponent needs to be notified.
     uint32_t Mesh3DComponent::AddSurface(const std::vector<Vertex3>& vertices,
                                          const std::vector<uint32_t>& indices)
     {

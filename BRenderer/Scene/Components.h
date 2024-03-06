@@ -4,6 +4,7 @@
 #include "Components/LightComponents.h"
 #include "Components/MaterialComponent.h"
 #include "Components/Mesh3DComponent.h"
+#include "Components/Mesh3DRendererComponent.h"
 #include "Components/NodeComponent.h"
 #include "Components/Transform3DComponent.h"
 #include "Geometry/Geometry.h"
