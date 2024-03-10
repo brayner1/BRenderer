@@ -8,8 +8,15 @@
 #include "Importer/Importer.h"
 #include "Scene/Components/LightComponents.h"
 
-static bool isLightOn = false;
-static brr::Entity light_entity;
+#include "Core/Memory/ArenaMemory.h"
+#include "Core/Memory/AllocatorStlAdaptor.h"
+
+namespace
+{
+    static bool isLightOn = false;
+    static brr::Entity light_entity;
+}
+
 namespace brr
 {
 	App::App() : m_scene(nullptr)

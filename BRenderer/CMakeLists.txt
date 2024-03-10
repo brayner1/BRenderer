@@ -30,7 +30,9 @@ endif()
 set(BRenderer_SOURCE_FILES
     "BRenderer.cpp" 
     
-    "Core/Storage/ArenaAllocator.cpp"
+    "Core/Memory/ArenaMemory.cpp"
+    "Core/Memory/LinearMemory.cpp"
+    "Core/Memory/StackMemory.cpp"
     "Core/App.cpp"
     "Core/LogSystem.cpp"
     "Core/PerspectiveCamera.cpp"
@@ -70,13 +72,16 @@ set(BRenderer_SOURCE_FILES
     "Renderer/DeviceSwapchain.cpp"
     
     "Files/FilesUtils.cpp" 
-    )
+ )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
     
+    "Core/Memory/AllocatorStlAdaptor.h"
+    "Core/Memory/ArenaMemory.h"
+    "Core/Memory/LinearMemory.h"
+    "Core/Memory/StackMemory.h"
     "Core/Storage/ContiguousPool.h"
-    "Core/Storage/ArenaAllocator.h"
     "Core/Threading/Barrier.h" 
     "Core/Threading/Threading.h" 
     "Core/Threading/ThreadPool.h" 
@@ -124,7 +129,7 @@ set(BRenderer_HEADER_FILES
    
     
     "Files/FilesUtils.h"
-  ) 
+ ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")

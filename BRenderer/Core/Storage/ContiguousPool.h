@@ -17,7 +17,7 @@ namespace brr
      *        using the ObjectId identifier to obtain the object index.
      *        That means accessing elements this way is not the fastest way.
      */
-    template<typename T>
+    template<typename T, class Alloc = std::allocator<T>>
     class ContiguousPool
     {
     public:
@@ -25,9 +25,9 @@ namespace brr
         using iterator = typename std::vector<T>::iterator;
         using const_iterator = typename std::vector<T>::const_iterator;
 
-        explicit ContiguousPool(uint32_t initial_size = 32);
+        explicit ContiguousPool(uint32_t initial_size = 32, const Alloc& allocator = Alloc());
 
-        ContiguousPool(const T& initial_value, uint32_t initial_size = 32);
+        ContiguousPool(const T& initial_value, uint32_t initial_size = 32, const Alloc& allocator = Alloc());
 
         ObjectId AddNewObject(const T& value = {});
         ObjectId AddNewObject(T&& value);
@@ -52,29 +52,29 @@ namespace brr
     private:
 
         std::unordered_map<ObjectId, uint32_t> m_object_index_map;
-        std::vector<T> m_pool;
+        std::vector<T, Alloc> m_pool;
         uint32_t m_active_count;
         ObjectId m_current_id;
     };
 
-    template <typename T>
-    ContiguousPool<T>::ContiguousPool(uint32_t initial_size)
-    : m_pool(initial_size),
+    template <typename T, class Alloc>
+    ContiguousPool<T, Alloc>::ContiguousPool(uint32_t initial_size, const Alloc& alloc)
+    : m_pool(initial_size, alloc),
       m_active_count(0),
       m_current_id(0)
     {
     }
 
-    template <typename T>
-    ContiguousPool<T>::ContiguousPool(const T& initial_value, uint32_t initial_size)
-    : m_pool(initial_size, initial_value),
+    template <typename T, class Alloc>
+    ContiguousPool<T, Alloc>::ContiguousPool(const T& initial_value, uint32_t initial_size, const Alloc& alloc)
+    : m_pool(initial_size, initial_value, alloc),
       m_active_count(0),
       m_current_id(0)
     {
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::ObjectId ContiguousPool<T>::AddNewObject(const T& value)
+    template <typename T, class Alloc>
+    typename ContiguousPool<T, Alloc>::ObjectId ContiguousPool<T, Alloc>::AddNewObject(const T& value)
     {
         ObjectId new_id = m_current_id++;
         m_object_index_map.emplace(new_id, m_active_count);
@@ -90,8 +90,8 @@ namespace brr
         return new_id;
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::ObjectId ContiguousPool<T>::AddNewObject(T&& value)
+    template <typename T, class Alloc>
+    typename ContiguousPool<T, Alloc>::ObjectId ContiguousPool<T, Alloc>::AddNewObject(T&& value)
     {
         ObjectId new_id = m_current_id++;
         m_object_index_map.emplace(new_id, m_active_count);
@@ -107,8 +107,8 @@ namespace brr
         return new_id;
     }
 
-    template <typename T>
-    T& ContiguousPool<T>::Get(ObjectId object_id)
+    template <typename T, class Alloc>
+    T& ContiguousPool<T, Alloc>::Get(ObjectId object_id)
     {
         assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
 
@@ -116,8 +116,8 @@ namespace brr
         return m_pool.at(index);
     }
 
-    template <typename T>
-    const T& ContiguousPool<T>::Get(ObjectId object_id) const
+    template <typename T, class Alloc>
+    const T& ContiguousPool<T, Alloc>::Get(ObjectId object_id) const
     {
         assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
 
@@ -125,8 +125,8 @@ namespace brr
         return m_pool.at(index);
     }
 
-    template <typename T>
-    void ContiguousPool<T>::RemoveObject(ObjectId object_id)
+    template <typename T, class Alloc>
+    void ContiguousPool<T, Alloc>::RemoveObject(ObjectId object_id)
     {
         //assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
         if (!m_object_index_map.contains(object_id))
@@ -160,26 +160,26 @@ namespace brr
         }
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::iterator ContiguousPool<T>::begin()
+    template <typename T, class Alloc>
+    typename ContiguousPool<T, Alloc>::iterator ContiguousPool<T, Alloc>::begin()
     {
         return m_pool.begin();
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::iterator ContiguousPool<T>::end()
+    template <typename T, class Alloc>
+    typename ContiguousPool<T, Alloc>::iterator ContiguousPool<T, Alloc>::end()
     {
         return m_pool.begin() + m_active_count;
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::const_iterator ContiguousPool<T>::cbegin()
+    template <typename T, class Alloc>
+    typename ContiguousPool<T, Alloc>::const_iterator ContiguousPool<T, Alloc>::cbegin()
     {
         return m_pool.cbegin();
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::const_iterator ContiguousPool<T>::cend()
+    template <typename T, class Alloc>
+    typename ContiguousPool<T, Alloc>::const_iterator ContiguousPool<T, Alloc>::cend()
     {
         return m_pool.cbegin() + m_active_count;
     }
