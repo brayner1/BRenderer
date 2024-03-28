@@ -9,19 +9,19 @@
 
 namespace brr::vis
 {
-    class Window;
+    class WindowRenderer;
 }
 
 namespace brr::render
 {
-
     class VulkanRenderDevice;
+    struct SwapchainWindowHandle;
 
     class DeviceSwapchain
     {
     public:
 
-        DeviceSwapchain(vis::Window* window);
+        DeviceSwapchain(vis::WindowRenderer* window_renderer, SwapchainWindowHandle window_handle, glm::uvec2 drawable_size);
         ~DeviceSwapchain();
 
         uint32_t AcquireNextImage();
@@ -29,7 +29,7 @@ namespace brr::render
         void BeginRendering();
         void EndRendering();
 
-        void Recreate_Swapchain();
+        void Recreate_Swapchain(glm::uvec2 drawable_size);
 
         std::vector<Texture2DHandle> GetSwapchainImages();
 

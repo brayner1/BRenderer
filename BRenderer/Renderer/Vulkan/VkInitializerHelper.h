@@ -1,5 +1,6 @@
 #ifndef BRR_VKINITIALIZERHELPER_H
 #define BRR_VKINITIALIZERHELPER_H
+#include <Core/thirdpartiesInc.h>
 #include <Renderer/Vulkan/VulkanInc.h>
 #include <Renderer/RenderEnums.h>
 
@@ -51,7 +52,7 @@ namespace brr::render::VkHelpers
                                                    const std::vector<vk::PresentModeKHR>& preferred_present_modes);
 
     // Select the correct swapchain extent based on minimum and maximum extent bounds.
-	vk::Extent2D Select_SwapchainExtent(vis::Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities);
+	vk::Extent2D Select_SwapchainExtent(glm::uvec2 desired_extent, const vk::SurfaceCapabilitiesKHR& surface_capabilities);
 
 	//! Check if layers names are in check_layers and return the accepted layers. Returns true if at least one layer was accepted.
 	vk::Bool32 CheckLayers(const std::vector<const char*>& check_layers,

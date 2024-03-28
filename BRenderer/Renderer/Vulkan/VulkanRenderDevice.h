@@ -2,7 +2,6 @@
 #define BRR_RENDERDEVICE_H
 #include <Renderer/RenderDefs.h>
 #include <Renderer/RenderEnums.h>
-#include <Renderer/DevicePipeline.h>
 #include <Renderer/Shader.h>
 #include <Renderer/Allocators/ResourceAllocator.h>
 #include <Renderer/Allocators/StagingAllocator.h>
@@ -11,12 +10,22 @@
 
 #include "glm/vec2.hpp"
 
+namespace brr::vis
+{
+    class WindowRenderer;
+}
+
 namespace brr::render
 {
     struct DescriptorSetBinding;
     struct DescriptorLayoutBindings;
     struct DescriptorLayout;
     class DescriptorSetAllocator;
+
+    struct SwapchainWindowHandle
+    {
+        vk::SurfaceKHR vk_surface;
+    };
 
     //TODO: Inherit from a base class RenderDevice. Support multiple APIs in the future.
     class VulkanRenderDevice
@@ -49,9 +58,12 @@ namespace brr::render
          * Swapchain *
          *************/
 
-        SwapchainHandle Swapchain_Create(vis::Window* window);
+        SwapchainHandle Swapchain_Create(vis::WindowRenderer* window_renderer, 
+                                         SwapchainWindowHandle window_handle,
+                                         glm::uvec2   drawable_size);
 
-        void Swapchain_Recreate(SwapchainHandle swapchain_handle);
+        void Swapchain_Recreate(SwapchainHandle swapchain_handle,
+                                glm::uvec2      drawable_size);
 
         void Swapchain_Destroy(SwapchainHandle swapchain_handle);
 
@@ -66,6 +78,8 @@ namespace brr::render
 
         void RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle, Texture2DHandle depth_attachment_handle, bool use_stencil = false);
         void RenderTarget_EndRendering(Texture2DHandle color_attachment_handle);
+
+        [[nodiscard]] SwapchainWindowHandle CreateSwapchainWindowHandle(SDL_Window* window) const;
 
         /**********
          * Queues *
@@ -235,7 +249,8 @@ namespace brr::render
          ***********************/
         struct Swapchain;
 
-        void Init_Swapchain(Swapchain& swapchain);
+        void Init_Swapchain(Swapchain& swapchain,
+                            glm::uvec2 drawable_size);
         void Init_SwapchainResources(Swapchain& swapchain);
         void Init_SwapchainSynchronization(Swapchain& swapchain);
 
@@ -349,7 +364,9 @@ namespace brr::render
 
         struct Swapchain
         {
-            vis::Window* window = nullptr;
+            vis::WindowRenderer* window_renderer = nullptr;
+
+            vk::SurfaceKHR surface {};
 
             vk::SwapchainKHR swapchain {};
 

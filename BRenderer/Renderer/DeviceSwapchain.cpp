@@ -1,16 +1,18 @@
 #include "DeviceSwapchain.h"
 
+#include <Core/LogSystem.h>
 #include <Renderer/Vulkan/VkInitializerHelper.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
-#include <Visualization/Window.h>
-#include <Core/LogSystem.h>
-
+#include <Visualization/WindowRenderer.h>
 
 namespace brr::render
 {
-    DeviceSwapchain::DeviceSwapchain(vis::Window* window) : m_render_device(VKRD::GetSingleton())
+    DeviceSwapchain::DeviceSwapchain(vis::WindowRenderer* window_renderer,
+                                     SwapchainWindowHandle window_handle,
+                                     glm::uvec2 drawable_size)
+    : m_render_device(VKRD::GetSingleton())
     {
-        m_swapchain_handle = m_render_device->Swapchain_Create(window);
+        m_swapchain_handle = m_render_device->Swapchain_Create(window_renderer, window_handle, drawable_size);
     }
 
     uint32_t DeviceSwapchain::AcquireNextImage()
@@ -38,9 +40,9 @@ namespace brr::render
         m_render_device->Swapchain_Destroy(m_swapchain_handle);
     }
 
-    void DeviceSwapchain::Recreate_Swapchain()
+    void DeviceSwapchain::Recreate_Swapchain(glm::uvec2 drawable_size)
     {
-        m_render_device->Swapchain_Recreate(m_swapchain_handle);
+        m_render_device->Swapchain_Recreate(m_swapchain_handle, drawable_size);
     }
 
     std::vector<Texture2DHandle> DeviceSwapchain::GetSwapchainImages()

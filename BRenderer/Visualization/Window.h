@@ -1,6 +1,5 @@
 #ifndef BRR_WINDOW_H
 #define BRR_WINDOW_H
-#include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Scene/Scene.h>
 
 namespace brr::vis
@@ -25,9 +24,9 @@ namespace brr::vis
 
 		// Window API
 
-		[[nodiscard]] WindowId GetWindowID() const { return m_window_id; }
-		[[nodiscard]] SDL_Window* GetSDLWindowHandle() const { return m_window; }
-		[[nodiscard]] bool NeedToClose() const { return m_need_to_close; }
+		[[nodiscard]] constexpr WindowId GetWindowID() const { return m_window_id; }
+		[[nodiscard]] constexpr SDL_Window* GetSDLWindowHandle() const { return m_window; }
+		[[nodiscard]] constexpr bool NeedToClose() const { return m_need_to_close; }
 
 		void RenderWindow();
 
@@ -35,7 +34,6 @@ namespace brr::vis
 
 		void GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const;
 		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
-		[[nodiscard]] vk::SurfaceKHR GetVulkanSurface(vk::Instance instance);
 
 		Scene* GetScene() const { return m_scene; }
 		void SetScene(Scene* scene);
@@ -43,8 +41,6 @@ namespace brr::vis
     private:
 		WindowId m_window_id = 0;
 		SDL_Window* m_window = nullptr;
-
-		vk::SurfaceKHR window_surface_ {};
 
 		std::unique_ptr<WindowRenderer> m_window_renderer;
 

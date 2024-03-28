@@ -18,7 +18,10 @@ namespace brr::vis
     : m_owner_window(window),
       m_render_device(render::VKRD::GetSingleton())
     {
-        m_swapchain = std::make_unique<render::DeviceSwapchain>(m_owner_window);
+        glm::uvec2 window_extent = m_owner_window->GetWindowExtent();
+        render::SwapchainWindowHandle window_handle = m_render_device->CreateSwapchainWindowHandle(m_owner_window->GetSDLWindowHandle());;
+
+        m_swapchain = std::make_unique<render::DeviceSwapchain>(this, window_handle, window_extent);
         m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
 
@@ -37,6 +40,15 @@ namespace brr::vis
         {
             m_scene_renderer->ResizeViewport(m_viewport, m_owner_window->GetWindowExtent());
         }
+    }
+
+    void WindowRenderer::Window_SurfaceLost()
+    {
+        glm::uvec2 window_extent = m_owner_window->GetWindowExtent();
+        render::SwapchainWindowHandle window_handle = m_render_device->CreateSwapchainWindowHandle(m_owner_window->GetSDLWindowHandle());;
+
+        m_swapchain = std::make_unique<render::DeviceSwapchain>(this, window_handle, window_extent);
+        m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
 
     void WindowRenderer::Record_CommandBuffer(SceneRenderer* scene_renderer)
@@ -83,7 +95,8 @@ namespace brr::vis
 
     void WindowRenderer::Recreate_Swapchain()
     {
-        m_swapchain->Recreate_Swapchain();
+        glm::uvec2 window_extent = m_owner_window->GetWindowExtent();
+        m_swapchain->Recreate_Swapchain(window_extent);
         m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
 

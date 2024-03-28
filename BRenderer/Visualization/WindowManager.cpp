@@ -1,6 +1,7 @@
 #include "WindowManager.h"
 
-#include "Core/LogSystem.h"
+#include <Core/LogSystem.h>
+#include <Renderer/Vulkan/VulkanRenderDevice.h>
 
 namespace brr::vis
 {

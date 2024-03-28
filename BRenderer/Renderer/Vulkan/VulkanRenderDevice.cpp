@@ -4,6 +4,7 @@
 #include <Renderer/Descriptors.h>
 #include <Renderer/Vulkan/VKDescriptors.h>
 
+#include <Visualization/WindowRenderer.h>
 #include <Visualization/Window.h>
 #include <Core/LogSystem.h>
 #include <Files/FilesUtils.h>
@@ -175,9 +176,9 @@ namespace brr::render
     {
         BRR_LogInfo("Constructing VulkanRenderDevice");
         Init_VkInstance(main_window);
-        vk::SurfaceKHR surface = main_window->GetVulkanSurface(m_vulkan_instance);
-        Init_PhysDevice(surface);
-        Init_Queues_Indices(surface);
+        SwapchainWindowHandle window_handle = this->CreateSwapchainWindowHandle(main_window->GetSDLWindowHandle());
+        Init_PhysDevice(window_handle.vk_surface);
+        Init_Queues_Indices(window_handle.vk_surface);
         Init_Device();
         Init_Allocator();
         Init_CommandPool();
@@ -326,7 +327,9 @@ namespace brr::render
             vk::Result result = m_presentation_queue.presentKHR(swapchain_present.present_info);
             if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
             {
-                Swapchain_Recreate(swapchain_present.swapchain_handle);
+                BRR_LogDebug("Present Result: {}", vk::to_string(result));
+                Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_present.swapchain_handle);
+                swapchain->window_renderer->Window_SurfaceLost();
             }
             else if (result != vk::Result::eSuccess)
             {
@@ -351,27 +354,31 @@ namespace brr::render
      * Swapchain *
      *************/
 
-    SwapchainHandle VulkanRenderDevice::Swapchain_Create(vis::Window* window)
+    SwapchainHandle VulkanRenderDevice::Swapchain_Create(vis::WindowRenderer* window_renderer,
+                                                         SwapchainWindowHandle window_handle,
+                                                         glm::uvec2   drawable_size)
     {
-        if (!window)
+        if (!window_handle.vk_surface)
         {
-            BRR_LogError("Can't initialize Swapchain with NULL Window.");
+            BRR_LogError("Can't initialize Swapchain with NULL VkSurfaceKHR.");
             return null_handle;
         }
 
         ResourceHandle swapchain_handle = m_swapchain_alloc.CreateResource();
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
 
-        swapchain->window = window;
+        swapchain->window_renderer  = window_renderer;
+        swapchain->surface = window_handle.vk_surface;
 
-        Init_Swapchain(*swapchain);
+        Init_Swapchain(*swapchain, drawable_size);
         Init_SwapchainResources(*swapchain);
         Init_SwapchainSynchronization(*swapchain);
 
         return swapchain_handle;
     }
 
-    void VulkanRenderDevice::Swapchain_Recreate(SwapchainHandle swapchain_handle)
+    void VulkanRenderDevice::Swapchain_Recreate(SwapchainHandle swapchain_handle,
+                                                glm::uvec2      drawable_size)
     {
         if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
         {
@@ -382,7 +389,7 @@ namespace brr::render
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
         WaitIdle();
 
-        Init_Swapchain(*swapchain);
+        Init_Swapchain(*swapchain, drawable_size);
         Init_SwapchainResources(*swapchain);
     }
 
@@ -424,7 +431,8 @@ namespace brr::render
 
         if (result == vk::Result::eErrorOutOfDateKHR)
         {
-            Swapchain_Recreate(swapchain_handle);
+            BRR_LogDebug("Acquire Image Result: {}", vk::to_string(result));
+            swapchain->window_renderer->Window_SurfaceLost();
             result = m_device.acquireNextImageKHR(swapchain->swapchain, UINT64_MAX,
                 swapchain->image_available_semaphores[swapchain->current_buffer_idx], VK_NULL_HANDLE, &swapchain->current_image_idx);
         }
@@ -699,14 +707,30 @@ namespace brr::render
         }
     }
 
-    void VulkanRenderDevice::Init_Swapchain(Swapchain& swapchain)
+    SwapchainWindowHandle VulkanRenderDevice::CreateSwapchainWindowHandle(SDL_Window* window) const
     {
-        vk::SurfaceKHR surface = swapchain.window->GetVulkanSurface(m_vulkan_instance);
-        VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_phys_device, surface);
+        SwapchainWindowHandle window_handle;
+        window_handle.vk_surface = VK_NULL_HANDLE;
+
+        vk::SurfaceKHR surface;
+        if (!SDL_Vulkan_CreateSurface(window, m_vulkan_instance, reinterpret_cast<VkSurfaceKHR*>(&surface)))
+		{
+			BRR_LogError("Could not create Vulkan surface of Main Window: {}", SDL_GetError());
+            return window_handle;
+		}
+        
+        window_handle.vk_surface = surface;
+        return window_handle;
+    }
+
+    void VulkanRenderDevice::Init_Swapchain(Swapchain& swapchain,
+                                            glm::uvec2 drawable_size)
+    {
+        VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_phys_device, swapchain.surface);
 
         vk::SurfaceFormatKHR surface_format = VkHelpers::Select_SwapchainFormat(properties.m_surfFormats);
         vk::PresentModeKHR present_mode     = VkHelpers::Select_SwapchainPresentMode(properties.m_presentModes, {vk::PresentModeKHR::eFifo});
-        swapchain.swapchain_extent          = VkHelpers::Select_SwapchainExtent(swapchain.window, properties.m_surfCapabilities);
+        swapchain.swapchain_extent          = VkHelpers::Select_SwapchainExtent(drawable_size, properties.m_surfCapabilities);
         swapchain.swapchain_image_format    = surface_format.format;
 
         uint32_t imageCount = properties.m_surfCapabilities.minImageCount + 1;
@@ -740,7 +764,7 @@ namespace brr::render
 
         vk::SwapchainCreateInfoKHR swapchain_create_info{};
         swapchain_create_info
-            .setSurface(surface)
+            .setSurface(swapchain.surface)
             .setMinImageCount(imageCount)
             .setImageFormat(swapchain.swapchain_image_format)
             .setImageColorSpace(surface_format.colorSpace)
