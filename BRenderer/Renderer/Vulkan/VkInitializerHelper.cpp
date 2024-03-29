@@ -8,7 +8,7 @@ namespace brr::render::VkHelpers
 {
 	vk::PhysicalDevice Select_PhysDevice(std::vector<vk::PhysicalDevice>& physical_devices, vk::SurfaceKHR surface)
 	{
-		vk::PhysicalDevice result = VK_NULL_HANDLE;
+		vk::PhysicalDevice result {};
 		for (vk::PhysicalDevice& device : physical_devices)
 		{
 			BRR_LogInfo("Checking if device '{}' supports application.", device.getProperties().deviceName.data());
@@ -253,7 +253,7 @@ namespace brr::render::VkHelpers
 		return selected_format.mode;
 	}
 
-	vk::Extent2D Select_SwapchainExtent(vis::Window* window, const vk::SurfaceCapabilitiesKHR& surface_capabilities)
+	vk::Extent2D Select_SwapchainExtent(glm::uvec2 desired_extent, const vk::SurfaceCapabilitiesKHR& surface_capabilities)
 	{
 		if (surface_capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 		{
@@ -261,11 +261,9 @@ namespace brr::render::VkHelpers
 		}
 		else
 		{
-			const glm::uvec2 desired_extent = window->GetWindowExtent();
-
 			VkExtent2D actualExtent = {
-				static_cast<uint32_t>(desired_extent.x),
-				static_cast<uint32_t>(desired_extent.y)
+				desired_extent.x,
+				desired_extent.y
 			};
 
 			actualExtent.width = std::clamp(actualExtent.width, surface_capabilities.minImageExtent.width, surface_capabilities.maxImageExtent.width);

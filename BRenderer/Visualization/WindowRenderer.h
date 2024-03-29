@@ -2,9 +2,7 @@
 #define BRR_RENDERER_H
 #include <Core/thirdpartiesInc.h>
 #include <Renderer/DeviceSwapchain.h>
-#include <Renderer/Descriptors.h>
-
-#include "SceneRenderer.h"
+#include <Visualization/SceneRenderer.h>
 
 namespace brr{
     class Scene;
@@ -31,6 +29,8 @@ namespace brr{
 			~WindowRenderer();
 
 			void Window_Resized();
+
+			void Window_SurfaceLost();
 
             void RenderWindow();
 

@@ -2,6 +2,11 @@
 #define BRR_WINDOWMANAGER_H
 #include <Visualization/Window.h>
 
+namespace brr::render
+{
+    class VulkanRenderDevice;
+}
+
 namespace brr::vis
 {
 	class WindowManager

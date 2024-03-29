@@ -3,7 +3,6 @@
 #include <Visualization/WindowRenderer.h>
 #include <Core/LogSystem.h>
 
-
 namespace brr::vis
 {
 	Window::Window(const std::string& window_name, glm::uvec2 window_size)
@@ -133,17 +132,6 @@ namespace brr::vis
 		int width, height;
 		SDL_Vulkan_GetDrawableSize(m_window, &width, &height);
 		return { width, height };
-	}
-
-	vk::SurfaceKHR Window::GetVulkanSurface(vk::Instance instance)
-	{
-		if (!window_surface_ &&
-			!SDL_Vulkan_CreateSurface(m_window, instance, reinterpret_cast<VkSurfaceKHR*>(&window_surface_)))
-		{
-			BRR_LogError("Could not create Vulkan surface of SDL window {}: {}", m_window_id, SDL_GetError());
-		}
-
-		return window_surface_;
 	}
 
     void Window::SetScene(Scene* scene)
