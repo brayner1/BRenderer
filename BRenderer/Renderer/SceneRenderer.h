@@ -10,7 +10,7 @@
 #include <Scene/Components/NodeComponent.h>
 #include <Visualization/Image.h>
 
-namespace brr::vis
+namespace brr::render
 {
     enum class SurfaceId : uint32_t
     {
@@ -84,7 +84,7 @@ namespace brr::vis
 
         void UpdateDirtyInstances();
 
-        void Render3D(ViewportId viewport, render::Texture2DHandle render_target);
+        void Render3D(ViewportId viewport, Texture2DHandle render_target);
 
     private:
 
@@ -108,17 +108,17 @@ namespace brr::vis
 
             NodeComponent* m_owner_node;
 
-            render::VertexBufferHandle m_vertex_buffer_handle {};
-            render::IndexBufferHandle m_index_buffer_handle {};
+            VertexBufferHandle m_vertex_buffer_handle {};
+            IndexBufferHandle m_index_buffer_handle {};
             bool m_vertices_dirty = true;
             bool m_indices_dirty  = true;
 
             uint32_t num_vertices = 0, num_indices = 0;
 
-            render::DescriptorLayout m_model_descriptor_layout;
-            std::array<bool, render::FRAME_LAG> m_uniform_dirty { true };
-            std::array<render::DeviceBuffer, render::FRAME_LAG>       m_uniform_buffers{}; // model transform
-            std::array<render::DescriptorSetHandle, render::FRAME_LAG>  m_descriptor_sets{};
+            DescriptorLayout m_model_descriptor_layout;
+            std::array<bool, FRAME_LAG> m_uniform_dirty { true };
+            std::array<DeviceBuffer, FRAME_LAG>       m_uniform_buffers{}; // model transform
+            std::array<DescriptorSetHandle, FRAME_LAG>  m_descriptor_sets{};
         };
 
         void SetupCameraUniforms();
@@ -132,13 +132,13 @@ namespace brr::vis
         void DestroyBuffers(RenderData& render_data);
 
         Scene* m_scene;
-        render::VulkanRenderDevice* m_render_device = nullptr;
+        VulkanRenderDevice* m_render_device = nullptr;
 
         struct Viewport
         {
             uint32_t width, heigth;
-            std::array<render::Texture2DHandle, render::FRAME_LAG> color_attachment {};
-            std::array<render::Texture2DHandle, render::FRAME_LAG> depth_attachment {};
+            std::array<Texture2DHandle, FRAME_LAG> color_attachment {};
+            std::array<Texture2DHandle, FRAME_LAG> depth_attachment {};
         };
 
         ContiguousPool<Viewport> m_viewports;
@@ -150,23 +150,23 @@ namespace brr::vis
 
         struct SceneUniformInfo
         {
-            std::array<render::DeviceBuffer, render::FRAME_LAG>        m_camera_uniforms;
-            std::array<render::DeviceBuffer, render::FRAME_LAG>        m_lights_buffers;
-            std::array<render::DescriptorSetHandle, render::FRAME_LAG> m_descriptor_sets;
-            std::array<bool, render::FRAME_LAG> m_light_storage_dirty { true };
-            std::array<bool, render::FRAME_LAG> m_light_storage_size_changed { true };
+            std::array<DeviceBuffer, FRAME_LAG>        m_camera_uniforms;
+            std::array<DeviceBuffer, FRAME_LAG>        m_lights_buffers;
+            std::array<DescriptorSetHandle, FRAME_LAG> m_descriptor_sets;
+            std::array<bool, FRAME_LAG> m_light_storage_dirty { true };
+            std::array<bool, FRAME_LAG> m_light_storage_size_changed { true };
         } m_camera_uniform_info;
 
         ContiguousPool<RenderData> m_render_data;
 
-        render::DescriptorLayout m_material_descriptor_layout;
-        std::array<render::DescriptorSetHandle, render::FRAME_LAG>  m_material_descriptor_sets{};
+        DescriptorLayout m_material_descriptor_layout;
+        std::array<DescriptorSetHandle, FRAME_LAG> m_material_descriptor_sets{};
 
-        std::unique_ptr<Image> m_image;
-        render::Texture2DHandle m_texture_2d_handle;
+        std::unique_ptr<vis::Image> m_image;
+        Texture2DHandle m_texture_2d_handle;
         ResourceHandle m_graphics_pipeline;
 
-        render::Shader m_shader;
+        Shader m_shader;
     };
 
 }

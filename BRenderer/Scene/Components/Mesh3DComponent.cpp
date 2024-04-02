@@ -1,6 +1,6 @@
 #include "Mesh3DComponent.h"
 
-#include <Visualization/SceneRenderer.h>
+#include <Core/LogSystem.h>
 
 namespace brr
 {
@@ -41,25 +41,25 @@ namespace brr
 
     void Mesh3DComponent::RegisterGraphics()
     {
-        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
-        assert(scene_renderer && "Can't call 'Mesh3DComponent::RegisterGraphics' when SceneRenderer is NULL.");
+        //vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        //assert(scene_renderer && "Can't call 'Mesh3DComponent::RegisterGraphics' when SceneRenderer is NULL.");
 
-        for (auto& surface : m_surfaces)
-        {
-            surface.m_surfaceId = static_cast<uint32_t>(scene_renderer->CreateNewSurface(surface, GetEntity()));
-        }
+        //for (auto& surface : m_surfaces)
+        //{
+        //    surface.m_surfaceId = static_cast<uint32_t>(scene_renderer->CreateNewSurface(surface, GetEntity()));
+        //}
     }
 
     void Mesh3DComponent::UnregisterGraphics()
     {
-        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
-        assert(scene_renderer && "Can't call 'Mesh3DComponent::UnregisterGraphics' when SceneRenderer is NULL.");
+        //vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        //assert(scene_renderer && "Can't call 'Mesh3DComponent::UnregisterGraphics' when SceneRenderer is NULL.");
 
-        for (auto& surface : m_surfaces)
-        {
-            scene_renderer->RemoveSurface(static_cast<vis::SurfaceId>(surface.GetRenderSurfaceID()));
-            surface.m_surfaceId = static_cast<uint32_t>(vis::SurfaceId::NULL_ID);
-        }
+        //for (auto& surface : m_surfaces)
+        //{
+        //    //scene_renderer->RemoveSurface(static_cast<vis::SurfaceId>(surface.GetRenderSurfaceID()));
+        //    surface.m_surfaceId = static_cast<uint32_t>(vis::SurfaceId::NULL_ID);
+        //}
     }
 
     uint32_t Mesh3DComponent::AddSurface(const std::vector<Vertex3>& vertices,
@@ -67,14 +67,14 @@ namespace brr
     {
         BRR_LogInfo("Adding new Surface");
         SurfaceData& new_surface = m_surfaces.emplace_back(vertices, indices);
-        if (!new_surface.GetVertices().empty())
+        /*if (!new_surface.GetVertices().empty())
         {
             vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
             if (scene_renderer)
             {
                 new_surface.m_surfaceId = static_cast<uint32_t>(scene_renderer->CreateNewSurface(new_surface, GetEntity()));
             }
-        }
+        }*/
         return m_surfaces.size() - 1;
     }
 
@@ -82,14 +82,14 @@ namespace brr
     {
         BRR_LogInfo("Adding new Surface");
         SurfaceData& new_surface = m_surfaces.emplace_back(std::forward<SurfaceData&&>(surface));
-        if (!new_surface.GetVertices().empty())
+        /*if (!new_surface.GetVertices().empty())
         {
             vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
             if (scene_renderer)
             {
                 new_surface.m_surfaceId = static_cast<uint32_t>(scene_renderer->CreateNewSurface(new_surface, GetEntity()));
             }
-        }
+        }*/
         return m_surfaces.size() - 1;
     }
 
@@ -97,11 +97,11 @@ namespace brr
     {
         assert((surface_index > 0 && surface_index < m_surfaces.size() - 1) && "Invalid surface index");
         BRR_LogInfo("Removing surface {}", surface_index);
-        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        /*vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
         if (scene_renderer)
         {
             scene_renderer->RemoveSurface(static_cast<vis::SurfaceId>(m_surfaces[surface_index].GetRenderSurfaceID()));
-        }
+        }*/
         m_surfaces.erase(m_surfaces.begin() + surface_index);
     }
 }

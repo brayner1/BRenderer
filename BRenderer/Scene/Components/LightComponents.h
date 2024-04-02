@@ -3,8 +3,6 @@
 
 #include <Scene/Components/EntityComponent.h>
 
-#include "Visualization/SceneRenderer.h"
-
 namespace brr
 {
 	struct PointLightComponent : public EntityComponent
@@ -34,7 +32,7 @@ namespace brr
         glm::vec3 m_position;
         float m_intensity;
         glm::vec3 m_color;
-        vis::LightId m_light_id = vis::LightId::NULL_ID;
+        //vis::LightId m_light_id = vis::LightId::NULL_ID;
 	};
 
 	struct DirectionalLightComponent : public EntityComponent
@@ -64,7 +62,7 @@ namespace brr
 		glm::vec3 m_direction;
 		float m_intensity;
 		glm::vec3 m_color;
-		vis::LightId m_light_id = vis::LightId::NULL_ID;
+		//vis::LightId m_light_id = vis::LightId::NULL_ID;
 	};
 
 	struct SpotLightComponent : public EntityComponent
@@ -102,7 +100,7 @@ namespace brr
 		glm::vec3 m_direction;
 		float m_intensity;
 		glm::vec3 m_color;
-		vis::LightId m_light_id = vis::LightId::NULL_ID;
+		//vis::LightId m_light_id = vis::LightId::NULL_ID;
 	};
 
 	struct AmbientLightComponent : public EntityComponent
@@ -129,7 +127,7 @@ namespace brr
 
 		glm::vec3 m_color;
 		float m_intensity;
-		vis::LightId m_light_id = vis::LightId::NULL_ID;
+		//vis::LightId m_light_id = vis::LightId::NULL_ID;
 	};
 }
 

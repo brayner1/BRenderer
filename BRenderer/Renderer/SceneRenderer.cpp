@@ -17,7 +17,7 @@ struct Transform3DUniform
     glm::mat4 model_matrix;
 };
 
-namespace brr::vis
+namespace brr::render
 {
     SceneRenderer::SceneRenderer(Scene* scene)
     : m_scene(scene),
@@ -53,7 +53,7 @@ namespace brr::vis
 
         SetupCameraUniforms();
 
-        m_image = std::make_unique<Image>("Resources/UV_Grid.png");
+        m_image = std::make_unique<vis::Image>("Resources/UV_Grid.png");
 
         m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(),
                                                                 render::ImageUsage::TransferDstImage | render::ImageUsage::SampledImage,

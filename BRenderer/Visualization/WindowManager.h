@@ -17,8 +17,6 @@ namespace brr::vis
 
 		~WindowManager();
 
-		void Update();
-
 		void CloseWindow(WindowId pWindowID);
 
 		// Process a window event

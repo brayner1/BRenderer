@@ -1,12 +1,11 @@
 #include "WindowRenderer.h"
 
-#include <Visualization/SceneRenderer.h>
-#include <Visualization/Window.h>
+#include <Renderer//SceneRenderer.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Core/LogSystem.h>
 
 
-namespace brr::vis
+namespace brr::render
 {
 
     struct ModelMatrixPushConstant
@@ -14,14 +13,13 @@ namespace brr::vis
         glm::mat4 model_matrix;
     };
 
-    WindowRenderer::WindowRenderer(Window* window)
-    : m_owner_window(window),
-      m_render_device(render::VKRD::GetSingleton())
+    WindowRenderer::WindowRenderer(uint32_t window_id, 
+                                   glm::uvec2 window_extent,
+                                   render::SwapchainWindowHandle swapchain_window_handle)
+    : m_render_device(render::VKRD::GetSingleton()),
+      m_window_id(window_id)
     {
-        glm::uvec2 window_extent = m_owner_window->GetWindowExtent();
-        render::SwapchainWindowHandle window_handle = m_render_device->CreateSwapchainWindowHandle(m_owner_window->GetSDLWindowHandle());;
-
-        m_swapchain = std::make_unique<render::DeviceSwapchain>(this, window_handle, window_extent);
+        m_swapchain = std::make_unique<render::DeviceSwapchain>(this, swapchain_window_handle, window_extent);
         m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
 
@@ -32,22 +30,26 @@ namespace brr::vis
         Destroy();
     }
 
-    void WindowRenderer::Window_Resized()
+    void WindowRenderer::Device_NotifySurfaceLost() const
     {
+        //TODO: Call on main thread to re-generate surface and create render command to update it
+    }
+
+    void WindowRenderer::Window_Resized(glm::uvec2 new_extent)
+    {
+        m_window_extent = new_extent;
         Recreate_Swapchain();
 
         if (m_scene_renderer && m_viewport != ViewportId::NULL_ID)
         {
-            m_scene_renderer->ResizeViewport(m_viewport, m_owner_window->GetWindowExtent());
+            m_scene_renderer->ResizeViewport(m_viewport, m_window_extent);
         }
     }
 
-    void WindowRenderer::Window_SurfaceLost()
+    void WindowRenderer::Window_SurfaceLost(glm::uvec2 window_extent, render::SwapchainWindowHandle swapchain_window_handle)
     {
-        glm::uvec2 window_extent = m_owner_window->GetWindowExtent();
-        render::SwapchainWindowHandle window_handle = m_render_device->CreateSwapchainWindowHandle(m_owner_window->GetSDLWindowHandle());;
-
-        m_swapchain = std::make_unique<render::DeviceSwapchain>(this, window_handle, window_extent);
+        m_window_extent = window_extent;
+        m_swapchain = std::make_unique<render::DeviceSwapchain>(this, swapchain_window_handle, m_window_extent);
         m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
 
@@ -66,7 +68,11 @@ namespace brr::vis
             return;
         }
 
-        Record_CommandBuffer(m_scene_renderer);
+        //Record_CommandBuffer(m_scene_renderer);
+
+        m_swapchain->BeginRendering();
+
+        m_swapchain->EndRendering();
 
         m_swapchain->PresentCurrentImage();
 
@@ -89,14 +95,13 @@ namespace brr::vis
         m_scene_renderer = scene_renderer;
         if (m_scene_renderer)
         {
-            m_viewport = scene_renderer->CreateViewport(m_owner_window->GetWindowExtent());
+            m_viewport = scene_renderer->CreateViewport(m_window_extent);
         }
     }
 
     void WindowRenderer::Recreate_Swapchain()
     {
-        glm::uvec2 window_extent = m_owner_window->GetWindowExtent();
-        m_swapchain->Recreate_Swapchain(window_extent);
+        m_swapchain->Recreate_Swapchain(m_window_extent);
         m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
 

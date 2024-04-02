@@ -1,14 +1,12 @@
 #include "VulkanRenderDevice.h"
 
+#include <Renderer/Internal//WindowRenderer.h>
 #include <Renderer/RenderDefs.h>
 #include <Renderer/Descriptors.h>
 #include <Renderer/Vulkan/VKDescriptors.h>
 
-#include <Visualization/WindowRenderer.h>
-#include <Visualization/Window.h>
 #include <Core/LogSystem.h>
 #include <Files/FilesUtils.h>
-#include <Geometry/Geometry.h>
 
 #include <filesystem>
 #include <iostream>
@@ -155,7 +153,7 @@ namespace brr::render
 
     std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_instance {};
 
-    void VulkanRenderDevice::CreateRenderDevice(vis::Window* window)
+    void VulkanRenderDevice::CreateRenderDevice(SDL_Window* window)
     {
         assert(!device_instance && "VulkanRenderDevice is already created. You can only create one.");
         device_instance.reset(new VulkanRenderDevice(window));
@@ -172,11 +170,11 @@ namespace brr::render
         return device_instance.get();
     }
 
-    VulkanRenderDevice::VulkanRenderDevice(vis::Window* main_window)
+    VulkanRenderDevice::VulkanRenderDevice(SDL_Window* main_window)
     {
         BRR_LogInfo("Constructing VulkanRenderDevice");
         Init_VkInstance(main_window);
-        SwapchainWindowHandle window_handle = this->CreateSwapchainWindowHandle(main_window->GetSDLWindowHandle());
+        SwapchainWindowHandle window_handle = this->CreateSwapchainWindowHandle(main_window);
         Init_PhysDevice(window_handle.vk_surface);
         Init_Queues_Indices(window_handle.vk_surface);
         Init_Device();
@@ -329,7 +327,7 @@ namespace brr::render
             {
                 BRR_LogDebug("Present Result: {}", vk::to_string(result));
                 Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_present.swapchain_handle);
-                swapchain->window_renderer->Window_SurfaceLost();
+                swapchain->window_renderer->Device_NotifySurfaceLost();
             }
             else if (result != vk::Result::eSuccess)
             {
@@ -354,7 +352,7 @@ namespace brr::render
      * Swapchain *
      *************/
 
-    SwapchainHandle VulkanRenderDevice::Swapchain_Create(vis::WindowRenderer* window_renderer,
+    SwapchainHandle VulkanRenderDevice::Swapchain_Create(WindowRenderer* window_renderer,
                                                          SwapchainWindowHandle window_handle,
                                                          glm::uvec2   drawable_size)
     {
@@ -432,7 +430,7 @@ namespace brr::render
         if (result == vk::Result::eErrorOutOfDateKHR)
         {
             BRR_LogDebug("Acquire Image Result: {}", vk::to_string(result));
-            swapchain->window_renderer->Window_SurfaceLost();
+            swapchain->window_renderer->Device_NotifySurfaceLost();
             result = m_device.acquireNextImageKHR(swapchain->swapchain, UINT64_MAX,
                 swapchain->image_available_semaphores[swapchain->current_buffer_idx], VK_NULL_HANDLE, &swapchain->current_image_idx);
         }
@@ -522,7 +520,7 @@ namespace brr::render
                                   vk::ImageAspectFlagBits::eDepth);
         }
 
-        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.2f, 0.2f, 0.2f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
+        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.8f, 0.2f, 0.2f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
         
 
         vk::Viewport viewport{
@@ -2337,7 +2335,7 @@ namespace brr::render
      * Initialization Functions *
      ****************************/
 
-    void VulkanRenderDevice::Init_VkInstance(vis::Window* window)
+    void VulkanRenderDevice::Init_VkInstance(SDL_Window* window)
     {
         // Dynamic load of the library
         {
@@ -2390,7 +2388,7 @@ namespace brr::render
         // Gather required extensions
         std::vector<const char*> extensions{};
         {
-            window->GetRequiredVulkanExtensions(extensions);
+            VkHelpers::GetRequiredVulkanExtensions(window, extensions);
 #ifndef NDEBUG
             extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif

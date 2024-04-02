@@ -6,11 +6,6 @@
 
 namespace brr
 {
-    namespace vis
-	{
-        class SceneRenderer;
-        class WindowRenderer;
-	}
 	class Entity;
 	class Scene
 	{
@@ -26,18 +21,16 @@ namespace brr
 
 		void RemoveEntity(Entity entity);
 
-		PerspectiveCamera* GetMainCamera() const { return m_camera.get(); }
+        [[nodiscard]] PerspectiveCamera* GetMainCamera() const { return m_camera.get(); }
 
-		vis::SceneRenderer* GetSceneRenderer() const { return m_scene_renderer.get(); }
+		//vis::SceneRenderer* GetSceneRenderer() const { return m_scene_renderer.get(); }
 
 	private:
 		
 		friend class Entity;
-		friend class vis::SceneRenderer;
 
 		entt::registry m_registry {};
 
-		std::unique_ptr<vis::SceneRenderer> m_scene_renderer;
 	    std::unique_ptr<PerspectiveCamera> m_camera {};
 	};
 }

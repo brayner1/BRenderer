@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-namespace brr::threading
+namespace brr::thread
 {
     ThreadPool& ThreadPool::GetDefaultPool()
     {

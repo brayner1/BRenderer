@@ -12,17 +12,13 @@
 
 #include "glm/vec2.hpp"
 
-namespace brr::vis
-{
-    class WindowRenderer;
-}
-
 namespace brr::render
 {
     struct DescriptorSetBinding;
     struct DescriptorLayoutBindings;
     struct DescriptorLayout;
     class DescriptorSetAllocator;
+    class WindowRenderer;
 
     struct SwapchainWindowHandle
     {
@@ -34,7 +30,7 @@ namespace brr::render
     {
     public:
 
-        static void CreateRenderDevice(vis::Window* window);
+        static void CreateRenderDevice(SDL_Window* window);
         static void DestroyRenderDevice();
 
         static VulkanRenderDevice* GetSingleton();
@@ -60,7 +56,7 @@ namespace brr::render
          * Swapchain *
          *************/
 
-        SwapchainHandle Swapchain_Create(vis::WindowRenderer* window_renderer, 
+        SwapchainHandle Swapchain_Create(WindowRenderer* window_renderer, 
                                          SwapchainWindowHandle window_handle,
                                          glm::uvec2   drawable_size);
 
@@ -231,13 +227,13 @@ namespace brr::render
 
     private: // Initialization functions
 
-        VulkanRenderDevice(vis::Window* main_window);
+        VulkanRenderDevice(SDL_Window* main_window);
 
         /****************************
          * Initialization Functions *
          ****************************/
 
-        void Init_VkInstance(vis::Window* window);
+        void Init_VkInstance(SDL_Window* window);
         void Init_PhysDevice(vk::SurfaceKHR surface);
         void Init_Queues_Indices(vk::SurfaceKHR surface);
         void Init_Device();
@@ -366,7 +362,7 @@ namespace brr::render
 
         struct Swapchain
         {
-            vis::WindowRenderer* window_renderer = nullptr;
+            WindowRenderer* window_renderer = nullptr;
 
             vk::SurfaceKHR surface {};
 

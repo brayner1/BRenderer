@@ -1,7 +1,8 @@
 #include "Window.h"
 
-#include <Visualization/WindowRenderer.h>
 #include <Core/LogSystem.h>
+
+#include "Renderer/RenderThread.h"
 
 namespace brr::vis
 {
@@ -38,7 +39,8 @@ namespace brr::vis
 	{
 		if (m_window)
 		{
-			m_window_renderer.reset();
+			//m_window_renderer.reset();
+            render::RenderThread::RenderCmd_DestroyWindowRenderer(m_window);
 			SDL_DestroyWindow(m_window);
 			m_window = nullptr;
 			m_window_id = 0;
@@ -53,7 +55,8 @@ namespace brr::vis
 
     void Window::InitWindowRenderer()
     {
-		m_window_renderer = std::make_unique<WindowRenderer>(this);
+		render::RenderThread::RenderCmd_InitializeWindowRenderer(m_window, GetWindowExtent());
+		//m_window_renderer = std::make_unique<WindowRenderer>(this);
     }
 
     void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)
@@ -66,7 +69,8 @@ namespace brr::vis
 		case SDL_WINDOWEVENT_MOVED: break;
 		case SDL_WINDOWEVENT_RESIZED:
 			BRR_LogInfo("Window {} resized.", m_window_id);
-			m_window_renderer->Window_Resized();
+			render::RenderThread::RenderCmd_ResizeWindow(m_window, GetWindowExtent());
+			//m_window_renderer->Window_Resized();
 			break;
 		case SDL_WINDOWEVENT_SIZE_CHANGED: break;
 		case SDL_WINDOWEVENT_MINIMIZED:
@@ -96,37 +100,6 @@ namespace brr::vis
 		}
 	}
 
-    void Window::RenderWindow()
-    {
-		if (m_minimized)
-			return;
-
-		m_window_renderer->RenderWindow();
-    }
-
-	void Window::GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const
-	{
-		unsigned int extension_count;
-
-		// Get the number of extensions required by the SDL window.
-		if (!SDL_Vulkan_GetInstanceExtensions(m_window,
-			&extension_count, nullptr))
-		{
-			BRR_LogError("Could not get the number of extensions required by SDL: {}", SDL_GetError());
-			exit(1);
-		}
-
-		const size_t additional_extension_count = extensions.size();
-		extensions.resize(additional_extension_count + extension_count);
-
-		if (!SDL_Vulkan_GetInstanceExtensions(m_window,
-			&extension_count, extensions.data() + additional_extension_count))
-		{
-			BRR_LogError("Could not get extensions required by SDL: {}", SDL_GetError());
-			exit(1);
-		}
-	}
-
 	glm::ivec2 Window::GetWindowExtent() const
 	{
 		int width, height;
@@ -139,11 +112,11 @@ namespace brr::vis
 	    m_scene = scene;
 		if (m_scene)
 		{
-		    m_window_renderer->SetSceneRenderer(m_scene->GetSceneRenderer());
+		    //m_window_renderer->SetSceneRenderer(m_scene->GetSceneRenderer());
 		}
 		else
 		{
-		    m_window_renderer->SetSceneRenderer(nullptr);
+		    //m_window_renderer->SetSceneRenderer(nullptr);
 		}
 	}
 }

@@ -30,11 +30,12 @@ endif()
 set(BRenderer_SOURCE_FILES
     "BRenderer.cpp" 
     
-    
+    "Core/Threading/MainThread.cpp"
+    "Core/Threading/ThreadPool.cpp"
     "Core/App.cpp"
     "Core/LogSystem.cpp"
     "Core/PerspectiveCamera.cpp"
-    "Core/Threading/ThreadPool.cpp"
+    "Core/UUID.cpp"
     
     "Geometry/Geometry.cpp"
     
@@ -50,10 +51,10 @@ set(BRenderer_SOURCE_FILES
     "Scene/Components/Transform3DComponent.cpp"
  
     "Visualization/Image.cpp"
-    "Visualization/SceneRenderer.cpp"
+    "Renderer/SceneRenderer.cpp"
     "Visualization/Window.cpp" 
     "Visualization/WindowManager.cpp"
-    "Visualization/WindowRenderer.cpp"
+    "Renderer/Internal/WindowRenderer.cpp"
     
     "Importer/Importer.cpp"
     
@@ -68,9 +69,10 @@ set(BRenderer_SOURCE_FILES
     "Renderer/DevicePipeline.cpp"
     "Renderer/Shader.cpp" 
     "Renderer/DeviceSwapchain.cpp"
+    "Renderer/RenderThread.cpp"
     
     "Files/FilesUtils.cpp" 
-   )
+  )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
@@ -79,6 +81,7 @@ set(BRenderer_HEADER_FILES
     "Core/Storage/ContiguousPool.h"
     "Core/Storage/ResourceAllocator.h"
     "Core/Threading/Barrier.h" 
+    "Core/Threading/MainThread.h" 
     "Core/Threading/Threading.h" 
     "Core/Threading/ThreadPool.h" 
     "Core/Threading/Work.h"
@@ -86,6 +89,7 @@ set(BRenderer_HEADER_FILES
     "Core/LogSystem.h"
     "Core/PerspectiveCamera.h"
     "Core/thirdpartiesInc.h"
+    "Core/UUID.h"
     
     "Geometry/Geometry.h"
     
@@ -100,14 +104,17 @@ set(BRenderer_HEADER_FILES
     "Scene/Components/Transform3DComponent.h"
 
     "Visualization/Image.h"
-    "Visualization/SceneRenderer.h"
+    "Renderer/SceneRenderer.h"
     "Visualization/Window.h" 
     "Visualization/WindowManager.h"
-    "Visualization/WindowRenderer.h"
+    "Renderer/Internal/WindowRenderer.h"
     
     "Importer/Importer.h"
     
     "Renderer/Allocators/StagingAllocator.h"
+    "Renderer/Internal/CmdList.h"
+    "Renderer/Internal/RenderUpdateCmdGroup.h"
+    "Renderer/Internal/WindowCmdList.h"
     "Renderer/Vulkan/VKDescriptors.h"
     "Renderer/Vulkan/VkInitializerHelper.h"
     "Renderer/Vulkan/VulkanInc.h"
@@ -118,13 +125,14 @@ set(BRenderer_HEADER_FILES
     "Renderer/DevicePipeline.h"
     "Renderer/RenderDefs.h"
     "Renderer/RenderEnums.h"
+    "Renderer/RenderThread.h"
     "Renderer/RenderResourcesHandles.h"
     "Renderer/Shader.h"
     "Renderer/DeviceSwapchain.h"
    
     
     "Files/FilesUtils.h"
-  ) 
+     "Visualization/SceneRenderProxy.h") 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")
@@ -140,6 +148,7 @@ source_group("Files" REGULAR_EXPRESSION "Files/.*")
 add_executable (BRenderer ${BRenderer_SOURCE_FILES} ${BRenderer_HEADER_FILES})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
+  message("Setting CXX Standard to C++20")
   set_property(TARGET BRenderer PROPERTY CXX_STANDARD 20)
   set_property(TARGET BRenderer PROPERTY CXX_STANDARD_REQUIRED ON)
 endif()
@@ -154,7 +163,7 @@ target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CUR
 
 target_link_directories(BRenderer PUBLIC $<TARGET_LINKER_FILE_DIR:Vulkan::Vulkan>)
 
-target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" PRIVATE Vulkan::Headers assimp::assimp spdlog::spdlog VulkanMemoryAllocator)
+target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" PRIVATE Vulkan::Headers assimp::assimp spdlog::spdlog VulkanMemoryAllocator SPSCQueue)
 
 if (TARGET spdlog)
     message("SpdLog Found!")

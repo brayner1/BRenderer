@@ -10,3 +10,9 @@
 [submodule "BRenderer/dependencies/assimp"]
 	path = BRenderer/dependencies/assimp
 	url = https://github.com/assimp/assimp
+[submodule "BRenderer/dependencies/rigtorp/SPSCQueue"]
+	path = BRenderer/dependencies/rigtorp/SPSCQueue
+	url = https://github.com/rigtorp/SPSCQueue.git
+[submodule "BRenderer/dependencies/rigtorp/MPMCQueue"]
+	path = BRenderer/dependencies/rigtorp/MPMCQueue
+	url = https://github.com/rigtorp/MPMCQueue.git

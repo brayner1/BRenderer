@@ -28,11 +28,6 @@ namespace brr::vis
 		[[nodiscard]] constexpr SDL_Window* GetSDLWindowHandle() const { return m_window; }
 		[[nodiscard]] constexpr bool NeedToClose() const { return m_need_to_close; }
 
-		void RenderWindow();
-
-		// Vulkan
-
-		void GetRequiredVulkanExtensions(std::vector<const char*>& extensions) const;
 		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
 
 		Scene* GetScene() const { return m_scene; }
@@ -41,8 +36,6 @@ namespace brr::vis
     private:
 		WindowId m_window_id = 0;
 		SDL_Window* m_window = nullptr;
-
-		std::unique_ptr<WindowRenderer> m_window_renderer;
 
 		Scene* m_scene = nullptr;
 

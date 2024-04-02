@@ -7,6 +7,7 @@
 #include <Core/Events/Event.h>
 
 #include "Importer/Importer.h"
+#include "Renderer/RenderThread.h"
 #include "Scene/Components/LightComponents.h"
 
 static bool isLightOn = false;
@@ -61,8 +62,7 @@ namespace brr
 				ProcessEvent(sdl_event);
 			}
 
-			m_window_manager->Update();
-
+            render::RenderThread::MainThread_SyncUpdate();
 		}
 	}
 
@@ -126,7 +126,10 @@ namespace brr
 			{
 				m_window_manager->ProcessWindowEvent(pEvent.window);
 				if (m_window_manager->IsMainWindowClosed())
-					m_should_finish = true;
+				{
+				    m_should_finish = true;
+					BRR_LogDebug("Main Window closed. Stopping application.");
+				}
 				break;
 			}
 			case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.

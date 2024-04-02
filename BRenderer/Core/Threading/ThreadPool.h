@@ -6,7 +6,7 @@
 #include <mutex>
 #include <atomic>
 
-namespace brr::threading
+namespace brr::thread
 {
 	class Work;
 

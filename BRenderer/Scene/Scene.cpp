@@ -3,8 +3,6 @@
 #include <Scene/Components.h>
 #include <Scene/Entity.h>
 #include <Core/LogSystem.h>
-#include <Visualization/SceneRenderer.h>
-
 
 namespace brr
 {

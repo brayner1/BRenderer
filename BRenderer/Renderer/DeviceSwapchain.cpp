@@ -3,11 +3,11 @@
 #include <Core/LogSystem.h>
 #include <Renderer/Vulkan/VkInitializerHelper.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
-#include <Visualization/WindowRenderer.h>
+#include <Renderer/Internal/WindowRenderer.h>
 
 namespace brr::render
 {
-    DeviceSwapchain::DeviceSwapchain(vis::WindowRenderer* window_renderer,
+    DeviceSwapchain::DeviceSwapchain(WindowRenderer* window_renderer,
                                      SwapchainWindowHandle window_handle,
                                      glm::uvec2 drawable_size)
     : m_render_device(VKRD::GetSingleton())
