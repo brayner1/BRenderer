@@ -4,11 +4,12 @@
 #include <Scene/Scene.h>
 #include <Scene/Entity.h>
 #include <Scene/Components/Mesh3DComponent.h>
-#include <Core/Events/Event.h>
+#include <Scene/Components/PerspectiveCameraComponent.h>
 
 #include "Importer/Importer.h"
 #include "Renderer/RenderThread.h"
 #include "Scene/Components/LightComponents.h"
+#include "Scene/Components/Transform3DComponent.h"
 
 static bool isLightOn = false;
 static brr::Entity light_entity;
@@ -36,20 +37,22 @@ namespace brr
 
         glm::ivec2 extent = m_window_manager->GetMainWindow()->GetWindowExtent();
 
-		m_scene.reset(new Scene(new PerspectiveCamera (
-			glm::vec3{ 8.f, 2.f, 0.f },
-			glm::vec3{ 0.f },
-			glm::radians(45.f),
-			extent.x / (float)extent.y,
-			0.1f, 100.f)));
+		m_scene.reset(new Scene());
 		m_scene->InitSceneRenderer();
-
-		m_window_manager->GetMainWindow()->SetScene(m_scene.get());
 
 		brr::Entity light_entity = m_scene->Add3DEntity({});
 		light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(1.0, 0.8, 0.8), 2.0);
 
 		brr::SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", m_scene.get());
+
+		Entity camera_entity = m_scene->Add3DEntity(Entity());
+		PerspectiveCameraComponent& camera_component = camera_entity.AddComponent<PerspectiveCameraComponent>(glm::radians(45.0), 0.1f, 100.f);
+		Transform3DComponent& camera_transform = camera_entity.GetComponent<Transform3DComponent>();
+		camera_transform.SetPosition({8.0, 2.0, 0.0});
+		glm::vec3 look_dir = glm::normalize(glm::vec3(-8.0, -2.0, 0.0));
+		camera_transform.SetRotation(glm::quatLookAt(look_dir, { 0.f, -1.f, 0.f }));
+
+		m_window_manager->GetMainWindow()->SetScene(m_scene.get());
 	}
 
 	void App::MainLoop()
@@ -61,6 +64,8 @@ namespace brr
 			{
 				ProcessEvent(sdl_event);
 			}
+
+			m_scene->Update();
 
             render::RenderThread::MainThread_SyncUpdate();
 		}

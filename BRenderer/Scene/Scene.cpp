@@ -1,131 +1,102 @@
 #include "Scene/Scene.h"
 
+#include <iostream>
 #include <Scene/Components.h>
 #include <Scene/Entity.h>
 #include <Core/LogSystem.h>
 
+#include "Components/PerspectiveCameraComponent.h"
+#include "Renderer/RenderThread.h"
+
 namespace brr
 {
-	Scene::Scene()
-	{}
-
-	Scene::Scene(PerspectiveCamera* camera) : m_camera(camera)
+	template <ComponentType T>
+	void RegisterComponentGraphics(entt::registry& scene_registry)
 	{
+	    auto component_view = scene_registry.view<T>();
+		for (auto&& [entity, component] : component_view.each())
+		{
+		    component.RegisterGraphics();
+		}
 	}
+
+	template <ComponentType T>
+	void UnregisterComponentGraphics(entt::registry& scene_registry)
+	{
+	    auto component_view = scene_registry.view<T>();
+		for (auto&& [entity, component] : component_view.each())
+		{
+		    component.UnregisterGraphics();
+		}
+	}
+
+	Scene::Scene()
+	: m_main_camera(entt::null)
+	{}
 
 	Scene::~Scene()
 	{
+		DestroySceneRenderer();
 		m_registry.clear();
 	}
 
     void Scene::InitSceneRenderer()
     {
-		if (m_scene_renderer)
+		if (m_scene_render_proxy)
 		{
-		    BRR_LogError("Called 'Scene::DestroySceneRenderer', but SceneRenderer is already initialized.");
+		    BRR_LogError("Called 'Scene::InitSceneRenderer', but SceneRenderer is already initialized.");
 			return;
 		}
-		m_scene_renderer = std::make_unique<vis::SceneRenderer>(this);
+		
 
-	    { // Register Transforms
-	        auto transform_view = m_registry.view<Transform3DComponent>();
-		    for (auto&& [entity, transform] : transform_view.each())
-		    {
-		        transform.RegisterGraphics();
-		    }
-	    }
-	    { // Register Meshes
-	        auto mesh_3d_view = m_registry.view<Mesh3DComponent>();
-		    for (auto&& [entity, mesh] : mesh_3d_view.each())
-		    {
-		        mesh.RegisterGraphics();
-		    }
-	    }
+		m_scene_render_proxy = std::make_unique<vis::SceneRenderProxy>();
+		
 
-		// Register lights
-		{ // Register Point Lights
-		    auto point_light_view = m_registry.view<PointLightComponent>();
-		    for (auto&& [entity, point_light] : point_light_view.each())
-		    {
-		        point_light.RegisterGraphics();
-		    }
-		}
-		{ // Register Directional Lights
-		    auto dir_light_view = m_registry.view<DirectionalLightComponent>();
-		    for (auto&& [entity, dir_light] : dir_light_view.each())
-		    {
-		        dir_light.RegisterGraphics();
-		    }
-		}
-		{ // Register Spot Lights
-		    auto spot_light_view = m_registry.view<SpotLightComponent>();
-		    for (auto&& [entity, spot_light] : spot_light_view.each())
-		    {
-		        spot_light.RegisterGraphics();
-		    }
-		}
-		{ // Register Ambient Lights
-		    auto amb_light_view = m_registry.view<AmbientLightComponent>();
-		    for (auto&& [entity, amb_light] : amb_light_view.each())
-		    {
-		        amb_light.RegisterGraphics();
-		    }
-		}
+		// Register Transforms
+	    RegisterComponentGraphics<Transform3DComponent>(m_registry);
+	    // Register Meshes
+	    RegisterComponentGraphics<Mesh3DComponent>(m_registry);
+		// Register Cameras
+	    RegisterComponentGraphics<PerspectiveCameraComponent>(m_registry);
+
+		/* Register lights */
+
+	    // Register Point Lights
+		RegisterComponentGraphics<PointLightComponent>(m_registry);
+		// Register Directional Lights
+		RegisterComponentGraphics<DirectionalLightComponent>(m_registry);
+		// Register Spot Lights
+		RegisterComponentGraphics<SpotLightComponent>(m_registry);
+		// Register Ambient Lights
+		RegisterComponentGraphics<AmbientLightComponent>(m_registry);
     }
 
     void Scene::DestroySceneRenderer()
     {
-		if (!m_scene_renderer)
+		if (!m_scene_render_proxy)
 		{
 		    BRR_LogError("Called 'Scene::DestroySceneRenderer', but SceneRenderer is not initialized.");
 			return;
 		}
-		{ // Unregister Transforms
-	        auto transform_view = m_registry.view<Transform3DComponent>();
-		    for (auto&& [entity, transform] : transform_view.each())
-		    {
-		        transform.UnregisterGraphics();
-		    }
-	    }
-	    { // Unregister Meshes
-	        auto mesh_3d_view = m_registry.view<Mesh3DComponent>();
-		    for (auto&& [entity, mesh] : mesh_3d_view.each())
-		    {
-		        mesh.UnregisterGraphics();
-		    }
-	    }
+		// Unregister Transforms
+		UnregisterComponentGraphics<Transform3DComponent>(m_registry);
+	    // Unregister Meshes
+		UnregisterComponentGraphics<Mesh3DComponent>(m_registry);
+		// Unregister Cameras
+	    UnregisterComponentGraphics<PerspectiveCameraComponent>(m_registry);
 
-		// Unregister lights
-		{ // Unregister Point Lights
-		    auto point_light_view = m_registry.view<PointLightComponent>();
-		    for (auto&& [entity, point_light] : point_light_view.each())
-		    {
-		        point_light.UnregisterGraphics();
-		    }
-		}
-		{ // Unregister Directional Lights
-		    auto dir_light_view = m_registry.view<DirectionalLightComponent>();
-		    for (auto&& [entity, dir_light] : dir_light_view.each())
-		    {
-		        dir_light.UnregisterGraphics();
-		    }
-		}
-		{ // Unregister Spot Lights
-		    auto spot_light_view = m_registry.view<SpotLightComponent>();
-		    for (auto&& [entity, spot_light] : spot_light_view.each())
-		    {
-		        spot_light.UnregisterGraphics();
-		    }
-		}
-		{ // Unregister Ambient Lights
-		    auto amb_light_view = m_registry.view<AmbientLightComponent>();
-		    for (auto&& [entity, amb_light] : amb_light_view.each())
-		    {
-		        amb_light.UnregisterGraphics();
-		    }
-		}
+		/* Unregister lights */
 
-		m_scene_renderer.reset();
+		// Unregister Point Lights
+		UnregisterComponentGraphics<PointLightComponent>(m_registry);
+		// Unregister Directional Lights
+		UnregisterComponentGraphics<DirectionalLightComponent>(m_registry);
+		// Unregister Spot Lights
+		UnregisterComponentGraphics<SpotLightComponent>(m_registry);
+		// Unregister Ambient Lights
+		UnregisterComponentGraphics<AmbientLightComponent>(m_registry);
+
+		m_scene_render_proxy.reset();
     }
 
     Entity Scene::Add3DEntity(Entity parent)
@@ -169,5 +140,34 @@ namespace brr
 		}
 
 		m_registry.destroy(entity.m_entity);
+    }
+
+    PerspectiveCameraComponent* Scene::GetMainCamera()
+    {
+		if (m_main_camera == entt::null)
+		{
+		    return nullptr;
+		}
+
+		PerspectiveCameraComponent& camera_component = m_registry.get<PerspectiveCameraComponent>(m_main_camera);
+		return &camera_component;
+    }
+
+    void Scene::SetMainCamera(Entity main_camera_entity)
+    {
+		if (!main_camera_entity.HasComponent<PerspectiveCameraComponent>())
+		{
+		    BRR_LogError("Impossible to set as the Scene's main camera an Entity that does not contain a CameraComponent.");
+			return;
+		}
+		m_main_camera = main_camera_entity.m_entity;
+    }
+
+    void Scene::Update()
+    {
+		if (m_scene_render_proxy)
+		{
+		    m_scene_render_proxy->FlushUpdateCommands();
+		}
     }
 }

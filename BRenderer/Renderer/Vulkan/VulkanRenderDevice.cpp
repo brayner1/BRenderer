@@ -325,7 +325,7 @@ namespace brr::render
             vk::Result result = m_presentation_queue.presentKHR(swapchain_present.present_info);
             if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
             {
-                BRR_LogDebug("Present Result: {}", vk::to_string(result));
+                BRR_LogError("Present Result: {}", vk::to_string(result));
                 Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_present.swapchain_handle);
                 swapchain->window_renderer->Device_NotifySurfaceLost();
             }
@@ -372,6 +372,8 @@ namespace brr::render
         Init_SwapchainResources(*swapchain);
         Init_SwapchainSynchronization(*swapchain);
 
+        BRR_LogInfo("Created Swapchain. VkSwapchain: {:#x}", (size_t)static_cast<VkSwapchainKHR>(swapchain->swapchain));
+
         return swapchain_handle;
     }
 
@@ -383,10 +385,11 @@ namespace brr::render
             BRR_LogError("Can't recreate Swapchain that does not exist.");
             return;
         }
-        BRR_LogInfo("Recreating Swapchain");
-        Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
+
         WaitIdle();
 
+        Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
+        BRR_LogInfo("Recreating Swapchain. VkSwapchain: {:#x}", (size_t)static_cast<VkSwapchainKHR>(swapchain->swapchain));
         Init_Swapchain(*swapchain, drawable_size);
         Init_SwapchainResources(*swapchain);
     }
@@ -399,7 +402,7 @@ namespace brr::render
             return;
         }
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
-
+        BRR_LogInfo("Destroying Swapchain. VkSwapchain: {:#x}", (size_t)static_cast<VkSwapchainKHR>(swapchain->swapchain));
         Cleanup_Swapchain(*swapchain);
 
         for (uint32_t idx = 0; idx < FRAME_LAG; idx++)
@@ -436,8 +439,8 @@ namespace brr::render
         }
         if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR)
         {
-            //throw std::runtime_error("Failed to acquire DeviceSwapchain image!");
-            return false;
+            BRR_LogDebug("Acquire Image Result: {}", vk::to_string(result));
+            return -1;
         }
 
         current_frame.images_available_semaphore.push_back(swapchain->image_available_semaphores[swapchain->current_buffer_idx]);
@@ -642,7 +645,7 @@ namespace brr::render
                                   vk::ImageAspectFlagBits::eDepth);
         }
 
-        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.2f, 0.2f, 0.2f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
+        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.2f, 0.8f, 0.4f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
         
 
         vk::Viewport viewport{
@@ -796,12 +799,12 @@ namespace brr::render
          exit(1);
         }
         vk::SwapchainKHR new_swapchain = createSwapchainResult.value;
-        BRR_LogInfo("Swapchain created");
+        BRR_LogDebug("Swapchain initialized.");
 
         // If old swapchain is valid, destroy it. (It happens on swapchain recreation)
         if (swapchain.swapchain)
         {
-            BRR_LogInfo("Swapchain was recreated. Cleaning old swapchain.");
+            BRR_LogDebug("Swapchain was recreated. Cleaning old swapchain.");
             Cleanup_Swapchain(swapchain);
         }
 
@@ -849,7 +852,7 @@ namespace brr::render
             swapchain_image->image_view = createImgViewResult.value;
         }
 
-        BRR_LogInfo("Swapchain ImagesResources initialized.");
+        BRR_LogDebug("Swapchain ImagesResources initialized.");
     }
 
     void VulkanRenderDevice::Init_SwapchainSynchronization(Swapchain& swapchain)
@@ -865,7 +868,7 @@ namespace brr::render
              swapchain.image_available_semaphores[i] = createImgAvailableSemaphoreResult.value;
         }
 
-        BRR_LogInfo("Created Swapchain synchronization semaphores and fences");
+        BRR_LogDebug("Created Swapchain synchronization Semaphores and Fences");
     }
 
     void VulkanRenderDevice::Cleanup_Swapchain(Swapchain& swapchain)
@@ -879,7 +882,7 @@ namespace brr::render
             {
                 m_device.destroyImageView(swapchain_image->image_view);
                 swapchain_image->image_view = VK_NULL_HANDLE;
-                BRR_LogInfo("ImageView of Swapchain Image {} Destroyed.", i);
+                BRR_LogDebug("ImageView of Swapchain Image {} Destroyed.", i);
             }
             m_texture2d_alloc.DestroyResource(swapchain.image_resources[i]);
             swapchain.image_resources[i] = null_handle;
@@ -889,7 +892,7 @@ namespace brr::render
         {
             m_device.destroySwapchainKHR(swapchain.swapchain);
             swapchain.swapchain = VK_NULL_HANDLE;
-            BRR_LogInfo("Swapchain Destroyed.");
+            BRR_LogDebug("Destroyed Swapchain.");
         }
     }
 
@@ -897,12 +900,12 @@ namespace brr::render
      * Descriptor Functions *
      ************************/
 
-    DescriptorLayoutHandle VulkanRenderDevice::CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings)
+    DescriptorLayoutHandle VulkanRenderDevice::DescriptorSetLayout_Create(const DescriptorLayoutBindings& descriptor_layout_bindings)
     {
         return m_descriptor_layout_cache->CreateDescriptorLayout(descriptor_layout_bindings);
     }
 
-    std::vector<DescriptorSetHandle> VulkanRenderDevice::AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
+    std::vector<DescriptorSetHandle> VulkanRenderDevice::DescriptorSet_Allocate(DescriptorLayoutHandle descriptor_layout,
                                                                                uint32_t number_sets)
     {
         vk::DescriptorSetLayout descriptor_set_layout = m_descriptor_layout_cache->GetDescriptorLayout(descriptor_layout);
@@ -928,8 +931,22 @@ namespace brr::render
         return descriptor_sets_handles;
     }
 
-    bool VulkanRenderDevice::UpdateDescriptorSetResources(DescriptorSetHandle descriptor_set_handle,
-                                                          const std::vector<DescriptorSetBinding>& shader_bindings)
+    void VulkanRenderDevice::DescriptorSet_Destroy(DescriptorSetHandle descriptor_set_handle)
+    {
+        if (!m_descriptor_set_alloc.OwnsResource(descriptor_set_handle))
+        {
+            BRR_LogError("Can't destroy DescriptorSet that does not exist.");
+            return;
+        }
+        DescriptorSet* descriptor_set = m_descriptor_set_alloc.GetResource(descriptor_set_handle);
+
+        m_descriptor_allocator->Delete(descriptor_set->descriptor_set);
+
+        m_descriptor_set_alloc.DestroyResource(descriptor_set_handle);
+    }
+
+    bool VulkanRenderDevice::DescriptorSet_UpdateResources(DescriptorSetHandle descriptor_set_handle,
+                                                           const std::vector<DescriptorSetBinding>& shader_bindings)
     {
         DescriptorSet* descriptor_set = m_descriptor_set_alloc.GetResource(descriptor_set_handle);
         if (!descriptor_set)
@@ -1061,7 +1078,7 @@ namespace brr::render
             buffer->buffer_size = buffer_size;
             buffer->buffer_usage = vk_buffer_usage;
 
-            BRR_LogDebug("Buffer created. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
+            BRR_LogDebug("Created Buffer. VkBuffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
         }
 
         return buffer_handle;
@@ -1080,7 +1097,7 @@ namespace brr::render
 
         m_buffer_alloc.DestroyResource(buffer_handle);
 
-        BRR_LogDebug("Buffer destroyed. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
+        BRR_LogDebug("Destroyed Buffer. VkBuffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
         return true;
     }
 
@@ -1100,7 +1117,7 @@ namespace brr::render
             buffer->mapped = nullptr;
         }
 
-        BRR_LogTrace("Mapped buffer. Buffer: {:#x}. Mapped adress: {:#x}.", size_t(VkBuffer(buffer->buffer)), (size_t)buffer->mapped);
+        BRR_LogTrace("Mapped Buffer. VkBuffer: {:#x}. Mapped adress: {:#x}.", size_t(VkBuffer(buffer->buffer)), (size_t)buffer->mapped);
 
         return buffer->mapped;
     }
@@ -1117,7 +1134,7 @@ namespace brr::render
         vmaUnmapMemory(m_vma_allocator, buffer->buffer_allocation);
         buffer->mapped = nullptr;
 
-        BRR_LogTrace("Unmapped buffer. Buffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
+        BRR_LogTrace("Unmapped Buffer. VkBuffer: {:#x}.", size_t(VkBuffer(buffer->buffer)));
     }
 
     bool VulkanRenderDevice::UploadBufferData(BufferHandle dst_buffer_handle, void* data, size_t size, uint32_t offset)
@@ -1294,7 +1311,7 @@ namespace brr::render
 
         m_device.freeCommandBuffers(transfer_cmd_pool, cmd_buffer);
 
-        BRR_LogDebug("Immeadite copy buffers. Src buffer: {:#x}. Dst Buffer: {:#x}. Copy size: {}", size_t(VkBuffer(src_buffer->buffer)), size_t(VkBuffer(dst_buffer->buffer)), size);
+        BRR_LogDebug("Immeadite copy Buffers. Src VkBuffer: {:#x}. Dst VkBuffer: {:#x}. Copy size: {}", size_t(VkBuffer(src_buffer->buffer)), size_t(VkBuffer(dst_buffer->buffer)), size);
 
         return true;
     }
@@ -1365,7 +1382,7 @@ namespace brr::render
             vertex_buffer->buffer_size = buffer_size;
             vertex_buffer->buffer_format = format;
 
-            BRR_LogDebug("Created vertex buffer. Buffer: {:#x}", (size_t)new_buffer);
+            BRR_LogDebug("Created VertexBuffer. VkBuffer: {:#x}", (size_t)new_buffer);
         }
 
         if (data != nullptr)
@@ -1387,7 +1404,7 @@ namespace brr::render
         Frame& current_frame = GetCurrentFrame();
         current_frame.buffer_delete_list.emplace_back(vertex_buffer->buffer, vertex_buffer->buffer_allocation);
 
-        BRR_LogDebug("Destroyed vertex buffer. Buffer: {:#x}", (size_t)(static_cast<VkBuffer>(vertex_buffer->buffer)));
+        BRR_LogDebug("Destroyed VertexBuffer. VkBuffer: {:#x}", (size_t)(static_cast<VkBuffer>(vertex_buffer->buffer)));
 
         return m_vertex_buffer_alloc.DestroyResource(vertex_buffer_handle);
     }
@@ -1512,7 +1529,7 @@ namespace brr::render
             index_buffer->buffer_size = buffer_size;
             index_buffer->buffer_format = format;
 
-            BRR_LogDebug("Created index buffer. Buffer: {:#x}", (size_t)new_buffer);
+            BRR_LogDebug("Created IndexBuffer. VkBuffer: {:#x}", (size_t)new_buffer);
         }
 
         if (data != nullptr)
@@ -1534,7 +1551,7 @@ namespace brr::render
         Frame& current_frame = GetCurrentFrame();
         current_frame.buffer_delete_list.emplace_back(index_buffer->buffer, index_buffer->buffer_allocation);
 
-        BRR_LogDebug("Destroyed index buffer. Buffer: {:#x}", (size_t)(static_cast<VkBuffer>(index_buffer->buffer)));
+        BRR_LogDebug("Destroyed IndexBuffer. VkBuffer: {:#x}", (size_t)(static_cast<VkBuffer>(index_buffer->buffer)));
 
         return m_index_buffer_alloc.DestroyResource(index_buffer_handle);
     }
@@ -1666,7 +1683,7 @@ namespace brr::render
             return {};
         }
 
-        BRR_LogInfo("Image created.");
+        BRR_LogDebug("Created Texture2D. VkImage: {:#x}", (size_t)new_image);
 
         // Create ImageView
 
@@ -1745,7 +1762,7 @@ namespace brr::render
         Frame& current_frame = GetCurrentFrame();
         current_frame.texture_delete_list.emplace_back(texture->image, texture->image_view, texture->image_allocation);
 
-        BRR_LogDebug("Destroyed Texture2D. Image: {:#x}", (size_t)(static_cast<VkImage>(texture->image)));
+        BRR_LogDebug("Destroyed Texture2D. VkImage: {:#x}", (size_t)(static_cast<VkImage>(texture->image)));
 
         return m_texture2d_alloc.DestroyResource(texture2d_handle);
     }
@@ -2067,7 +2084,7 @@ namespace brr::render
 
         graphics_pipeline->pipeline = createGraphicsPipelineResult.value;
 
-        BRR_LogInfo("Graphics DevicePipeline created.");
+        BRR_LogDebug("Created GraphicsPipeline. VkPipeline: {:#x}", (size_t)static_cast<VkPipeline>(graphics_pipeline->pipeline));
 
         return pipeline_handle;
     }
@@ -2079,6 +2096,8 @@ namespace brr::render
         {
             return false;
         }
+
+        BRR_LogDebug("Destroying GraphicsPipeline. VkPipeline: {:#x}", (size_t)static_cast<VkPipeline>(graphics_pipeline->pipeline));
 
         m_device.destroyPipeline(graphics_pipeline->pipeline);
         m_device.destroyPipelineLayout(graphics_pipeline->pipeline_layout);
@@ -2481,7 +2500,7 @@ namespace brr::render
 
         m_device_properties = m_phys_device.getProperties2();
 
-        BRR_LogInfo("Selected physical device: {}", m_phys_device.getProperties().deviceName);
+        BRR_LogInfo("Selected PhysicalDevice (GPU): {}", m_phys_device.getProperties().deviceName);
     }
 
     void VulkanRenderDevice::Init_Queues_Indices(vk::SurfaceKHR surface)

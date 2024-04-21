@@ -16,9 +16,10 @@ namespace brr::render
     WindowRenderer::WindowRenderer(uint32_t window_id, 
                                    glm::uvec2 window_extent,
                                    render::SwapchainWindowHandle swapchain_window_handle)
-    : m_render_device(render::VKRD::GetSingleton()),
-      m_window_id(window_id)
-    {
+    : m_window_id(window_id),
+      m_window_extent(window_extent),
+      m_render_device(render::VKRD::GetSingleton())
+{
         m_swapchain = std::make_unique<render::DeviceSwapchain>(this, swapchain_window_handle, window_extent);
         m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
@@ -53,11 +54,21 @@ namespace brr::render
         m_swapchain_images = m_swapchain->GetSwapchainImages();
     }
 
-    void WindowRenderer::Record_CommandBuffer(SceneRenderer* scene_renderer)
+    void WindowRenderer::Record_CommandBuffer()
     {
-        scene_renderer->UpdateDirtyInstances();
+        if (!m_scene_renderer)
+        {
+            return;
+        }
 
-        scene_renderer->Render3D(m_viewport, m_swapchain_images[m_swapchain_current_image_idx]);
+        m_scene_renderer->UpdateDirtyInstances();
+
+        if (m_viewport == ViewportId::NULL_ID)
+        {
+            return;
+        }
+
+        m_scene_renderer->Render3D(m_viewport, m_swapchain_images[m_swapchain_current_image_idx]);
     }
 
     void WindowRenderer::RenderWindow()
@@ -65,21 +76,22 @@ namespace brr::render
         m_swapchain_current_image_idx = m_swapchain->AcquireNextImage();
         if (m_swapchain_current_image_idx == -1)
         {
+            BRR_LogError("Could not acquire next image of Swapchain in Window (ID: {}).", m_window_id);
             return;
         }
 
-        //Record_CommandBuffer(m_scene_renderer);
+        //m_swapchain->BeginRendering();
 
-        m_swapchain->BeginRendering();
+        Record_CommandBuffer();
 
-        m_swapchain->EndRendering();
+        //m_swapchain->EndRendering();
 
         m_swapchain->PresentCurrentImage();
 
         return;
     }
 
-    void WindowRenderer::SetSceneRenderer(SceneRenderer* scene_renderer)
+    void WindowRenderer::SetSceneRenderer(SceneRenderer* scene_renderer, CameraId camera_id)
     {
         if (m_scene_renderer == scene_renderer)
         {
@@ -88,14 +100,14 @@ namespace brr::render
 
         if (m_scene_renderer && m_viewport != ViewportId::NULL_ID)
         {
-            m_scene_renderer->RemoveViewport(m_viewport);
+            m_scene_renderer->DestroyViewport(m_viewport);
             m_viewport = ViewportId::NULL_ID;
         }
 
         m_scene_renderer = scene_renderer;
-        if (m_scene_renderer)
+        if (m_scene_renderer && camera_id != CameraId::NULL_ID)
         {
-            m_viewport = scene_renderer->CreateViewport(m_window_extent);
+            m_viewport = scene_renderer->CreateViewport(m_window_extent, camera_id);
         }
     }
 
@@ -114,7 +126,7 @@ namespace brr::render
 
         if (m_scene_renderer && m_viewport != ViewportId::NULL_ID)
         {
-            m_scene_renderer->RemoveViewport(m_viewport);
+            m_scene_renderer->DestroyViewport(m_viewport);
         }
 
         m_render_device = nullptr;

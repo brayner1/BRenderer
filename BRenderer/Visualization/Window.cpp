@@ -3,6 +3,7 @@
 #include <Core/LogSystem.h>
 
 #include "Renderer/RenderThread.h"
+#include "Scene/Components/PerspectiveCameraComponent.h"
 
 namespace brr::vis
 {
@@ -39,8 +40,7 @@ namespace brr::vis
 	{
 		if (m_window)
 		{
-			//m_window_renderer.reset();
-            render::RenderThread::RenderCmd_DestroyWindowRenderer(m_window);
+            render::RenderThread::WindowRenderCmd_DestroyWindowRenderer(m_window);
 			SDL_DestroyWindow(m_window);
 			m_window = nullptr;
 			m_window_id = 0;
@@ -55,8 +55,7 @@ namespace brr::vis
 
     void Window::InitWindowRenderer()
     {
-		render::RenderThread::RenderCmd_InitializeWindowRenderer(m_window, GetWindowExtent());
-		//m_window_renderer = std::make_unique<WindowRenderer>(this);
+		render::RenderThread::WindowRenderCmd_InitializeWindowRenderer(m_window, GetWindowExtent());
     }
 
     void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)
@@ -69,7 +68,7 @@ namespace brr::vis
 		case SDL_WINDOWEVENT_MOVED: break;
 		case SDL_WINDOWEVENT_RESIZED:
 			BRR_LogInfo("Window {} resized.", m_window_id);
-			render::RenderThread::RenderCmd_ResizeWindow(m_window, GetWindowExtent());
+			render::RenderThread::WindowRenderCmd_Resize(m_window, GetWindowExtent());
 			//m_window_renderer->Window_Resized();
 			break;
 		case SDL_WINDOWEVENT_SIZE_CHANGED: break;
@@ -112,11 +111,13 @@ namespace brr::vis
 	    m_scene = scene;
 		if (m_scene)
 		{
-		    //m_window_renderer->SetSceneRenderer(m_scene->GetSceneRenderer());
+			PerspectiveCameraComponent* camera_component = scene->GetMainCamera();
+			render::CameraId camera_id = camera_component ? camera_component->GetCameraRenderID() : render::CameraId::NULL_ID;
+		    render::RenderThread::WindowRenderCmd_SetScene(m_window, scene->GetSceneRendererProxy()->GetSceneId(), camera_id);
 		}
 		else
 		{
-		    //m_window_renderer->SetSceneRenderer(nullptr);
+		    render::RenderThread::WindowRenderCmd_SetScene(m_window, -1, render::CameraId::NULL_ID);
 		}
 	}
 }

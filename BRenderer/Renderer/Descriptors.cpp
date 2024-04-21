@@ -65,7 +65,7 @@ namespace brr::render
     DescriptorLayout DescriptorLayoutBuilder::BuildDescriptorLayout()
     {
         DescriptorLayout descriptor_layout;
-        descriptor_layout.m_layout_handle = m_render_device->CreateDescriptorSetLayout(m_descriptor_layout_bindings);
+        descriptor_layout.m_layout_handle = m_render_device->DescriptorSetLayout_Create(m_descriptor_layout_bindings);
         descriptor_layout.m_bindings = std::move(m_descriptor_layout_bindings);
         return descriptor_layout;
     }
@@ -74,10 +74,9 @@ namespace brr::render
     //----------  DescriptorSetUpdater  ----------//
     //--------------------------------------------//
 
-    DescriptorSetUpdater& DescriptorSetUpdater::BindBuffer(
-        uint32_t binding,
-        const BufferHandle& bufferInfo,
-        uint32_t buffer_size)
+    DescriptorSetUpdater& DescriptorSetUpdater::BindBuffer(uint32_t binding,
+                                                           const BufferHandle& bufferInfo,
+                                                           uint32_t buffer_size)
     {
         if (!m_render_device)
         {
@@ -87,7 +86,9 @@ namespace brr::render
 
         if (binding >= m_descriptor_layout.m_bindings.m_bindings.size())
         {
-            BRR_LogError("Binding buffer on invalid descriptor set binding index.");
+            BRR_LogError(
+                "Binding buffer on invalid descriptor set binding index.\nPassed binding: {}, Layout max bindings: {}",
+                binding, m_descriptor_layout.m_bindings.m_bindings.size());
             return *this;
         }
 
@@ -102,10 +103,8 @@ namespace brr::render
         return *this;
     }
 
-    DescriptorSetUpdater& DescriptorSetUpdater::BindImage(
-        uint32_t binding,
-        const Texture2DHandle& imageInfo
-    )
+    DescriptorSetUpdater& DescriptorSetUpdater::BindImage(uint32_t binding,
+                                                          const Texture2DHandle& imageInfo)
     {
         if (!m_render_device)
         {
@@ -133,8 +132,7 @@ namespace brr::render
     {
         bool success = true;
         // Allocate descriptor
-        success = success && m_render_device->UpdateDescriptorSetResources(sets, m_descriptor_writes);
-        if (!success) { return false; }
+        success = success && m_render_device->DescriptorSet_UpdateResources(sets, m_descriptor_writes);
 
         return success;
     }

@@ -37,13 +37,13 @@ namespace brr{
 
             void RenderWindow();
 
-			void SetSceneRenderer(SceneRenderer* scene_renderer);
+			void SetSceneRenderer(SceneRenderer* scene_renderer, CameraId camera_id);
 
 			uint32_t GetWindowId() const { return m_window_id; }
 
 		private:
 
-			void Record_CommandBuffer(SceneRenderer* scene_renderer);
+			void Record_CommandBuffer();
 
 			void Recreate_Swapchain();
 

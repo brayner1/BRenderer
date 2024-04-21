@@ -3,6 +3,7 @@
 
 #include "CmdList.h"
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
+#include <Renderer/SceneObjectsIDs.h>
 
 namespace brr::render::internal
 {
@@ -17,21 +18,6 @@ namespace brr::render::internal
 
     struct WindowCommand
     {
-        WindowCmdType command;
-        uint32_t  window_id;
-        union
-        {
-            struct
-            {
-                glm::uvec2 window_size;
-                SwapchainWindowHandle swapchain_window_handle;
-            } surface_cmd;
-            struct
-            {
-                uint64_t scene_id;
-            } scene_cmd;
-        };
-
         static WindowCommand BuildCreateWindowCommand (uint32_t window_id, glm::uvec2 window_size, SwapchainWindowHandle swapchain_window_handle)
         {
             WindowCommand window_cmd;
@@ -68,14 +54,30 @@ namespace brr::render::internal
             return window_cmd;
         }
 
-        static WindowCommand BuildWindowSetSceneCommand (uint32_t window_id, uint64_t scene_id)
+        static WindowCommand BuildWindowSetSceneCommand (uint32_t window_id, uint64_t scene_id, CameraId camera_id)
         {
             WindowCommand window_cmd;
-            window_cmd.command = WindowCmdType::Resize;
+            window_cmd.command = WindowCmdType::SetScene;
             window_cmd.window_id = window_id;
-            window_cmd.scene_cmd = { .scene_id = scene_id };
+            window_cmd.scene_cmd = { .scene_id = scene_id, .camera_id = camera_id };
             return window_cmd;
         }
+
+        WindowCmdType command;
+        uint32_t  window_id;
+        union
+        {
+            struct
+            {
+                glm::uvec2 window_size;
+                SwapchainWindowHandle swapchain_window_handle;
+            } surface_cmd;
+            struct
+            {
+                uint64_t scene_id{static_cast<uint64_t>(-1)};
+                CameraId camera_id{CameraId::NULL_ID};
+            } scene_cmd;
+        };
 
     private:
 

@@ -5,10 +5,15 @@
 
 #include <rigtorp/SPSCQueue.h>
 
-#include <Renderer/Internal/RenderUpdateCmdGroup.h>
+#include <Renderer/Allocators/SystemsOwner.h>
+#include <Renderer/Internal/CmdList/RenderUpdateCmdGroup.h>
+#include <Renderer/Internal/IdOwner.h>
 #include <Renderer/Internal/WindowRenderer.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/SceneRenderer.h>
+
+#include "Internal/CmdList/Executors/SceneRendererCmdListExecutor.h"
+#include "Internal/CmdList/Executors/WindowCmdListExecutor.h"
 
 using namespace brr::render;
 using namespace internal;
@@ -17,86 +22,31 @@ static std::thread s_rendering_thread = std::thread();
 
 static std::atomic<bool> s_stop_rendering = false;
 
-static rigtorp::SPSCQueue<RenderUpdateCmdGroup> s_available_update_queue {FRAME_LAG};
-static rigtorp::SPSCQueue<RenderUpdateCmdGroup> s_render_update_queue {FRAME_LAG};
+static rigtorp::SPSCQueue<RenderUpdateCmdGroup> s_available_update_queue{FRAME_LAG};
+static rigtorp::SPSCQueue<RenderUpdateCmdGroup> s_render_update_queue{FRAME_LAG};
 static RenderUpdateCmdGroup s_current_render_update_cmds; // RenderUpdateCmdGroup currently owned by render thread
 static RenderUpdateCmdGroup s_current_game_update_cmds;   // RenderUpdateCmdGroup currently owned by game thread
 
-static std::unordered_map<uint32_t, std::unique_ptr<WindowRenderer>> s_window_renderers {};
-static std::unordered_map<uint64_t, std::unique_ptr<SceneRenderer>> s_scene_renderers {};
+static IdOwner<uint64_t> s_scene_id_generator;
+static IdOwner<uint32_t> s_entity_id_generator;
+static IdOwner<uint32_t> s_surface_id_generator;
+static IdOwner<uint32_t> s_camera_id_generator;
+static IdOwner<uint32_t> s_light_id_generator;
+
+static std::allocator<void> s_cmd_data_allocator = std::allocator<void>();
 
 static VulkanRenderDevice* s_render_device = nullptr;
 
-//TODO: Render each registered window in loop
-
-namespace {
-
-    void ExecuteWindowUpdateCommand(const WindowCommand& window_command)
+namespace
+{
+    void ExecuteUpdateCommands(RenderUpdateCmdGroup& render_update_cmds)
     {
-        switch (window_command.command) {
-        case WindowCmdType::Create:
-        {
-            BRR_LogDebug("RenderThread: Creating Window with Id: {}", window_command.window_id);
-            std::unique_ptr<WindowRenderer> window_renderer = std::make_unique<WindowRenderer>(
-                window_command.window_id,
-                window_command.surface_cmd.window_size,
-                window_command.surface_cmd.swapchain_window_handle);
-            s_window_renderers.emplace(window_command.window_id, std::move(window_renderer));
-            break;
-        }
-        case WindowCmdType::Destroy:
-        {
-            if (s_window_renderers.contains(window_command.window_id))
-            {
-                BRR_LogDebug("RenderThread: Destroying Window with Id: {}", window_command.window_id);
-                s_window_renderers.erase(window_command.window_id);
-            }
-            break;
-        }
-        case WindowCmdType::Resize:
-        {
-            if (s_window_renderers.contains(window_command.window_id))
-            {
-                BRR_LogDebug("RenderThread: Resizing Window with Id: {}", window_command.window_id);
-                WindowRenderer* window_renderer = s_window_renderers[window_command.window_id].get();
-                window_renderer->Window_Resized(window_command.surface_cmd.window_size);
-            }
-            break;
-        }
-        case WindowCmdType::SurfaceOutdated:
-        {
-            if (s_window_renderers.contains(window_command.window_id))
-            {
-                WindowRenderer* window_renderer = s_window_renderers[window_command.window_id].get();
-                window_renderer->Window_SurfaceLost(window_command.surface_cmd.window_size,
-                                                    window_command.surface_cmd.swapchain_window_handle);
-            }
-            break;
-        }
-        case WindowCmdType::SetScene:
-        {
-            const auto window_iter = s_window_renderers.find(window_command.window_id);
-            const auto scene_iter  = s_scene_renderers.find(window_command.scene_cmd.scene_id);
-            if (window_iter != s_window_renderers.end()
-             && scene_iter != s_scene_renderers.end())
-            {
-                WindowRenderer* window_renderer = window_iter->second.get();
-                SceneRenderer* scene_renderer   = scene_iter->second.get();
-                window_renderer->SetSceneRenderer(scene_renderer);
-            }
-            break;
-        }
-        }
-    }
+        SceneRendererCmdListExecutor scene_renderer_cmd_list_executor(render_update_cmds.scene_cmd_list_map);
+        scene_renderer_cmd_list_executor.ExecuteCmdList();
+        render_update_cmds.scene_cmd_list_map.clear();
 
-    void ExecuteUpdateCommands (RenderUpdateCmdGroup& render_update_cmds)
-    {
-
-        for (auto& window_cmd : render_update_cmds.window_cmd_list)
-        {
-            ExecuteWindowUpdateCommand(window_cmd);
-        }
-
+        WindowCmdListExecutor window_cmd_list_executor(render_update_cmds.window_cmd_list);
+        window_cmd_list_executor.ExecuteCmdList();
         render_update_cmds.window_cmd_list.clear();
     }
 
@@ -108,7 +58,8 @@ namespace {
         do
         {
             front = s_render_update_queue.front();
-        } while (!front);
+        }
+        while (!front);
         s_current_render_update_cmds = std::move(*front);
 
         s_render_update_queue.pop();
@@ -121,13 +72,14 @@ namespace {
         {
             RenderThread_SyncUpdate();
 
-            ExecuteUpdateCommands(s_current_render_update_cmds);
-
             s_render_device->BeginFrame();
 
-            for (const auto& [window_id, window] : s_window_renderers)
+            ExecuteUpdateCommands(s_current_render_update_cmds);
+
+            SystemOwner<WindowRenderer>& window_renderer_storage = SystemsStorage::GetWindowRendererStorage();
+            for (const auto& window_it : window_renderer_storage)
             {
-                window->RenderWindow();
+                window_it.second->RenderWindow();
             }
 
             s_render_device->EndFrame();
@@ -144,15 +96,19 @@ namespace {
         }
         RenderThreadLoop();
 
+        SystemsStorage::GetWindowRendererStorage().Clear();
+        SystemsStorage::GetSceneRendererStorage().Clear();
+
         BRR_LogInfo("Stopping Rendering Thread. Destroying render device.");
         VKRD::DestroyRenderDevice();
     }
 }
 
-void RenderThread::InitializeRenderingThread(RenderAPI render_api, SDL_Window* main_window)
+void RenderThread::InitializeRenderingThread(RenderAPI render_api,
+                                             SDL_Window* main_window)
 {
-	VKRD::CreateRenderDevice(main_window);
-    s_render_device = VKRD::GetSingleton();
+    VKRD::CreateRenderDevice(main_window);
+    s_render_device    = VKRD::GetSingleton();
     s_rendering_thread = std::thread(RenderThreadFunction);
 }
 
@@ -172,13 +128,15 @@ void RenderThread::MainThread_SyncUpdate()
     do
     {
         front = s_available_update_queue.front();
-    } while (!front);
+    }
+    while (!front);
     s_current_game_update_cmds = std::move(*front);
 
     s_available_update_queue.pop();
 }
 
-void RenderThread::RenderCmd_InitializeWindowRenderer(SDL_Window* window_handle, glm::uvec2 window_size)
+void RenderThread::WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle,
+                                                      glm::uvec2 window_size)
 {
     SwapchainWindowHandle swapchain_window_handle = VKRD::GetSingleton()->CreateSwapchainWindowHandle(window_handle);
     const uint32_t window_id                      = SDL_GetWindowID(window_handle);
@@ -188,35 +146,275 @@ void RenderThread::RenderCmd_InitializeWindowRenderer(SDL_Window* window_handle,
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
-void RenderThread::RenderCmd_DestroyWindowRenderer(SDL_Window* window_handle)
+void RenderThread::WindowRenderCmd_DestroyWindowRenderer(SDL_Window* window_handle)
 {
     const uint32_t window_id = SDL_GetWindowID(window_handle);
     BRR_LogDebug("Pushing RenderCmd to destroy window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.emplace_back(WindowCommand::BuildDestroyWindowCommand(window_id));
 }
 
-void RenderThread::RenderCmd_WindowSurfaceLost(SDL_Window* window_handle, glm::uvec2 window_size)
+void RenderThread::WindowRenderCmd_SurfaceLost(SDL_Window* window_handle,
+                                               glm::uvec2 window_size)
 {
     SwapchainWindowHandle swapchain_window_handle = VKRD::GetSingleton()->CreateSwapchainWindowHandle(window_handle);
     const uint32_t window_id                      = SDL_GetWindowID(window_handle);
-    const WindowCommand window_cmd = WindowCommand::BuildSurfaceLostCommand(window_id,
+    const WindowCommand window_cmd                = WindowCommand::BuildSurfaceLostCommand(window_id,
                                                                             window_size, swapchain_window_handle);
     BRR_LogDebug("Pushing RenderCmd to update surface of window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
-void RenderThread::RenderCmd_ResizeWindow(SDL_Window* window_handle, glm::uvec2 window_size)
+void RenderThread::WindowRenderCmd_Resize(SDL_Window* window_handle,
+                                          glm::uvec2 window_size)
 {
-    const uint32_t window_id = SDL_GetWindowID(window_handle);
+    const uint32_t window_id       = SDL_GetWindowID(window_handle);
     const WindowCommand window_cmd = WindowCommand::BuildWindowResizedCommand(window_id,
                                                                               window_size);
     BRR_LogDebug("Pushing RenderCmd to resize window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
-void RenderThread::RenderCmd_SetWindowScene(SDL_Window* window_handle, uint64_t scene_id)
+void RenderThread::WindowRenderCmd_SetScene(SDL_Window* window_handle,
+                                            uint64_t scene_id,
+                                            CameraId camera_id)
 {
-    const uint32_t window_id = SDL_GetWindowID(window_handle);
-    const WindowCommand window_cmd = WindowCommand::BuildWindowSetSceneCommand(window_id, scene_id);
+    const uint32_t window_id       = SDL_GetWindowID(window_handle);
+    const WindowCommand window_cmd = WindowCommand::BuildWindowSetSceneCommand(window_id, scene_id, camera_id);
+    BRR_LogDebug("Pushing RenderCmd to set window scene. Window ID: {}. Scene ID: {}. Camera ID: {}", window_id, scene_id, static_cast<uint32_t>(camera_id));
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
+}
+
+uint64_t RenderThread::RenderCmd_InitializeSceneRenderer()
+{
+    const uint64_t scene_id              = s_scene_id_generator.GetNewId();
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildCreateSceneRendererCommand();
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    BRR_LogDebug("Pushing RenderCmd to initialize SceneRenderer. Scene ID: {}", scene_id);
+    scene_cmd_list.push_back(scene_cmd);
+    return scene_id;
+}
+
+void RenderThread::RenderCmd_DestroySceneRenderer(uint64_t scene_id)
+{
+    BRR_LogDebug("Pushing RenderCmd to destroy SceneRenderer. Scene ID: {}", scene_id);
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroySceneRendererCommand();
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+CameraId RenderThread::SceneRenderCmd_CreateCamera(uint64_t scene_id,
+                                                   EntityId owner_entity,
+                                                   float camera_fovy,
+                                                   float camera_near,
+                                                   float camera_far)
+{
+    const CameraId camera_id       = CameraId(s_camera_id_generator.GetNewId());
+    BRR_LogDebug("Pushing RenderCmd to create SceneRenderer Camera. Scene ID: {}. Camera ID: {}", scene_id, static_cast<uint32_t>(camera_id));
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateCameraCommand(
+        camera_id, owner_entity, camera_fovy, camera_near, camera_far);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+    return camera_id;
+}
+
+void RenderThread::SceneRenderCmd_DestroyCamera(uint64_t scene_id,
+                                                CameraId camera_id)
+{
+    BRR_LogDebug("Pushing RenderCmd to destroy SceneRenderer Camera. Scene ID: {}. Camera ID: {}", scene_id, static_cast<uint32_t>(camera_id));
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyCameraCommand(camera_id);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+void RenderThread::SceneRenderCmd_UpdateCameraProjection(uint64_t scene_id,
+                                                         CameraId camera_id,
+                                                         float camera_fovy,
+                                                         float camera_near,
+                                                         float camera_far)
+{
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateCameraProjectionCommand(
+        camera_id, camera_fovy, camera_near, camera_far);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+EntityId RenderThread::SceneRenderCmd_CreateEntity(uint64_t scene_id,
+                                                   const glm::mat4& entity_transform)
+{
+    EntityId entity_id                   = EntityId(s_entity_id_generator.GetNewId());
+    BRR_LogDebug("Pushing RenderCmd to create SceneRenderer Entity. Scene ID: {}. Entity ID: {}", scene_id, static_cast<uint32_t>(entity_id));
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildCreateEntityCommand(entity_id, entity_transform);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+    return entity_id;
+}
+
+void RenderThread::SceneRenderCmd_DestroyEntity(uint64_t scene_id,
+                                                EntityId entity_id)
+{
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyEntityCommand(entity_id);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+void RenderThread::SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id,
+                                                        EntityId entity_id,
+                                                        const glm::mat4& entity_transform)
+{
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateEntityTransformCommand(entity_id, entity_transform);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+SurfaceId RenderThread::SceneRenderCmd_CreateSurface(uint64_t scene_id,
+                                                     EntityId entity_id,
+                                                     void* vertex_buffer_data,
+                                                     size_t vertex_buffer_size,
+                                                     void* index_buffer_data,
+                                                     size_t index_buffer_size)
+{
+    SurfaceId surface_id           = SurfaceId(s_surface_id_generator.GetNewId());
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateSurfaceCommand(
+        entity_id, surface_id, vertex_buffer_data, vertex_buffer_size, index_buffer_data, index_buffer_size);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+    return surface_id;
+}
+
+void RenderThread::SceneRenderCmd_DestroySurface(uint64_t scene_id,
+                                                 SurfaceId surface_id)
+{
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroySurfaceCommand(surface_id);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+void RenderThread::SceneRenderCmd_UpdateSurfaceVertexBuffer(uint64_t scene_id,
+                                                            SurfaceId surface_id,
+                                                            void* vertex_buffer_data,
+                                                            size_t vertex_buffer_size)
+{
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateSurfaceVertexBufferCommand(
+        surface_id, vertex_buffer_data, vertex_buffer_size);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+void RenderThread::SceneRenderCmd_UpdateSurfaceIndexBuffer(uint64_t scene_id,
+                                                           SurfaceId surface_id,
+                                                           void* index_buffer_data,
+                                                           size_t index_buffer_size)
+{
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateSurfaceIndexBufferCommand(
+        surface_id, index_buffer_data, index_buffer_size);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+LightId RenderThread::SceneRenderCmd_CreatePointLight(uint64_t scene_id,
+                                                 const glm::vec3& position,
+                                                 const glm::vec3& color,
+                                                 float intensity)
+{
+    LightId light_id               = LightId(s_light_id_generator.GetNewId());
+    SceneRendererCommand scene_cmd =
+        SceneRendererCommand::BuildCreatePointLightCommand(light_id, position, color, intensity);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+    return light_id;
+}
+
+void RenderThread::SceneRenderCmd_UpdatePointLight(uint64_t scene_id,
+                                              LightId light_id,
+                                              const glm::vec3& position,
+                                              const glm::vec3& color,
+                                              float intensity)
+{
+    SceneRendererCommand scene_cmd =
+        SceneRendererCommand::BuildUpdatePointLightCommand(light_id, position, color, intensity);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+LightId RenderThread::SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id,
+                                                       const glm::vec3& direction,
+                                                       const glm::vec3& color,
+                                                       float intensity)
+{
+    LightId light_id               = LightId(s_light_id_generator.GetNewId());
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateDirectionalLightCommand(
+        light_id, direction, color, intensity);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+    return light_id;
+}
+
+void RenderThread::SceneRenderCmd_UpdateDirectionalLight(uint64_t scene_id,
+                                                    LightId light_id,
+                                                    const glm::vec3& direction,
+                                                    const glm::vec3& color,
+                                                    float intensity)
+{
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateDirectionalLightCommand(
+        light_id, direction, color, intensity);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+LightId RenderThread::SceneRenderCmd_CreateSpotLight(uint64_t scene_id,
+                                                const glm::vec3& position,
+                                                float cutoff_angle,
+                                                const glm::vec3& direction,
+                                                float intensity,
+                                                const glm::vec3& color)
+{
+    LightId light_id               = LightId(s_light_id_generator.GetNewId());
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateSpotLightCommand(
+        light_id, position, cutoff_angle, direction, intensity, color);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+    return light_id;
+}
+
+void RenderThread::SceneRenderCmd_UpdateSpotLight(uint64_t scene_id,
+                                             LightId light_id,
+                                             const glm::vec3& position,
+                                             float cutoff_angle,
+                                             const glm::vec3& direction,
+                                             float intensity,
+                                             const glm::vec3& color)
+{
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateSpotLightCommand(
+        light_id, position, cutoff_angle, direction, intensity, color);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+LightId RenderThread::SceneRenderCmd_CreateAmbientLight(uint64_t scene_id,
+                                                   const glm::vec3& color,
+                                                   float intensity)
+{
+    LightId light_id                     = LightId(s_light_id_generator.GetNewId());
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildCreateAmbientLightCommand(light_id, color, intensity);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+    return light_id;
+}
+
+void RenderThread::SceneRenderCmd_UpdateAmbientLight(uint64_t scene_id,
+                                                LightId light_id,
+                                                const glm::vec3& color,
+                                                float intensity)
+{
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildUpdateAmbientLightCommand(light_id, color, intensity);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
+}
+
+void RenderThread::SceneRenderCmd_DestroyLight(uint64_t scene_id,
+                                         LightId light_id)
+{
+    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyLightCommand(light_id);
+    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
+    scene_cmd_list.push_back(scene_cmd);
 }

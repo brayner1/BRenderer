@@ -61,7 +61,7 @@ namespace brr
 		T& component = m_scene->m_registry.emplace<T>(m_entity, std::forward<Args>(args)...);
 		component.m_entity = Entity{m_entity, m_scene };
 		component.OnInit();
-		if (m_scene->m_scene_renderer)
+		if (m_scene->m_scene_render_proxy)
 		{
 		    component.RegisterGraphics();
 		}
@@ -95,7 +95,7 @@ namespace brr
 		if constexpr (!std::is_empty_v<T>)
 		{
 			T& component = m_scene->m_registry.get<T>(m_entity);
-		    if (m_scene->m_scene_renderer)
+		    if (m_scene->m_scene_render_proxy)
 		    {
 		        component.UnregisterGraphics();
 		    }

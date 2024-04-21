@@ -48,17 +48,21 @@ set(BRenderer_SOURCE_FILES
     "Scene/Components/MaterialComponent.cpp"
     "Scene/Components/Mesh3DComponent.cpp"
     "Scene/Components/NodeComponent.cpp"
+    "Scene/Components/PerspectiveCameraComponent.cpp"
     "Scene/Components/Transform3DComponent.cpp"
  
     "Visualization/Image.cpp"
-    "Renderer/SceneRenderer.cpp"
+    "Visualization/SceneRendererProxy.cpp"
     "Visualization/Window.cpp" 
     "Visualization/WindowManager.cpp"
-    "Renderer/Internal/WindowRenderer.cpp"
     
     "Importer/Importer.cpp"
     
     "Renderer/Allocators/StagingAllocator.cpp"
+    "Renderer/Allocators/SystemsOwner.cpp"
+    "Renderer/Internal/CmdList/Executors/SceneRendererCmdListExecutor.cpp"
+    "Renderer/Internal/CmdList/Executors/WindowCmdListExecutor.cpp"
+    "Renderer/Internal/WindowRenderer.cpp"
     "Renderer/Vulkan/VkDescriptors.cpp"
     "Renderer/Vulkan/VkInitializerHelper.cpp" 
     "Renderer/Vulkan/VmaImpl.cpp"
@@ -67,12 +71,13 @@ set(BRenderer_SOURCE_FILES
     "Renderer/DeviceBuffer.cpp"
     "Renderer/DeviceImage.cpp"
     "Renderer/DevicePipeline.cpp"
-    "Renderer/Shader.cpp" 
     "Renderer/DeviceSwapchain.cpp"
     "Renderer/RenderThread.cpp"
+    "Renderer/SceneRenderer.cpp"
+    "Renderer/Shader.cpp" 
     
     "Files/FilesUtils.cpp" 
-  )
+)
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
@@ -101,20 +106,26 @@ set(BRenderer_HEADER_FILES
     "Scene/Components/MaterialComponent.h"
     "Scene/Components/Mesh3DComponent.h"
     "Scene/Components/NodeComponent.h"
+    "Scene/Components/PerspectiveCameraComponent.h"
     "Scene/Components/Transform3DComponent.h"
 
     "Visualization/Image.h"
-    "Renderer/SceneRenderer.h"
+    "Visualization/SceneRendererProxy.h"
     "Visualization/Window.h" 
     "Visualization/WindowManager.h"
-    "Renderer/Internal/WindowRenderer.h"
     
     "Importer/Importer.h"
     
     "Renderer/Allocators/StagingAllocator.h"
-    "Renderer/Internal/CmdList.h"
-    "Renderer/Internal/RenderUpdateCmdGroup.h"
-    "Renderer/Internal/WindowCmdList.h"
+    "Renderer/Allocators/SystemsOwner.h"
+    "Renderer/Internal/CmdList/Executors/SceneRendererCmdListExecutor.h"
+    "Renderer/Internal/CmdList/Executors/WindowCmdListExecutor.h"
+    "Renderer/Internal/CmdList/CmdList.h"
+    "Renderer/Internal/CmdList/RenderUpdateCmdGroup.h"
+    "Renderer/Internal/CmdList/SceneRendererCmdList.h"
+    "Renderer/Internal/CmdList/WindowCmdList.h"
+    "Renderer/Internal/IdOwner.h"
+    "Renderer/Internal/WindowRenderer.h"
     "Renderer/Vulkan/VKDescriptors.h"
     "Renderer/Vulkan/VkInitializerHelper.h"
     "Renderer/Vulkan/VulkanInc.h"
@@ -123,16 +134,16 @@ set(BRenderer_HEADER_FILES
     "Renderer/DeviceBuffer.h"
     "Renderer/DeviceImage.h"
     "Renderer/DevicePipeline.h"
+    "Renderer/DeviceSwapchain.h"
     "Renderer/RenderDefs.h"
     "Renderer/RenderEnums.h"
     "Renderer/RenderThread.h"
+    "Renderer/SceneObjectsIDs.h"
     "Renderer/RenderResourcesHandles.h"
     "Renderer/Shader.h"
-    "Renderer/DeviceSwapchain.h"
    
-    
     "Files/FilesUtils.h"
-     "Visualization/SceneRenderProxy.h") 
+) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")

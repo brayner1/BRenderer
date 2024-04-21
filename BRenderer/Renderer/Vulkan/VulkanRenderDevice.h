@@ -102,12 +102,14 @@ namespace brr::render
          * Descriptors *
          ***************/
 
-        DescriptorLayoutHandle CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings);
+        DescriptorLayoutHandle DescriptorSetLayout_Create(const DescriptorLayoutBindings& descriptor_layout_bindings);
 
-        std::vector<DescriptorSetHandle> AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
+        std::vector<DescriptorSetHandle> DescriptorSet_Allocate(DescriptorLayoutHandle descriptor_layout,
                                                                uint32_t               number_sets);
 
-        bool UpdateDescriptorSetResources(DescriptorSetHandle descriptor_set_handle, const std::vector<DescriptorSetBinding>& shader_bindings);
+        void DescriptorSet_Destroy(DescriptorSetHandle descriptor_set_handle);
+
+        bool DescriptorSet_UpdateResources(DescriptorSetHandle descriptor_set_handle, const std::vector<DescriptorSetBinding>& shader_bindings);
 
         /**********
          * Memory *
@@ -355,7 +357,6 @@ namespace brr::render
         struct DescriptorSet
         {
             vk::DescriptorSet descriptor_set {};
-            vk::DescriptorPool set_pool {};
         };
 
         ResourceAllocator<DescriptorSet> m_descriptor_set_alloc;
