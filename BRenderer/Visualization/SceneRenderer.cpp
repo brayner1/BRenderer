@@ -58,7 +58,7 @@ namespace brr::vis
         m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(),
                                                                 render::ImageUsage::TransferDstImage | render::ImageUsage::SampledImage,
                                                                 render::DataFormat::R8G8B8A8_SRGB);
-        if (m_texture_2d_handle != render::null_handle)
+        if (m_texture_2d_handle != null_handle)
         {
             m_render_device->UpdateTexture2DData(m_texture_2d_handle, m_image->Data(), m_image->DataSize(), {0, 0}, {m_image->Width(), m_image->Height()});
         }

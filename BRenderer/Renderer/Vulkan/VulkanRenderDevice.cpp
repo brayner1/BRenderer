@@ -1003,8 +1003,7 @@ namespace brr::render
         BufferHandle buffer_handle;
         // Create Buffer
         {
-            const ResourceHandle resource_handle = m_buffer_alloc.CreateResource();
-            buffer_handle.index = resource_handle.index; buffer_handle.validation = resource_handle.validation;
+            buffer_handle = m_buffer_alloc.CreateResource();
             Buffer* buffer = m_buffer_alloc.GetResource(buffer_handle);
 
             vk::SharingMode sharing_mode = IsDifferentTransferQueue() ? vk::SharingMode::eExclusive : vk::SharingMode::eExclusive;
@@ -1312,12 +1311,11 @@ namespace brr::render
         VertexBuffer* vertex_buffer;
         // Create Vertex Buffer
         {
-            const ResourceHandle resource_handle = m_vertex_buffer_alloc.CreateResource();
-            if (!resource_handle)
+            vertex_buffer_handle = m_vertex_buffer_alloc.CreateResource();
+            if (!vertex_buffer_handle)
             {
                 return {};
             }
-            vertex_buffer_handle.index = resource_handle.index; vertex_buffer_handle.validation = resource_handle.validation;
             vertex_buffer = m_vertex_buffer_alloc.GetResource(vertex_buffer_handle);
             assert(vertex_buffer && "VertexBuffer not initialized. Something is very wrong.");
 
@@ -1460,12 +1458,11 @@ namespace brr::render
         IndexBuffer* index_buffer;
         // Create Vertex Buffer
         {
-            const ResourceHandle resource_handle = m_index_buffer_alloc.CreateResource();
-            if (!resource_handle)
+            index_buffer_handle = m_index_buffer_alloc.CreateResource();
+            if (!index_buffer_handle)
             {
                 return {};
             }
-            index_buffer_handle.index = resource_handle.index; index_buffer_handle.validation = resource_handle.validation;
             index_buffer = m_index_buffer_alloc.GetResource(index_buffer_handle);
             assert(index_buffer && "IndexBuffer not initialized. Something is very wrong.");
 
@@ -1623,12 +1620,11 @@ namespace brr::render
     {
         Texture2DHandle texture2d_handle;
         Texture2D* texture2d;
-        const ResourceHandle resource_handle = m_texture2d_alloc.CreateResource();
-        if (!resource_handle)
+        texture2d_handle = m_texture2d_alloc.CreateResource();
+        if (!texture2d_handle)
         {
             return {};
         }
-        texture2d_handle.index = resource_handle.index; texture2d_handle.validation = resource_handle.validation;
         texture2d = m_texture2d_alloc.GetResource(texture2d_handle);
         assert(texture2d && "Texture2D not initialized. Something is very wrong.");
         

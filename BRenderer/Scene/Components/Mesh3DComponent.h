@@ -6,11 +6,6 @@
 
 namespace brr
 {
-    namespace render
-    {
-        class SceneRenderer;
-    }
-
 	class Mesh3DComponent : public EntityComponent
 	{
     public:

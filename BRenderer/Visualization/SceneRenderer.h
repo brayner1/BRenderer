@@ -164,7 +164,7 @@ namespace brr::vis
 
         std::unique_ptr<Image> m_image;
         render::Texture2DHandle m_texture_2d_handle;
-        render::ResourceHandle m_graphics_pipeline;
+        ResourceHandle m_graphics_pipeline;
 
         render::Shader m_shader;
     };

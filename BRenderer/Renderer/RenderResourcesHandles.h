@@ -1,6 +1,8 @@
 #ifndef BRR_RESOURCESHANDLES_H
 #define BRR_RESOURCESHANDLES_H
 
+#include <Core/Storage/ResourceAllocator.h>
+
 #include <cstdint>
 #include <numeric>
 
@@ -12,36 +14,6 @@ namespace brr::render
         friend class DescriptorLayoutCache;
 
         uint32_t m_layout_index;
-    };
-
-    struct ResourceHandle
-    {
-
-        constexpr ResourceHandle() : index(std::numeric_limits<uint32_t>::max()), validation(std::numeric_limits<uint32_t>::max())
-        {}
-
-        constexpr bool operator ==(const ResourceHandle& other) const
-        {
-            return index == other.index && validation == other.validation;
-        }
-
-        constexpr bool IsValid() const
-        {
-            return *this != ResourceHandle();
-        }
-
-        constexpr operator bool() const
-        {
-            return IsValid();
-        }
-
-    protected:
-
-        friend class VulkanRenderDevice;
-        template<typename T > friend class ResourceAllocator;
-
-        uint32_t index;
-        uint32_t validation;
     };
 
     struct SwapchainHandle : public ResourceHandle
@@ -97,8 +69,6 @@ namespace brr::render
         : ResourceHandle(resource_handle)
         {}
     };
-
-    static constexpr ResourceHandle null_handle = ResourceHandle{};
 }
 
 #endif

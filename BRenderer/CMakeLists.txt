@@ -76,6 +76,7 @@ set(BRenderer_HEADER_FILES
     "BRenderer.h" 
     
     "Core/Storage/ContiguousPool.h"
+    "Core/Storage/ResourceAllocator.h"
     "Core/Threading/Barrier.h" 
     "Core/Threading/Threading.h" 
     "Core/Threading/ThreadPool.h" 
@@ -105,7 +106,6 @@ set(BRenderer_HEADER_FILES
     
     "Importer/Importer.h"
     
-    "Renderer/Allocators/ResourceAllocator.h"
     "Renderer/Allocators/StagingAllocator.h"
     "Renderer/Vulkan/VKDescriptors.h"
     "Renderer/Vulkan/VkInitializerHelper.h"
@@ -117,7 +117,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/DevicePipeline.h"
     "Renderer/RenderDefs.h"
     "Renderer/RenderEnums.h"
-    "Renderer/ResourcesHandles.h"
+    "Renderer/RenderResourcesHandles.h"
     "Renderer/Shader.h"
     "Renderer/DeviceSwapchain.h"
    

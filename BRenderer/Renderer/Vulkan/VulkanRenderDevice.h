@@ -1,12 +1,14 @@
 #ifndef BRR_RENDERDEVICE_H
 #define BRR_RENDERDEVICE_H
-#include <Renderer/RenderDefs.h>
-#include <Renderer/RenderEnums.h>
-#include <Renderer/Shader.h>
-#include <Renderer/Allocators/ResourceAllocator.h>
+
+#include <Core/Storage/ResourceAllocator.h>
 #include <Renderer/Allocators/StagingAllocator.h>
 #include <Renderer/Vulkan/VkInitializerHelper.h>
 #include <Renderer/Vulkan/VulkanInc.h>
+#include <Renderer/RenderDefs.h>
+#include <Renderer/RenderEnums.h>
+#include <Renderer/RenderResourcesHandles.h>
+#include <Renderer/Shader.h>
 
 #include "glm/vec2.hpp"
 
