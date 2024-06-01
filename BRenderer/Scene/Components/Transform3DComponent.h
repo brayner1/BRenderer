@@ -8,13 +8,16 @@ namespace brr
 
 	struct alignas(64) Transform3DComponent : public EntityComponent
 	{
-        explicit Transform3DComponent ();
-
 		enum DirtyFlags
 		{
 			NOT_DIRTY = 0,
 			GLOBAL_DIRTY = 1
 		};
+
+        explicit Transform3DComponent ();
+
+		void RegisterGraphics();
+		void UnregisterGraphics();
 
 		void SetTransform(const glm::mat4& transform);
 		void SetTransform(const glm::vec3& position, const glm::fquat& rotation, const glm::vec3& scale);

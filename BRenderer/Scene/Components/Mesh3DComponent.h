@@ -35,11 +35,14 @@ namespace brr
 		private:
 			friend class Mesh3DComponent;
 
-			std::vector<Vertex3>		  m_vertices{};
-			std::vector<uint32_t>		  m_indices{};
+			std::vector<Vertex3>  m_vertices{};
+			std::vector<uint32_t> m_indices{};
 
 			uint32_t m_surfaceId = -1;
 		};
+
+		void RegisterGraphics();
+		void UnregisterGraphics();
 
 		uint32_t AddSurface(const std::vector<Vertex3>& vertices, const std::vector<uint32_t>& indices);
 		uint32_t AddSurface(SurfaceData&& surface);

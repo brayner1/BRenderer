@@ -16,7 +16,8 @@ namespace brr
 
 		PointLightComponent& operator=(PointLightComponent&& other) noexcept;
 
-		void OnInit();
+		void RegisterGraphics();
+		void UnregisterGraphics();
 
 	public:
 
@@ -45,7 +46,8 @@ namespace brr
 
 		DirectionalLightComponent& operator=(DirectionalLightComponent&& other) noexcept;
 
-		void OnInit();
+		void RegisterGraphics();
+		void UnregisterGraphics();
 
 	public:
 
@@ -74,7 +76,8 @@ namespace brr
 
 		SpotLightComponent& operator=(SpotLightComponent&& other) noexcept;
 
-		void OnInit();
+		void RegisterGraphics();
+		void UnregisterGraphics();
 
 	public:
 
@@ -111,7 +114,8 @@ namespace brr
 
 		AmbientLightComponent& operator=(AmbientLightComponent&& other) noexcept;
 
-		void OnInit();
+		void RegisterGraphics();
+		void UnregisterGraphics();
 
 	public:
 

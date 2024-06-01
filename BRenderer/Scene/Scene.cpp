@@ -22,7 +22,112 @@ namespace brr
 
     void Scene::InitSceneRenderer()
     {
+		if (m_scene_renderer)
+		{
+		    BRR_LogError("Called 'Scene::DestroySceneRenderer', but SceneRenderer is already initialized.");
+			return;
+		}
 		m_scene_renderer = std::make_unique<vis::SceneRenderer>(this);
+
+	    { // Register Transforms
+	        auto transform_view = m_registry.view<Transform3DComponent>();
+		    for (auto&& [entity, transform] : transform_view.each())
+		    {
+		        transform.RegisterGraphics();
+		    }
+	    }
+	    { // Register Meshes
+	        auto mesh_3d_view = m_registry.view<Mesh3DComponent>();
+		    for (auto&& [entity, mesh] : mesh_3d_view.each())
+		    {
+		        mesh.RegisterGraphics();
+		    }
+	    }
+
+		// Register lights
+		{ // Register Point Lights
+		    auto point_light_view = m_registry.view<PointLightComponent>();
+		    for (auto&& [entity, point_light] : point_light_view.each())
+		    {
+		        point_light.RegisterGraphics();
+		    }
+		}
+		{ // Register Directional Lights
+		    auto dir_light_view = m_registry.view<DirectionalLightComponent>();
+		    for (auto&& [entity, dir_light] : dir_light_view.each())
+		    {
+		        dir_light.RegisterGraphics();
+		    }
+		}
+		{ // Register Spot Lights
+		    auto spot_light_view = m_registry.view<SpotLightComponent>();
+		    for (auto&& [entity, spot_light] : spot_light_view.each())
+		    {
+		        spot_light.RegisterGraphics();
+		    }
+		}
+		{ // Register Ambient Lights
+		    auto amb_light_view = m_registry.view<AmbientLightComponent>();
+		    for (auto&& [entity, amb_light] : amb_light_view.each())
+		    {
+		        amb_light.RegisterGraphics();
+		    }
+		}
+    }
+
+    void Scene::DestroySceneRenderer()
+    {
+		if (!m_scene_renderer)
+		{
+		    BRR_LogError("Called 'Scene::DestroySceneRenderer', but SceneRenderer is not initialized.");
+			return;
+		}
+		{ // Unregister Transforms
+	        auto transform_view = m_registry.view<Transform3DComponent>();
+		    for (auto&& [entity, transform] : transform_view.each())
+		    {
+		        transform.UnregisterGraphics();
+		    }
+	    }
+	    { // Unregister Meshes
+	        auto mesh_3d_view = m_registry.view<Mesh3DComponent>();
+		    for (auto&& [entity, mesh] : mesh_3d_view.each())
+		    {
+		        mesh.UnregisterGraphics();
+		    }
+	    }
+
+		// Unregister lights
+		{ // Unregister Point Lights
+		    auto point_light_view = m_registry.view<PointLightComponent>();
+		    for (auto&& [entity, point_light] : point_light_view.each())
+		    {
+		        point_light.UnregisterGraphics();
+		    }
+		}
+		{ // Unregister Directional Lights
+		    auto dir_light_view = m_registry.view<DirectionalLightComponent>();
+		    for (auto&& [entity, dir_light] : dir_light_view.each())
+		    {
+		        dir_light.UnregisterGraphics();
+		    }
+		}
+		{ // Unregister Spot Lights
+		    auto spot_light_view = m_registry.view<SpotLightComponent>();
+		    for (auto&& [entity, spot_light] : spot_light_view.each())
+		    {
+		        spot_light.UnregisterGraphics();
+		    }
+		}
+		{ // Unregister Ambient Lights
+		    auto amb_light_view = m_registry.view<AmbientLightComponent>();
+		    for (auto&& [entity, amb_light] : amb_light_view.each())
+		    {
+		        amb_light.UnregisterGraphics();
+		    }
+		}
+
+		m_scene_renderer.reset();
     }
 
     Entity Scene::Add3DEntity(Entity parent)

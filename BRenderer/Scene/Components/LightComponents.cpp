@@ -16,8 +16,7 @@ namespace brr
     {
         if (m_light_id != vis::LightId::NULL_ID)
         {
-            GetScene()->GetSceneRenderer()->RemoveLight(m_light_id);
-            m_light_id = vis::LightId::NULL_ID;
+            UnregisterGraphics();
         }
     }
 
@@ -33,9 +32,19 @@ namespace brr
         return *this;
     }
 
-    void PointLightComponent::OnInit()
+    void PointLightComponent::RegisterGraphics()
     {
-        m_light_id = GetScene()->GetSceneRenderer()->CreatePointLight(m_position, m_color, m_intensity);
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'PointLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
+        m_light_id = scene_renderer->CreatePointLight(m_position, m_color, m_intensity);
+    }
+
+    void PointLightComponent::UnregisterGraphics()
+    {
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'PointLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
+        scene_renderer->RemoveLight(m_light_id);
+        m_light_id = vis::LightId::NULL_ID;
     }
 
     void PointLightComponent::SetPosition(const glm::vec3& position)
@@ -43,7 +52,10 @@ namespace brr
         if (m_position != position)
         {
             m_position = position;
-            GetScene()->GetSceneRenderer()->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+            }
         }
     }
 
@@ -52,7 +64,10 @@ namespace brr
         if (m_intensity != intensity)
         {
             m_intensity = intensity;
-            GetScene()->GetSceneRenderer()->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+            }
         }
     }
 
@@ -61,7 +76,10 @@ namespace brr
         if (m_color != color)
         {
             m_color = color;
-            GetScene()->GetSceneRenderer()->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+            }
         }
     }
 
@@ -80,8 +98,7 @@ namespace brr
     {
         if (m_light_id != vis::LightId::NULL_ID)
         {
-            GetScene()->GetSceneRenderer()->RemoveLight(m_light_id);
-            m_light_id = vis::LightId::NULL_ID;
+            UnregisterGraphics();
         }
     }
 
@@ -97,9 +114,19 @@ namespace brr
         return *this;
     }
 
-    void DirectionalLightComponent::OnInit()
+    void DirectionalLightComponent::RegisterGraphics()
     {
-        m_light_id = GetScene()->GetSceneRenderer()->CreateDirectionalLight(m_direction, m_color, m_intensity);
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'DirectionalLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
+        m_light_id = scene_renderer->CreateDirectionalLight(m_direction, m_color, m_intensity);
+    }
+
+    void DirectionalLightComponent::UnregisterGraphics()
+    {
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'DirectionalLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
+        scene_renderer->RemoveLight(m_light_id);
+        m_light_id = vis::LightId::NULL_ID;
     }
 
     void DirectionalLightComponent::SetDirection(const glm::vec3& direction)
@@ -107,7 +134,10 @@ namespace brr
         if (m_direction != direction)
         {
             m_direction = direction;
-            GetScene()->GetSceneRenderer()->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+            }
         }
     }
 
@@ -116,7 +146,10 @@ namespace brr
         if (m_intensity != intensity)
         {
             m_intensity = intensity;
-            GetScene()->GetSceneRenderer()->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+            }
         }
     }
 
@@ -125,7 +158,10 @@ namespace brr
         if (m_color != color)
         {
             m_color = color;
-            GetScene()->GetSceneRenderer()->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+            }
         }
     }
 
@@ -145,8 +181,7 @@ namespace brr
     {
         if (m_light_id != vis::LightId::NULL_ID)
         {
-            GetScene()->GetSceneRenderer()->RemoveLight(m_light_id);
-            m_light_id = vis::LightId::NULL_ID;
+            UnregisterGraphics();
         }
     }
 
@@ -164,9 +199,19 @@ namespace brr
         return *this;
     }
 
-    void SpotLightComponent::OnInit()
+    void SpotLightComponent::RegisterGraphics()
     {
-        m_light_id = GetScene()->GetSceneRenderer()->CreateSpotLight(m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'SpotLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
+        m_light_id = scene_renderer->CreateSpotLight(m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+    }
+
+    void SpotLightComponent::UnregisterGraphics()
+    {
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'SpotLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
+        scene_renderer->RemoveLight(m_light_id);
+        m_light_id = vis::LightId::NULL_ID;
     }
 
     void SpotLightComponent::SetPosition(const glm::vec3& position)
@@ -174,7 +219,10 @@ namespace brr
         if (m_position != position)
         {
             m_position = position;
-            GetScene()->GetSceneRenderer()->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            }
         }
     }
 
@@ -183,7 +231,10 @@ namespace brr
         if (m_direction != direction)
         {
             m_direction = direction;
-            GetScene()->GetSceneRenderer()->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            }
         }
     }
 
@@ -192,7 +243,10 @@ namespace brr
         if (m_cutoff_angle != cutoff_angle)
         {
             m_cutoff_angle = cutoff_angle;
-            GetScene()->GetSceneRenderer()->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            }
         }
     }
 
@@ -201,7 +255,10 @@ namespace brr
         if (m_intensity != intensity)
         {
             m_intensity = intensity;
-            GetScene()->GetSceneRenderer()->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            }
         }
     }
 
@@ -210,7 +267,10 @@ namespace brr
         if (m_color != color)
         {
             m_color = color;
-            GetScene()->GetSceneRenderer()->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+            }
         }
     }
 
@@ -228,8 +288,7 @@ namespace brr
     {
         if (m_light_id != vis::LightId::NULL_ID)
         {
-            GetScene()->GetSceneRenderer()->RemoveLight(m_light_id);
-            m_light_id = vis::LightId::NULL_ID;
+            UnregisterGraphics();
         }
     }
 
@@ -244,9 +303,19 @@ namespace brr
         return *this;
     }
 
-    void AmbientLightComponent::OnInit()
+    void AmbientLightComponent::RegisterGraphics()
     {
-        m_light_id = GetScene()->GetSceneRenderer()->CreateAmbientLight(m_color, m_intensity);
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'AmbientLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
+        m_light_id = scene_renderer->CreateAmbientLight(m_color, m_intensity);
+    }
+
+    void AmbientLightComponent::UnregisterGraphics()
+    {
+        vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer();
+        assert(scene_renderer && "Can't call 'AmbientLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
+        scene_renderer->RemoveLight(m_light_id);
+        m_light_id = vis::LightId::NULL_ID;
     }
 
     void AmbientLightComponent::SetColor(const glm::vec3& color)
@@ -254,7 +323,10 @@ namespace brr
         if (m_color != color)
         {
             m_color = color;
-            GetScene()->GetSceneRenderer()->UpdateAmbientLight(m_light_id, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateAmbientLight(m_light_id, m_color, m_intensity);
+            }
         }
     }
 
@@ -263,7 +335,10 @@ namespace brr
         if (m_intensity != intensity)
         {
             m_intensity = intensity;
-            GetScene()->GetSceneRenderer()->UpdateAmbientLight(m_light_id, m_color, m_intensity);
+            if (vis::SceneRenderer* scene_renderer = GetScene()->GetSceneRenderer())
+            {
+                scene_renderer->UpdateAmbientLight(m_light_id, m_color, m_intensity);
+            }
         }
     }
 }

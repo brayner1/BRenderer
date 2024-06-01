@@ -11,6 +11,16 @@ namespace brr
     Transform3DComponent::Transform3DComponent()
     {}
 
+    void Transform3DComponent::RegisterGraphics()
+    {
+		//TODO: register transform graphics on rendering system
+    }
+
+    void Transform3DComponent::UnregisterGraphics()
+    {
+		//TODO: unregister transform graphics on rendering system
+    }
+
     void Transform3DComponent::SetTransform(const glm::mat4& transform)
 	{
 		//mLocal_transform_ = transform;

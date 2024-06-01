@@ -27,18 +27,14 @@ namespace brr
     public:
 
         void OnInit() {}
+        void RegisterGraphics() {}
+        void UnregisterGraphics() {}
 
     private:
         friend class Entity;
 
-        void Init (Entity entity)
-        {
-            m_entity = entity;
-        }
-
         Entity m_entity;
     };
-
 }
 
 #endif

@@ -20,6 +20,7 @@ namespace brr
 		~Scene();
 
 		void InitSceneRenderer();
+		void DestroySceneRenderer();
 
 		Entity Add3DEntity(Entity parent);
 

@@ -4,20 +4,27 @@
 
 namespace brr
 {
+	class EntityComponent;
+
+	template <typename Ty>
+	concept ComponentType = std::derived_from<Ty, EntityComponent> && !std::is_same_v<Ty, EntityComponent>;
+
+	template <typename Ty>
+	concept EmptyStruct = std::is_empty_v<Ty>;
+
     class Entity
 	{
 	public:
 		Entity() = default;
-		Entity(entt::entity entity_handle, Scene* scene);
 
-		template <typename T, std::enable_if_t<!std::is_empty_v<T>, bool> = true, typename... Args>
+		template <ComponentType T, typename... Args>
 		T& AddComponent(Args&&... args);
 
-		template <typename T, std::enable_if_t<std::is_empty_v<T>, bool> = true>
+		template <typename T> requires (EmptyStruct<T>)
 		void AddComponent();
 
-		template<typename T>
-		T& GetComponent() const;
+		template<ComponentType T> requires (!EmptyStruct<T>)
+		[[nodiscard]] T& GetComponent() const;
 
 		template<typename T>
 		void RemoveComponent();
@@ -36,6 +43,8 @@ namespace brr
 	private:
 		friend class Scene;
 
+		Entity(entt::entity entity_handle, Scene* scene);
+
 		Scene* m_scene = nullptr;
 		entt::entity m_entity{ entt::null };
 	};
@@ -44,19 +53,23 @@ namespace brr
 	 *** Implementation ***
 	 *********************/
 
-	template <typename T, std::enable_if_t<!std::is_empty_v<T>, bool>, typename... Args>
+	template <ComponentType T, typename... Args>
 	T& Entity::AddComponent(Args&&... args)
 	{
 		assert(IsValid() && "Entity must be valid to add a component.");
 		assert(!m_scene->m_registry.all_of<T>(m_entity) && "Entities can't have two or more components of the same type.");
 		T& component = m_scene->m_registry.emplace<T>(m_entity, std::forward<Args>(args)...);
-		component.Init(Entity{m_entity, m_scene });
+		component.m_entity = Entity{m_entity, m_scene };
 		component.OnInit();
+		if (m_scene->m_scene_renderer)
+		{
+		    component.RegisterGraphics();
+		}
 
 		return component;
 	}
 
-    template <typename T, std::enable_if_t<std::is_empty_v<T>, bool>>
+    template <typename T> requires (EmptyStruct<T>)
     void Entity::AddComponent()
     {
 		assert(IsValid() && "Entity must be valid to add a component.");
@@ -64,7 +77,7 @@ namespace brr
 		m_scene->m_registry.emplace<T>(m_entity);
     }
 
-    template <typename T>
+    template <ComponentType T> requires (!EmptyStruct<T>)
 	T& Entity::GetComponent() const
 	{
 		assert(IsValid() && "Entity must be valid to get a component.");
@@ -79,6 +92,14 @@ namespace brr
 		assert(IsValid() && "Entity must be valid to remove a component.");
 		assert(m_scene->m_registry.all_of<T>(m_entity) && "Entity must have the Component before you remove it.");
 
+		if constexpr (!std::is_empty_v<T>)
+		{
+			T& component = m_scene->m_registry.get<T>(m_entity);
+		    if (m_scene->m_scene_renderer)
+		    {
+		        component.UnregisterGraphics();
+		    }
+		}
 		m_scene->m_registry.remove<T>();
 	}
 
