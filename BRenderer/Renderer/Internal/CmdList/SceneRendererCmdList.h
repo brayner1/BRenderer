@@ -50,7 +50,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreateEntityCommand(EntityId entity_id,
+        static SceneRendererCommand BuildCreateEntityCommand(EntityID entity_id,
                                                              const glm::mat4& entity_transform = {})
         {
             SceneRendererCommand scene_rend_command;
@@ -60,7 +60,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildDestroyEntityCommand(EntityId entity_id)
+        static SceneRendererCommand BuildDestroyEntityCommand(EntityID entity_id)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type             = SceneRendererCmdType::DestroyEntity;
@@ -68,7 +68,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateEntityTransformCommand(EntityId entity_id,
+        static SceneRendererCommand BuildUpdateEntityTransformCommand(EntityID entity_id,
                                                                       const glm::mat4& entity_transform)
         {
             SceneRendererCommand scene_rend_command;
@@ -78,8 +78,8 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreateSurfaceCommand(EntityId entity_id,
-                                                              SurfaceId surface_id,
+        static SceneRendererCommand BuildCreateSurfaceCommand(EntityID entity_id,
+                                                              SurfaceID surface_id,
                                                               void* vertex_buffer,
                                                               size_t vertex_buffer_size,
                                                               void* index_buffer,
@@ -98,7 +98,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildDestroySurfaceCommand(SurfaceId surface_id)
+        static SceneRendererCommand BuildDestroySurfaceCommand(SurfaceID surface_id)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type               = SceneRendererCmdType::DestroySurface;
@@ -106,7 +106,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateSurfaceVertexBufferCommand(SurfaceId surface_id,
+        static SceneRendererCommand BuildUpdateSurfaceVertexBufferCommand(SurfaceID surface_id,
                                                                           void* vertex_buffer,
                                                                           size_t vertex_buffer_size)
         {
@@ -119,7 +119,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateSurfaceIndexBufferCommand(SurfaceId surface_id,
+        static SceneRendererCommand BuildUpdateSurfaceIndexBufferCommand(SurfaceID surface_id,
                                                                          void* index_buffer,
                                                                          size_t index_buffer_size)
         {
@@ -132,8 +132,8 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreateCameraCommand(CameraId camera_id,
-                                                             EntityId owner_entity,
+        static SceneRendererCommand BuildCreateCameraCommand(CameraID camera_id,
+                                                             EntityID owner_entity,
                                                              float camera_fovy,
                                                              float camera_near,
                                                              float camera_far)
@@ -148,7 +148,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildDestroyCameraCommand(CameraId camera_id)
+        static SceneRendererCommand BuildDestroyCameraCommand(CameraID camera_id)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type             = SceneRendererCmdType::DestroyCamera;
@@ -157,7 +157,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateCameraProjectionCommand(CameraId camera_id,
+        static SceneRendererCommand BuildUpdateCameraProjectionCommand(CameraID camera_id,
                                                                        float camera_fovy,
                                                                        float camera_near,
                                                                        float camera_far)
@@ -171,7 +171,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreatePointLightCommand(LightId light_id,
+        static SceneRendererCommand BuildCreatePointLightCommand(LightID light_id,
                                                                  const glm::vec3& position,
                                                                  const glm::vec3& color,
                                                                  float intensity)
@@ -185,7 +185,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdatePointLightCommand(LightId light_id,
+        static SceneRendererCommand BuildUpdatePointLightCommand(LightID light_id,
                                                                  const glm::vec3& position,
                                                                  const glm::vec3& color,
                                                                  float intensity)
@@ -199,7 +199,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreateDirectionalLightCommand(LightId light_id,
+        static SceneRendererCommand BuildCreateDirectionalLightCommand(LightID light_id,
                                                                        const glm::vec3& direction,
                                                                        const glm::vec3& color,
                                                                        float intensity)
@@ -213,7 +213,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateDirectionalLightCommand(LightId light_id,
+        static SceneRendererCommand BuildUpdateDirectionalLightCommand(LightID light_id,
                                                                        const glm::vec3& direction,
                                                                        const glm::vec3& color,
                                                                        float intensity)
@@ -227,7 +227,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreateSpotLightCommand(LightId light_id,
+        static SceneRendererCommand BuildCreateSpotLightCommand(LightID light_id,
                                                                 const glm::vec3& position,
                                                                 float cutoff_angle,
                                                                 const glm::vec3& direction,
@@ -245,7 +245,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateSpotLightCommand(LightId light_id,
+        static SceneRendererCommand BuildUpdateSpotLightCommand(LightID light_id,
                                                                 const glm::vec3& position,
                                                                 float cutoff_angle,
                                                                 const glm::vec3& direction,
@@ -263,7 +263,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreateAmbientLightCommand(LightId light_id,
+        static SceneRendererCommand BuildCreateAmbientLightCommand(LightID light_id,
                                                                    const glm::vec3& color,
                                                                    float intensity)
         {
@@ -275,7 +275,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateAmbientLightCommand(LightId light_id,
+        static SceneRendererCommand BuildUpdateAmbientLightCommand(LightID light_id,
                                                                    const glm::vec3& color,
                                                                    float intensity)
         {
@@ -287,7 +287,7 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildDestroyLightCommand(LightId light_id)
+        static SceneRendererCommand BuildDestroyLightCommand(LightID light_id)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type           = SceneRendererCmdType::DestroyLight;
@@ -302,14 +302,14 @@ namespace brr::render::internal
         {
             struct
             {
-                EntityId entity_id{EntityId::NULL_ID};
+                EntityID entity_id{EntityID::NULL_ID};
                 glm::mat4 entity_transform{};
             } entity_command;
 
             struct
             {
-                EntityId owner_entity_id{EntityId::NULL_ID};
-                SurfaceId surface_id{SurfaceId::NULL_ID};
+                EntityID owner_entity_id{EntityID::NULL_ID};
+                SurfaceID surface_id{SurfaceID::NULL_ID};
                 void* vertex_buffer_data{nullptr};
                 size_t vertex_buffer_size{0};
                 void* index_buffer_data{nullptr};
@@ -318,8 +318,8 @@ namespace brr::render::internal
 
             struct
             {
-                CameraId camera_id{CameraId::NULL_ID};
-                EntityId owner_entity_id{EntityId::NULL_ID};
+                CameraID camera_id{CameraID::NULL_ID};
+                EntityID owner_entity_id{EntityID::NULL_ID};
                 float camera_fov_y{0};
                 float camera_near{0};
                 float camera_far{0};
@@ -332,7 +332,7 @@ namespace brr::render::internal
                 glm::vec3 light_direction{0.0};
                 glm::f32 light_cutoff{0.0};
                 glm::vec3 light_color{0.0};
-                LightId light_id;
+                LightID light_id;
             } light_command;
         };
 

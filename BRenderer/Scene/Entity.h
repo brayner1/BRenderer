@@ -1,6 +1,9 @@
 #ifndef BRR_ENTITY_H
 #define BRR_ENTITY_H
+#include <Core/Events/Event.h>
 #include <Scene/Scene.h>
+
+#include "Core/LogSystem.h"
 
 namespace brr
 {
@@ -10,7 +13,7 @@ namespace brr
 	concept ComponentType = std::derived_from<Ty, EntityComponent> && !std::is_same_v<Ty, EntityComponent>;
 
 	template <typename Ty>
-	concept EmptyStruct = std::is_empty_v<Ty>;
+	concept EmptyType = std::is_empty_v<Ty>;
 
     class Entity
 	{
@@ -20,10 +23,10 @@ namespace brr
 		template <ComponentType T, typename... Args>
 		T& AddComponent(Args&&... args);
 
-		template <typename T> requires (EmptyStruct<T>)
+		template <typename T> requires (EmptyType<T>)
 		void AddComponent();
 
-		template<ComponentType T> requires (!EmptyStruct<T>)
+		template<ComponentType T> requires (!EmptyType<T>)
 		[[nodiscard]] T& GetComponent() const;
 
 		template<typename T>
@@ -45,6 +48,9 @@ namespace brr
 
 		Entity(entt::entity entity_handle, Scene* scene);
 
+		template <ComponentType T>
+		void OnComponentDestroyed(entt::registry& registry, entt::entity entity);
+
 		Scene* m_scene = nullptr;
 		entt::entity m_entity{ entt::null };
 	};
@@ -65,11 +71,12 @@ namespace brr
 		{
 		    component.RegisterGraphics();
 		}
+		m_scene->m_registry.on_destroy<T>().connect<&Entity::OnComponentDestroyed<T>>(*this);
 
 		return component;
 	}
 
-    template <typename T> requires (EmptyStruct<T>)
+    template <typename T> requires (EmptyType<T>)
     void Entity::AddComponent()
     {
 		assert(IsValid() && "Entity must be valid to add a component.");
@@ -77,7 +84,7 @@ namespace brr
 		m_scene->m_registry.emplace<T>(m_entity);
     }
 
-    template <ComponentType T> requires (!EmptyStruct<T>)
+    template <ComponentType T> requires (!EmptyType<T>)
 	T& Entity::GetComponent() const
 	{
 		assert(IsValid() && "Entity must be valid to get a component.");
@@ -92,15 +99,17 @@ namespace brr
 		assert(IsValid() && "Entity must be valid to remove a component.");
 		assert(m_scene->m_registry.all_of<T>(m_entity) && "Entity must have the Component before you remove it.");
 
-		if constexpr (!std::is_empty_v<T>)
+		if constexpr (!EmptyType<T>)
 		{
 			T& component = m_scene->m_registry.get<T>(m_entity);
 		    if (m_scene->m_scene_render_proxy)
 		    {
 		        component.UnregisterGraphics();
 		    }
+			 // TODO: Call this for every component when Scene is destroyed
+			component.OnDestroy();
 		}
-		m_scene->m_registry.remove<T>();
+		m_scene->m_registry.remove<T>(m_entity);
 	}
 
 	template <typename T>
@@ -116,6 +125,14 @@ namespace brr
 		assert(IsValid() && "Entity must be valid to have a component.");
 		return m_scene->m_registry.all_of<T...>(m_entity);
 	}
+
+    template <ComponentType T>
+    void Entity::OnComponentDestroyed(entt::registry& registry,
+        entt::entity entity)
+    {
+		T& component = registry.get<T>(entity);
+		EventEmitter<>::Emit(component.m_destroyed_event);
+    }
 }
 
 #endif

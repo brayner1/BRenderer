@@ -174,13 +174,14 @@ void RenderThread::WindowRenderCmd_Resize(SDL_Window* window_handle,
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
-void RenderThread::WindowRenderCmd_SetScene(SDL_Window* window_handle,
-                                            uint64_t scene_id,
-                                            CameraId camera_id)
+void RenderThread::WindowRenderCmd_SetSceneView(SDL_Window* window_handle,
+                                                uint64_t scene_id,
+                                                CameraID camera_id)
 {
     const uint32_t window_id       = SDL_GetWindowID(window_handle);
     const WindowCommand window_cmd = WindowCommand::BuildWindowSetSceneCommand(window_id, scene_id, camera_id);
-    BRR_LogDebug("Pushing RenderCmd to set window scene. Window ID: {}. Scene ID: {}. Camera ID: {}", window_id, scene_id, static_cast<uint32_t>(camera_id));
+    BRR_LogDebug("Pushing RenderCmd to set window scene. Window ID: {}. Scene ID: {}. Camera ID: {}", window_id, scene_id,
+                 static_cast<uint32_t>(camera_id));
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
@@ -202,13 +203,13 @@ void RenderThread::RenderCmd_DestroySceneRenderer(uint64_t scene_id)
     scene_cmd_list.push_back(scene_cmd);
 }
 
-CameraId RenderThread::SceneRenderCmd_CreateCamera(uint64_t scene_id,
-                                                   EntityId owner_entity,
+CameraID RenderThread::SceneRenderCmd_CreateCamera(uint64_t scene_id,
+                                                   EntityID owner_entity,
                                                    float camera_fovy,
                                                    float camera_near,
                                                    float camera_far)
 {
-    const CameraId camera_id       = CameraId(s_camera_id_generator.GetNewId());
+    const CameraID camera_id       = CameraID(s_camera_id_generator.GetNewId());
     BRR_LogDebug("Pushing RenderCmd to create SceneRenderer Camera. Scene ID: {}. Camera ID: {}", scene_id, static_cast<uint32_t>(camera_id));
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateCameraCommand(
         camera_id, owner_entity, camera_fovy, camera_near, camera_far);
@@ -218,7 +219,7 @@ CameraId RenderThread::SceneRenderCmd_CreateCamera(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_DestroyCamera(uint64_t scene_id,
-                                                CameraId camera_id)
+                                                CameraID camera_id)
 {
     BRR_LogDebug("Pushing RenderCmd to destroy SceneRenderer Camera. Scene ID: {}. Camera ID: {}", scene_id, static_cast<uint32_t>(camera_id));
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyCameraCommand(camera_id);
@@ -227,7 +228,7 @@ void RenderThread::SceneRenderCmd_DestroyCamera(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdateCameraProjection(uint64_t scene_id,
-                                                         CameraId camera_id,
+                                                         CameraID camera_id,
                                                          float camera_fovy,
                                                          float camera_near,
                                                          float camera_far)
@@ -238,10 +239,10 @@ void RenderThread::SceneRenderCmd_UpdateCameraProjection(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
-EntityId RenderThread::SceneRenderCmd_CreateEntity(uint64_t scene_id,
+EntityID RenderThread::SceneRenderCmd_CreateEntity(uint64_t scene_id,
                                                    const glm::mat4& entity_transform)
 {
-    EntityId entity_id                   = EntityId(s_entity_id_generator.GetNewId());
+    EntityID entity_id                   = EntityID(s_entity_id_generator.GetNewId());
     BRR_LogDebug("Pushing RenderCmd to create SceneRenderer Entity. Scene ID: {}. Entity ID: {}", scene_id, static_cast<uint32_t>(entity_id));
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildCreateEntityCommand(entity_id, entity_transform);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -250,7 +251,7 @@ EntityId RenderThread::SceneRenderCmd_CreateEntity(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_DestroyEntity(uint64_t scene_id,
-                                                EntityId entity_id)
+                                                EntityID entity_id)
 {
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyEntityCommand(entity_id);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -258,7 +259,7 @@ void RenderThread::SceneRenderCmd_DestroyEntity(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id,
-                                                        EntityId entity_id,
+                                                        EntityID entity_id,
                                                         const glm::mat4& entity_transform)
 {
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateEntityTransformCommand(entity_id, entity_transform);
@@ -266,14 +267,14 @@ void RenderThread::SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
-SurfaceId RenderThread::SceneRenderCmd_CreateSurface(uint64_t scene_id,
-                                                     EntityId entity_id,
+SurfaceID RenderThread::SceneRenderCmd_CreateSurface(uint64_t scene_id,
+                                                     EntityID entity_id,
                                                      void* vertex_buffer_data,
                                                      size_t vertex_buffer_size,
                                                      void* index_buffer_data,
                                                      size_t index_buffer_size)
 {
-    SurfaceId surface_id           = SurfaceId(s_surface_id_generator.GetNewId());
+    SurfaceID surface_id           = SurfaceID(s_surface_id_generator.GetNewId());
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateSurfaceCommand(
         entity_id, surface_id, vertex_buffer_data, vertex_buffer_size, index_buffer_data, index_buffer_size);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -282,7 +283,7 @@ SurfaceId RenderThread::SceneRenderCmd_CreateSurface(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_DestroySurface(uint64_t scene_id,
-                                                 SurfaceId surface_id)
+                                                 SurfaceID surface_id)
 {
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroySurfaceCommand(surface_id);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -290,7 +291,7 @@ void RenderThread::SceneRenderCmd_DestroySurface(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdateSurfaceVertexBuffer(uint64_t scene_id,
-                                                            SurfaceId surface_id,
+                                                            SurfaceID surface_id,
                                                             void* vertex_buffer_data,
                                                             size_t vertex_buffer_size)
 {
@@ -301,7 +302,7 @@ void RenderThread::SceneRenderCmd_UpdateSurfaceVertexBuffer(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdateSurfaceIndexBuffer(uint64_t scene_id,
-                                                           SurfaceId surface_id,
+                                                           SurfaceID surface_id,
                                                            void* index_buffer_data,
                                                            size_t index_buffer_size)
 {
@@ -311,12 +312,12 @@ void RenderThread::SceneRenderCmd_UpdateSurfaceIndexBuffer(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
-LightId RenderThread::SceneRenderCmd_CreatePointLight(uint64_t scene_id,
+LightID RenderThread::SceneRenderCmd_CreatePointLight(uint64_t scene_id,
                                                  const glm::vec3& position,
                                                  const glm::vec3& color,
                                                  float intensity)
 {
-    LightId light_id               = LightId(s_light_id_generator.GetNewId());
+    LightID light_id               = LightID(s_light_id_generator.GetNewId());
     SceneRendererCommand scene_cmd =
         SceneRendererCommand::BuildCreatePointLightCommand(light_id, position, color, intensity);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -325,7 +326,7 @@ LightId RenderThread::SceneRenderCmd_CreatePointLight(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdatePointLight(uint64_t scene_id,
-                                              LightId light_id,
+                                              LightID light_id,
                                               const glm::vec3& position,
                                               const glm::vec3& color,
                                               float intensity)
@@ -336,12 +337,12 @@ void RenderThread::SceneRenderCmd_UpdatePointLight(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
-LightId RenderThread::SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id,
+LightID RenderThread::SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id,
                                                        const glm::vec3& direction,
                                                        const glm::vec3& color,
                                                        float intensity)
 {
-    LightId light_id               = LightId(s_light_id_generator.GetNewId());
+    LightID light_id               = LightID(s_light_id_generator.GetNewId());
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateDirectionalLightCommand(
         light_id, direction, color, intensity);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -350,7 +351,7 @@ LightId RenderThread::SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdateDirectionalLight(uint64_t scene_id,
-                                                    LightId light_id,
+                                                    LightID light_id,
                                                     const glm::vec3& direction,
                                                     const glm::vec3& color,
                                                     float intensity)
@@ -361,14 +362,14 @@ void RenderThread::SceneRenderCmd_UpdateDirectionalLight(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
-LightId RenderThread::SceneRenderCmd_CreateSpotLight(uint64_t scene_id,
+LightID RenderThread::SceneRenderCmd_CreateSpotLight(uint64_t scene_id,
                                                 const glm::vec3& position,
                                                 float cutoff_angle,
                                                 const glm::vec3& direction,
                                                 float intensity,
                                                 const glm::vec3& color)
 {
-    LightId light_id               = LightId(s_light_id_generator.GetNewId());
+    LightID light_id               = LightID(s_light_id_generator.GetNewId());
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateSpotLightCommand(
         light_id, position, cutoff_angle, direction, intensity, color);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -377,7 +378,7 @@ LightId RenderThread::SceneRenderCmd_CreateSpotLight(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdateSpotLight(uint64_t scene_id,
-                                             LightId light_id,
+                                             LightID light_id,
                                              const glm::vec3& position,
                                              float cutoff_angle,
                                              const glm::vec3& direction,
@@ -390,11 +391,11 @@ void RenderThread::SceneRenderCmd_UpdateSpotLight(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
-LightId RenderThread::SceneRenderCmd_CreateAmbientLight(uint64_t scene_id,
+LightID RenderThread::SceneRenderCmd_CreateAmbientLight(uint64_t scene_id,
                                                    const glm::vec3& color,
                                                    float intensity)
 {
-    LightId light_id                     = LightId(s_light_id_generator.GetNewId());
+    LightID light_id                     = LightID(s_light_id_generator.GetNewId());
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildCreateAmbientLightCommand(light_id, color, intensity);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
@@ -402,7 +403,7 @@ LightId RenderThread::SceneRenderCmd_CreateAmbientLight(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_UpdateAmbientLight(uint64_t scene_id,
-                                                LightId light_id,
+                                                LightID light_id,
                                                 const glm::vec3& color,
                                                 float intensity)
 {
@@ -412,7 +413,7 @@ void RenderThread::SceneRenderCmd_UpdateAmbientLight(uint64_t scene_id,
 }
 
 void RenderThread::SceneRenderCmd_DestroyLight(uint64_t scene_id,
-                                         LightId light_id)
+                                         LightID light_id)
 {
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyLightCommand(light_id);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];

@@ -18,10 +18,7 @@ namespace brr
 
         explicit Transform3DComponent ();
 
-		void RegisterGraphics();
-		void UnregisterGraphics();
-
-		void SetTransform(const glm::mat4& transform);
+		void SetTransformationMatrix(const glm::mat4& matrix);
 		void SetTransform(const glm::vec3& position, const glm::fquat& rotation, const glm::vec3& scale);
 
         void SetPosition(const glm::vec3& position);
@@ -43,15 +40,20 @@ namespace brr
         [[nodiscard]] glm::vec3 GetGlobalScale() const;
         [[nodiscard]] glm::vec3 GetGlobalRotationEuler() const;
 
-        [[nodiscard]] glm::mat4 GetTransform() const;
-        [[nodiscard]] const glm::mat4& GetGlobalTransform() const;
+        [[nodiscard]] glm::mat4 GetMatrix() const;
+        [[nodiscard]] const glm::mat4& GetGlobalMatrix() const;
 
         [[nodiscard]] DirtyFlags Dirty() const { return static_cast<DirtyFlags>(m_dirty_); }
 
         void SetParent(Transform3DComponent* parent);
         void RemoveChild(Transform3DComponent* child);
 
-        [[nodiscard]] constexpr render::EntityId GetRenderEntityID() const { return m_render_entity_id; }
+        [[nodiscard]] constexpr render::EntityID GetRenderEntityID() const { return m_render_entity_id; }
+
+    public:
+
+        void RegisterGraphics();
+		void UnregisterGraphics();
 
     private:
         void PropagateTransformChange();
@@ -62,7 +64,7 @@ namespace brr
 
         mutable uint8_t m_dirty_{GLOBAL_DIRTY};
 
-        render::EntityId m_render_entity_id = render::EntityId::NULL_ID;
+        render::EntityID m_render_entity_id = render::EntityID::NULL_ID;
 
         alignas(16) mutable glm::mat4 m_global_transform_{1.f};
         // align matrix with 16 so it occupies exactly the second cache line.

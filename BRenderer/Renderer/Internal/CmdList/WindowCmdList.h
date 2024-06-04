@@ -54,7 +54,7 @@ namespace brr::render::internal
             return window_cmd;
         }
 
-        static WindowCommand BuildWindowSetSceneCommand (uint32_t window_id, uint64_t scene_id, CameraId camera_id)
+        static WindowCommand BuildWindowSetSceneCommand (uint32_t window_id, uint64_t scene_id, CameraID camera_id)
         {
             WindowCommand window_cmd;
             window_cmd.command = WindowCmdType::SetScene;
@@ -75,7 +75,7 @@ namespace brr::render::internal
             struct
             {
                 uint64_t scene_id{static_cast<uint64_t>(-1)};
-                CameraId camera_id{CameraId::NULL_ID};
+                CameraID camera_id{CameraID::NULL_ID};
             } scene_cmd;
         };
 

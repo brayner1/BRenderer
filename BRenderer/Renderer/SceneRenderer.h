@@ -24,13 +24,13 @@ namespace brr::render
         //--- Camera Functions ---//
         //------------------------//
 
-        void CreateCamera(CameraId camera_id,
-                          EntityId owner_entity,
+        void CreateCamera(CameraID camera_id,
+                          EntityID owner_entity,
                           float camera_fovy,
                           float camera_near,
                           float camera_far);
-        void DestroyCamera(CameraId camera_id);
-        void UpdateCameraProjection(CameraId camera_id,
+        void DestroyCamera(CameraID camera_id);
+        void UpdateCameraProjection(CameraID camera_id,
                                     float camera_fovy,
                                     float camera_near,
                                     float camera_far);
@@ -39,29 +39,29 @@ namespace brr::render
         //--- Entity Functions ---//
         //------------------------//
 
-        void CreateEntity(EntityId entity_id,
+        void CreateEntity(EntityID entity_id,
                           const glm::mat4& entity_transform = {});
-        void DestroyEntity(EntityId entity_id);
-        void UpdateEntityTransform(EntityId entity_id,
+        void DestroyEntity(EntityID entity_id);
+        void UpdateEntityTransform(EntityID entity_id,
                                    const glm::mat4& entity_transform);
 
         //-------------------------//
         //--- Surface Functions ---//
         //-------------------------//
 
-        void CreateSurface(SurfaceId surface_id,
-                           EntityId owner_entity,
+        void CreateSurface(SurfaceID surface_id,
+                           EntityID owner_entity,
                            void* vertex_buffer_data,
                            size_t vertex_buffer_size,
                            void* index_buffer_data,
                            size_t index_buffer_size);
 
-        void DestroySurface(SurfaceId surface_id);
+        void DestroySurface(SurfaceID surface_id);
 
-        void UpdateSurfaceVertexBuffer(SurfaceId surface_id,
+        void UpdateSurfaceVertexBuffer(SurfaceID surface_id,
                                        void* vertex_buffer_data,
                                        size_t vertex_buffer_size);
-        void UpdateSurfaceIndexBuffer(SurfaceId surface_id,
+        void UpdateSurfaceIndexBuffer(SurfaceID surface_id,
                                       void* index_buffer_data,
                                       size_t index_buffer_size);
 
@@ -69,57 +69,61 @@ namespace brr::render
         //--- Lights Functions ---//
         //------------------------//
 
-        void CreatePointLight(LightId light_id,
+        void CreatePointLight(LightID light_id,
                               const glm::vec3& position,
                               const glm::vec3& color,
                               float intensity);
 
-        void UpdatePointLight(LightId light_id,
+        void UpdatePointLight(LightID light_id,
                               const glm::vec3& position,
                               const glm::vec3& color,
                               float intensity);
 
-        void CreateDirectionalLight(LightId light_id, const glm::vec3& direction,
+        void CreateDirectionalLight(LightID light_id, const glm::vec3& direction,
                                        const glm::vec3& color,
                                        float intensity);
 
-        void UpdateDirectionalLight(LightId light_id,
+        void UpdateDirectionalLight(LightID light_id,
                                     const glm::vec3& direction,
                                     const glm::vec3& color,
                                     float intensity);
 
-        void CreateSpotLight(LightId light_id, const glm::vec3& position,
+        void CreateSpotLight(LightID light_id, const glm::vec3& position,
                                 float cutoff_angle,
                                 const glm::vec3& direction,
                                 float intensity,
                                 const glm::vec3& color);
 
-        void UpdateSpotLight(LightId light_id,
+        void UpdateSpotLight(LightID light_id,
                              const glm::vec3& position,
                              float cutoff_angle,
                              const glm::vec3& direction,
                              float intensity,
                              const glm::vec3& color);
 
-        void CreateAmbientLight(LightId light_id, const glm::vec3& color,
+        void CreateAmbientLight(LightID light_id, const glm::vec3& color,
                                    float intensity);
 
-        void UpdateAmbientLight(LightId light_id,
+        void UpdateAmbientLight(LightID light_id,
                                 const glm::vec3& color,
                                 float intensity);
 
-        void DestroyLight(LightId light_id);
+        void DestroyLight(LightID light_id);
 
         //------------------------//
         //-- Viewport Functions --//
         //------------------------//
 
-        ViewportId CreateViewport(glm::uvec2 viewport_size, CameraId camera_id);
+        ViewportID CreateViewport(glm::uvec2 viewport_size, CameraID camera_id);
 
-        void ResizeViewport(ViewportId viewport_id,
+        void ResizeViewport(ViewportID viewport_id,
                             glm::uvec2 new_size);
 
-        void DestroyViewport(ViewportId viewport_id);
+        void DestroyViewport(ViewportID viewport_id);
+
+        CameraID GetViewportCameraID(ViewportID viewport_id) const;
+
+        void SetViewportCameraID(ViewportID viewport_id, CameraID camera_id);
 
         //-------------------------//
         //-- Rendering Functions --//
@@ -127,7 +131,7 @@ namespace brr::render
 
         void UpdateDirtyInstances();
 
-        void Render3D(ViewportId viewport,
+        void Render3D(ViewportID viewport,
                       Texture2DHandle render_target);
 
     private:
@@ -142,7 +146,7 @@ namespace brr::render
         void SetupMaterialUniforms();
 
 
-        bool CreateNewLight(LightId light_id, Light&& new_light);
+        bool CreateNewLight(LightID light_id, Light&& new_light);
 
         void CreateVertexBuffer(void* vertex_buffer_data,
                                 size_t vertex_buffer_size,
@@ -158,7 +162,7 @@ namespace brr::render
         struct Viewport
         {
             uint32_t width = 0, height = 0;
-            CameraId camera_id;
+            CameraID camera_id;
             std::array<Texture2DHandle, FRAME_LAG> color_attachment{};
             std::array<Texture2DHandle, FRAME_LAG> depth_attachment{};
 
@@ -174,7 +178,7 @@ namespace brr::render
             float camera_near;
             float camera_far;
 
-            EntityId owner_entity = EntityId::NULL_ID;
+            EntityID owner_entity = EntityID::NULL_ID;
 
             //std::array<DeviceBuffer, FRAME_LAG> uniform_buffers;
             //std::array<DescriptorSetHandle, FRAME_LAG> descriptor_sets;
@@ -205,17 +209,17 @@ namespace brr::render
         struct SurfaceRenderData
         {
             SurfaceRenderData()
-                : m_owner_node(EntityId::NULL_ID)
+                : m_owner_node(EntityID::NULL_ID)
             {
             }
 
-            SurfaceRenderData(EntityId owner_node_id)
+            SurfaceRenderData(EntityID owner_node_id)
                 : m_owner_node(owner_node_id)
             {
             }
 
-            EntityId m_owner_node;
-            SurfaceId m_my_surface_id;
+            EntityID m_owner_node;
+            SurfaceID m_my_surface_id;
 
             VertexBufferHandle m_vertex_buffer_handle{};
             IndexBufferHandle m_index_buffer_handle{};
@@ -233,15 +237,15 @@ namespace brr::render
             std::array<bool, FRAME_LAG> m_light_storage_size_changed{true};
         } m_scene_uniform_info;
 
-        ContiguousPool<ViewportId, Viewport> m_viewports;
+        ContiguousPool<ViewportID, Viewport> m_viewports;
 
-        ContiguousPool<CameraId, CameraInfo> m_cameras;
+        ContiguousPool<CameraID, CameraInfo> m_cameras;
 
-        ContiguousPool<LightId, Light> m_scene_lights;
+        ContiguousPool<LightID, Light> m_scene_lights;
 
-        std::map<EntityId, EntityInfo> m_entities_map;
+        std::map<EntityID, EntityInfo> m_entities_map;
 
-        ContiguousPool<SurfaceId, SurfaceRenderData> m_render_data;
+        ContiguousPool<SurfaceID, SurfaceRenderData> m_render_data;
 
         DescriptorLayout m_material_descriptor_layout;
         std::array<DescriptorSetHandle, FRAME_LAG> m_material_descriptor_sets{};
@@ -253,9 +257,9 @@ namespace brr::render
         Shader m_shader;
 
         uint32_t m_current_buffer = 0;
-        size_t m_current_frame    = 0;
+        size_t m_current_frame    = -1; // Start with invalid value.
 
-        CameraId m_camera_id = CameraId::NULL_ID;
+        CameraID m_camera_id = CameraID::NULL_ID;
     };
 }
 

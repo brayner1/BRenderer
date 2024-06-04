@@ -2,12 +2,14 @@
 
 #include <Core/LogSystem.h>
 
-#include "Renderer/RenderThread.h"
-#include "Scene/Components/PerspectiveCameraComponent.h"
+#include <Scene/Components/PerspectiveCameraComponent.h>
+#include <Visualization/SceneView.h>
+#include <Renderer/RenderThread.h>
 
 namespace brr::vis
 {
 	Window::Window(const std::string& window_name, glm::uvec2 window_size)
+	: m_scene_view(this)
 	{
 		const uint32_t window_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
 		m_window = SDL_CreateWindow(window_name.c_str(),
@@ -49,6 +51,7 @@ namespace brr::vis
 
 	Window::~Window()
 	{
+		m_scene_view.UnsetCamera();
 		CloseWindow();
 		BRR_LogInfo("Window Closed");
 	}
@@ -74,11 +77,13 @@ namespace brr::vis
 		case SDL_WINDOWEVENT_SIZE_CHANGED: break;
 		case SDL_WINDOWEVENT_MINIMIZED:
 			BRR_LogInfo("Window {} minimized.", m_window_id);
+			render::RenderThread::WindowRenderCmd_Resize(m_window, {0, 0});
 			m_minimized = true;
 			break;
 		case SDL_WINDOWEVENT_MAXIMIZED: break;
 		case SDL_WINDOWEVENT_RESTORED:
 			BRR_LogInfo("Window {} restored.", m_window_id);
+			render::RenderThread::WindowRenderCmd_Resize(m_window, GetWindowExtent());
 			m_minimized = false;
 			break;
 		case SDL_WINDOWEVENT_ENTER: break;
@@ -99,25 +104,10 @@ namespace brr::vis
 		}
 	}
 
-	glm::ivec2 Window::GetWindowExtent() const
+    glm::ivec2 Window::GetWindowExtent() const
 	{
 		int width, height;
 		SDL_Vulkan_GetDrawableSize(m_window, &width, &height);
 		return { width, height };
-	}
-
-    void Window::SetScene(Scene* scene)
-	{
-	    m_scene = scene;
-		if (m_scene)
-		{
-			PerspectiveCameraComponent* camera_component = scene->GetMainCamera();
-			render::CameraId camera_id = camera_component ? camera_component->GetCameraRenderID() : render::CameraId::NULL_ID;
-		    render::RenderThread::WindowRenderCmd_SetScene(m_window, scene->GetSceneRendererProxy()->GetSceneId(), camera_id);
-		}
-		else
-		{
-		    render::RenderThread::WindowRenderCmd_SetScene(m_window, -1, render::CameraId::NULL_ID);
-		}
 	}
 }

@@ -75,23 +75,23 @@ namespace brr::render::internal
                 if (window_command.scene_cmd.scene_id == -1)
                 {
                     BRR_LogDebug("RenderThread: Setting NULL Scene to Window (ID: {})", window_command.window_id);
-                    window_renderer->SetSceneRenderer(nullptr, CameraId::NULL_ID);
+                    window_renderer->SetSceneRenderer(nullptr, CameraID::NULL_ID);
                     break;
                 }
 
                 SystemOwner<SceneRenderer>& scene_renderer_storage = SystemsStorage::GetSceneRendererStorage();
                 const auto scene_iter = scene_renderer_storage.Find(window_command.scene_cmd.scene_id);
-                if (scene_iter != scene_renderer_storage.end())
-                {
-                    BRR_LogDebug("RenderThread: Setting Scene (ID: {}) to Window (ID: {})",
-                                 window_command.scene_cmd.scene_id, window_command.window_id);
-                    SceneRenderer* scene_renderer = scene_iter->second.get();
-                    window_renderer->SetSceneRenderer(scene_renderer, window_command.scene_cmd.camera_id);
-                }
-                else
+                if (scene_iter == scene_renderer_storage.end())
                 {
                     BRR_LogError("RenderThread: Failed to set Scene (ID: {}) to Window (ID: {}). Invalid Scene ID.");
+                    break;
+                    
                 }
+
+                BRR_LogDebug("RenderThread: Setting Scene (ID: {}) to Window (ID: {})",
+                             window_command.scene_cmd.scene_id, window_command.window_id);
+                SceneRenderer* scene_renderer = scene_iter->second.get();
+                window_renderer->SetSceneRenderer(scene_renderer, window_command.scene_cmd.camera_id);
                 break;
             }
         }

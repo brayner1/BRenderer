@@ -25,16 +25,6 @@ namespace brr::render
         return m_render_device->Swapchain_PresentCurrentImage(m_swapchain_handle);
     }
 
-    void DeviceSwapchain::BeginRendering()
-    {
-        m_render_device->Swapchain_BeginRendering(m_swapchain_handle);
-    }
-
-    void DeviceSwapchain::EndRendering()
-    {
-        m_render_device->Swapchain_EndRendering(m_swapchain_handle);
-    }
-
     DeviceSwapchain::~DeviceSwapchain()
     {
         m_render_device->Swapchain_Destroy(m_swapchain_handle);

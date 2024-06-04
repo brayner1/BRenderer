@@ -47,7 +47,6 @@ namespace brr
 		    BRR_LogError("Called 'Scene::InitSceneRenderer', but SceneRenderer is already initialized.");
 			return;
 		}
-		
 
 		m_scene_render_proxy = std::make_unique<vis::SceneRenderProxy>();
 		

@@ -34,7 +34,7 @@ namespace brr
         glm::vec3 m_position;
         float m_intensity;
         glm::vec3 m_color;
-        render::LightId m_light_id = render::LightId::NULL_ID;
+        render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 
 	struct DirectionalLightComponent : public EntityComponent
@@ -66,7 +66,7 @@ namespace brr
 		glm::vec3 m_direction;
 		float m_intensity;
 		glm::vec3 m_color;
-		render::LightId m_light_id = render::LightId::NULL_ID;
+		render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 
 	struct SpotLightComponent : public EntityComponent
@@ -106,7 +106,7 @@ namespace brr
 		glm::vec3 m_direction;
 		float m_intensity;
 		glm::vec3 m_color;
-		render::LightId m_light_id = render::LightId::NULL_ID;
+		render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 
 	struct AmbientLightComponent : public EntityComponent
@@ -135,7 +135,7 @@ namespace brr
 
 		glm::vec3 m_color;
 		float m_intensity;
-		render::LightId m_light_id = render::LightId::NULL_ID;
+		render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 }
 

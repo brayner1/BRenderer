@@ -33,26 +33,24 @@ namespace brr
 	{
 		m_keydown_event.Subscribe(std::make_shared<EventAction<SDL_KeyCode>>(& App::OnKeyPressed, this));
 		
-		m_window_manager.reset(new vis::WindowManager{ 800, 600 });
-
-        glm::ivec2 extent = m_window_manager->GetMainWindow()->GetWindowExtent();
+		m_window_manager = std::make_unique<vis::WindowManager>(800, 600);
 
 		m_scene.reset(new Scene());
 		m_scene->InitSceneRenderer();
 
-		brr::Entity light_entity = m_scene->Add3DEntity({});
+		Entity light_entity = m_scene->Add3DEntity({});
 		light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(1.0, 0.8, 0.8), 2.0);
 
-		brr::SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", m_scene.get());
+		SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", m_scene.get());
 
 		Entity camera_entity = m_scene->Add3DEntity(Entity());
 		PerspectiveCameraComponent& camera_component = camera_entity.AddComponent<PerspectiveCameraComponent>(glm::radians(45.0), 0.1f, 100.f);
-		Transform3DComponent& camera_transform = camera_entity.GetComponent<Transform3DComponent>();
-		camera_transform.SetPosition({8.0, 2.0, 0.0});
-		glm::vec3 look_dir = glm::normalize(glm::vec3(-8.0, -2.0, 0.0));
-		camera_transform.SetRotation(glm::quatLookAt(look_dir, { 0.f, -1.f, 0.f }));
+		camera_component.LookAt({8.0, 2.0, 0.0}, {0.0, 0.0, 0.0}, {0.f, -1.f, 0.f});
 
-		m_window_manager->GetMainWindow()->SetScene(m_scene.get());
+		glm::vec3 proj_point = camera_component.TransformToViewportCoords({-4.681385, 1.117334, 3.768916}, 800.f / 600.f);
+		BRR_LogInfo("Point (0, 0, 0) on Viewport Space: {}", glm::to_string(proj_point));
+
+		m_window_manager->GetMainWindow()->GetSceneView().SetCamera(&camera_component);
 	}
 
 	void App::MainLoop()
@@ -101,9 +99,9 @@ namespace brr
 		{
 			if (isLightOn)
 			{
-				SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
 				static std::default_random_engine random_engine;
 				std::uniform_real_distribution<float> distrib (0.0, 1.0);
+				SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
 				spot_light.SetColor({distrib(random_engine), distrib(random_engine), distrib(random_engine)});
 			}
 		}

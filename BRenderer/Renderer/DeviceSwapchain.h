@@ -21,8 +21,6 @@ namespace brr::render
 
         uint32_t AcquireNextImage();
         bool PresentCurrentImage();
-        void BeginRendering();
-        void EndRendering();
 
         void Recreate_Swapchain(glm::uvec2 drawable_size);
 

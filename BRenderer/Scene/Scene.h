@@ -2,8 +2,8 @@
 #define BRR_SCENE_H
 
 #include <Core/thirdpartiesInc.h>
-#include <Core/PerspectiveCamera.h>
 
+#include "Core/Events/Event.h"
 #include "Visualization/SceneRendererProxy.h"
 
 namespace brr

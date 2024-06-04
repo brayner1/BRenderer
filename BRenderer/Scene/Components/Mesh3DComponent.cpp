@@ -19,7 +19,7 @@ namespace brr
         m_indices   = std::move(surface.m_indices);
         m_surfaceId = surface.m_surfaceId;
 
-        surface.m_surfaceId = render::SurfaceId::NULL_ID;
+        surface.m_surfaceId = render::SurfaceID::NULL_ID;
 
         return *this;
     }
@@ -71,11 +71,11 @@ namespace brr
         for (auto& surface : m_surfaces)
         {
             GetScene()->GetSceneRendererProxy()->DestroySurface(surface.GetRenderSurfaceID());
-            surface.m_surfaceId = render::SurfaceId::NULL_ID;
+            surface.m_surfaceId = render::SurfaceID::NULL_ID;
         }
     }
 
-    render::SurfaceId Mesh3DComponent::AddSurface(const std::vector<Vertex3>& vertices,
+    render::SurfaceID Mesh3DComponent::AddSurface(const std::vector<Vertex3>& vertices,
                                                   const std::vector<uint32_t>& indices)
     {
         BRR_LogInfo("Adding new Surface");
@@ -95,7 +95,7 @@ namespace brr
         return new_surface.m_surfaceId;
     }
 
-    render::SurfaceId Mesh3DComponent::AddSurface(SurfaceData&& surface)
+    render::SurfaceID Mesh3DComponent::AddSurface(SurfaceData&& surface)
     {
         BRR_LogInfo("Adding new Surface");
         SurfaceData& new_surface = m_surfaces.emplace_back(std::forward<SurfaceData&&>(surface));
@@ -113,7 +113,7 @@ namespace brr
         return new_surface.m_surfaceId;
     }
 
-    void Mesh3DComponent::RemoveSurface(render::SurfaceId surface_id)
+    void Mesh3DComponent::RemoveSurface(render::SurfaceID surface_id)
     {
         BRR_LogInfo("Removing surface {}", uint32_t(surface_id));
 

@@ -257,7 +257,7 @@ namespace brr::render
 
         m_staging_blocks.push_back(block);
 
-        BRR_LogInfo("Allocated staging block. Buffer: {:#x}, Size: {}", (size_t)new_buffer, STAGING_BLOCK_SIZE_BYTES);
+        BRR_LogDebug("Allocated staging block. Buffer: {:#x}, Size: {}", (size_t)new_buffer, STAGING_BLOCK_SIZE_BYTES);
 
         return true;
     }
@@ -290,7 +290,7 @@ namespace brr::render
         m_staging_blocks[block_index].m_filled_bytes += size;
         assert(m_staging_blocks[block_index].m_filled_bytes <= STAGING_BLOCK_SIZE_BYTES && "Error: Allocated more memory than available on StagingBlock");
 
-        BRR_LogInfo("Allocating {} bytes in staging block {}.", size, block_index);
+        BRR_LogTrace("Allocating {} bytes in staging block {}.", size, block_index);
 
         return size;
     }

@@ -89,8 +89,8 @@ namespace brr::render
         m_render_device->DestroyGraphicsPipeline(m_graphics_pipeline);
     }
 
-    void SceneRenderer::CreateCamera(CameraId camera_id,
-                                     EntityId owner_entity,
+    void SceneRenderer::CreateCamera(CameraID camera_id,
+                                     EntityID owner_entity,
                                      float camera_fovy,
                                      float camera_near,
                                      float camera_far)
@@ -106,7 +106,7 @@ namespace brr::render
         BRR_LogInfo("Initialized Entity Uniform Buffers.");
     }
 
-    void SceneRenderer::DestroyCamera(CameraId camera_id)
+    void SceneRenderer::DestroyCamera(CameraID camera_id)
     {
         if (!m_cameras.Contains(camera_id))
         {
@@ -119,7 +119,7 @@ namespace brr::render
         // TODO: Need to check and update viewports that use this camera!
     }
 
-    void SceneRenderer::UpdateCameraProjection(CameraId camera_id,
+    void SceneRenderer::UpdateCameraProjection(CameraID camera_id,
                                                float camera_fovy,
                                                float camera_near,
                                                float camera_far)
@@ -132,7 +132,7 @@ namespace brr::render
         // TODO: Need to check and update viewports that use this camera!
     }
 
-    void SceneRenderer::CreateEntity(EntityId entity_id,
+    void SceneRenderer::CreateEntity(EntityID entity_id,
                                      const glm::mat4& entity_transform)
     {
         if (m_entities_map.contains(entity_id))
@@ -148,7 +148,7 @@ namespace brr::render
         SetupEntityUniforms(entity_info_it->second);
     }
 
-    void SceneRenderer::DestroyEntity(EntityId entity_id)
+    void SceneRenderer::DestroyEntity(EntityID entity_id)
     {
         if (!m_entities_map.contains(entity_id))
         {
@@ -165,7 +165,7 @@ namespace brr::render
         }
     }
 
-    void SceneRenderer::UpdateEntityTransform(EntityId entity_id,
+    void SceneRenderer::UpdateEntityTransform(EntityID entity_id,
                                               const glm::mat4& entity_transform)
     {
         auto entity_it = m_entities_map.find(entity_id);
@@ -181,8 +181,8 @@ namespace brr::render
         entity_it->second.uniform_dirty.fill(true);
     }
 
-    void SceneRenderer::CreateSurface(SurfaceId surface_id,
-                                         EntityId owner_entity,
+    void SceneRenderer::CreateSurface(SurfaceID surface_id,
+                                         EntityID owner_entity,
                                          void* vertex_buffer_data,
                                          size_t vertex_buffer_size,
                                          void* index_buffer_data,
@@ -203,7 +203,7 @@ namespace brr::render
         CreateIndexBuffer(index_buffer_data, index_buffer_size, render_data);
     }
 
-    void SceneRenderer::DestroySurface(SurfaceId surface_id)
+    void SceneRenderer::DestroySurface(SurfaceID surface_id)
     {
         if (!m_render_data.Contains(surface_id))
         {
@@ -216,19 +216,19 @@ namespace brr::render
         m_render_data.RemoveObject(surface_id);
     }
 
-    void SceneRenderer::UpdateSurfaceVertexBuffer(SurfaceId surface_id,
+    void SceneRenderer::UpdateSurfaceVertexBuffer(SurfaceID surface_id,
                                                   void* vertex_buffer_data,
                                                   size_t vertex_buffer_size)
     {
     }
 
-    void SceneRenderer::UpdateSurfaceIndexBuffer(SurfaceId surface_id,
+    void SceneRenderer::UpdateSurfaceIndexBuffer(SurfaceID surface_id,
                                                  void* index_buffer_data,
                                                  size_t index_buffer_size)
     {
     }
 
-    void SceneRenderer::CreatePointLight(LightId light_id,
+    void SceneRenderer::CreatePointLight(LightID light_id,
                                          const glm::vec3& position,
                                          const glm::vec3& color,
                                          float intensity)
@@ -240,10 +240,10 @@ namespace brr::render
         point_light.light_color     = color;
         CreateNewLight(light_id, std::move(point_light));
 
-        BRR_LogInfo("Created new PointLight. LightId: {}", static_cast<uint32_t>(light_id));
+        BRR_LogInfo("Created new PointLight. LightID: {}", static_cast<uint32_t>(light_id));
     }
 
-    void SceneRenderer::UpdatePointLight(LightId light_id,
+    void SceneRenderer::UpdatePointLight(LightID light_id,
                                          const glm::vec3& position,
                                          const glm::vec3& color,
                                          float intensity)
@@ -256,7 +256,7 @@ namespace brr::render
         m_scene_uniform_info.m_light_storage_dirty.fill(true);
     }
 
-    void SceneRenderer::CreateDirectionalLight(LightId light_id,
+    void SceneRenderer::CreateDirectionalLight(LightID light_id,
                                                const glm::vec3& direction,
                                                const glm::vec3& color,
                                                float intensity)
@@ -268,10 +268,10 @@ namespace brr::render
         directional_light.light_color     = color;
         CreateNewLight(light_id, std::move(directional_light));
 
-        BRR_LogInfo("Created new DirectionalLight. LightId: {}", static_cast<uint32_t>(light_id));
+        BRR_LogInfo("Created new DirectionalLight. LightID: {}", static_cast<uint32_t>(light_id));
     }
 
-    void SceneRenderer::UpdateDirectionalLight(LightId light_id,
+    void SceneRenderer::UpdateDirectionalLight(LightID light_id,
                                                const glm::vec3& direction,
                                                const glm::vec3& color,
                                                float intensity)
@@ -284,7 +284,7 @@ namespace brr::render
         m_scene_uniform_info.m_light_storage_dirty.fill(true);
     }
 
-    void SceneRenderer::CreateSpotLight(LightId light_id,
+    void SceneRenderer::CreateSpotLight(LightID light_id,
                                            const glm::vec3& position,
                                            float cutoff_angle,
                                            const glm::vec3& direction,
@@ -300,10 +300,10 @@ namespace brr::render
         spot_light.light_cutoff    = std::cos(cutoff_angle);
         CreateNewLight(light_id, std::move(spot_light));
 
-        BRR_LogInfo("Created new SpotLight. LightId: {}", static_cast<uint32_t>(light_id));
+        BRR_LogInfo("Created new SpotLight. LightID: {}", static_cast<uint32_t>(light_id));
     }
 
-    void SceneRenderer::UpdateSpotLight(LightId light_id,
+    void SceneRenderer::UpdateSpotLight(LightID light_id,
                                         const glm::vec3& position,
                                         float cutoff_angle,
                                         const glm::vec3& direction,
@@ -320,7 +320,7 @@ namespace brr::render
         m_scene_uniform_info.m_light_storage_dirty.fill(true);
     }
 
-    void SceneRenderer::CreateAmbientLight(LightId light_id,
+    void SceneRenderer::CreateAmbientLight(LightID light_id,
                                            const glm::vec3& color,
                                            float intensity)
     {
@@ -330,10 +330,10 @@ namespace brr::render
         ambient_light.light_color     = color;
         CreateNewLight(light_id, std::move(ambient_light));
 
-        BRR_LogInfo("Created new AmbientLight. LightId: {}", static_cast<uint32_t>(light_id));
+        BRR_LogInfo("Created new AmbientLight. LightID: {}", static_cast<uint32_t>(light_id));
     }
 
-    void SceneRenderer::UpdateAmbientLight(LightId light_id,
+    void SceneRenderer::UpdateAmbientLight(LightID light_id,
                                            const glm::vec3& color,
                                            float intensity)
     {
@@ -344,17 +344,17 @@ namespace brr::render
         m_scene_uniform_info.m_light_storage_dirty.fill(true);
     }
 
-    void SceneRenderer::DestroyLight(LightId light_id)
+    void SceneRenderer::DestroyLight(LightID light_id)
     {
         m_scene_lights.RemoveObject(light_id);
 
         m_scene_uniform_info.m_light_storage_dirty.fill(true);
         m_scene_uniform_info.m_light_storage_size_changed.fill(true);
 
-        BRR_LogInfo("Removed Light. LightId: {}", static_cast<uint32_t>(light_id));
+        BRR_LogInfo("Removed Light. LightID: {}", static_cast<uint32_t>(light_id));
     }
 
-    ViewportId SceneRenderer::CreateViewport(glm::uvec2 viewport_size, CameraId camera_id)
+    ViewportID SceneRenderer::CreateViewport(glm::uvec2 viewport_size, CameraID camera_id)
     {
         Viewport viewport{.width = viewport_size.x, .height = viewport_size.y, .camera_id = camera_id};
         for (uint32_t idx = 0; idx < FRAME_LAG; idx++)
@@ -367,7 +367,7 @@ namespace brr::render
                                                                                ImageUsage::DepthStencilAttachmentImage,
                                                                                DataFormat::D32_Float);
         }
-        ViewportId new_viewport_id = static_cast<ViewportId>(s_viewport_id_owner.GetNewId());
+        ViewportID new_viewport_id = static_cast<ViewportID>(s_viewport_id_owner.GetNewId());
         m_viewports.AddObject(new_viewport_id, std::move(viewport));
 
         Viewport& new_viewport = m_viewports.Get(new_viewport_id);
@@ -377,9 +377,14 @@ namespace brr::render
         return new_viewport_id;
     }
 
-    void SceneRenderer::ResizeViewport(ViewportId viewport_id,
+    void SceneRenderer::ResizeViewport(ViewportID viewport_id,
                                        glm::uvec2 new_size)
     {
+        if (!m_viewports.Contains(viewport_id))
+        {
+            BRR_LogError("Resizing Viewport (ID: {}) that does not exist in this SceneRenderer.", uint32_t(viewport_id));
+            return;
+        }
         Viewport& viewport = m_viewports.Get(viewport_id);
         viewport.width     = new_size.x;
         viewport.height    = new_size.y;
@@ -401,8 +406,13 @@ namespace brr::render
         BRR_LogInfo("Resized Viewport. Viewport ID: {}. Viewport New Size: (width: {}, height: {})", static_cast<uint32_t>(viewport_id), new_size.x, new_size.y);
     }
 
-    void SceneRenderer::DestroyViewport(ViewportId viewport_id)
+    void SceneRenderer::DestroyViewport(ViewportID viewport_id)
     {
+        if (!m_viewports.Contains(viewport_id))
+        {
+            BRR_LogError("Destroying Viewport (ID: {}) that does not exist in this SceneRenderer.", uint32_t(viewport_id));
+            return;
+        }
         Viewport& viewport = m_viewports.Get(viewport_id);
         for (uint32_t idx = 0; idx < FRAME_LAG; idx++)
         {
@@ -414,12 +424,44 @@ namespace brr::render
         BRR_LogInfo("Destroyed Viewport. Viewport ID: {}", static_cast<uint32_t>(viewport_id));
     }
 
+    CameraID SceneRenderer::GetViewportCameraID(ViewportID viewport_id) const
+    {
+        if (!m_viewports.Contains(viewport_id))
+        {
+            BRR_LogError("Getting CameraID from Viewport (ID: {}) that does not exist in this SceneRenderer.", uint32_t(viewport_id));
+            return CameraID::NULL_ID;
+        }
+        const Viewport& viewport = m_viewports.Get(viewport_id);
+        return viewport.camera_id;
+    }
+
+    void SceneRenderer::SetViewportCameraID(ViewportID viewport_id,
+                                            CameraID camera_id)
+    {
+        if (!m_viewports.Contains(viewport_id))
+        {
+            BRR_LogError("Setting CameraID on Viewport (ID: {}) that does not exist in this SceneRenderer.", uint32_t(viewport_id));
+            return;
+        }
+        Viewport& viewport = m_viewports.Get(viewport_id);
+        if (viewport.camera_id != camera_id)
+        {
+            viewport.camera_id = camera_id;
+            viewport.camera_uniform_dirty.fill(true);
+        }
+    }
+
     void SceneRenderer::UpdateDirtyInstances()
     {
         assert(m_render_device && "VulkanRenderDevice must be initialized on construction.");
+        if (m_current_frame == m_render_device->GetCurrentFrameNumber())
+        {
+            return;
+        }
+        m_current_frame  = m_render_device->GetCurrentFrameNumber();
         m_current_buffer = m_render_device->GetCurrentFrameBufferIndex();
 
-        std::set<EntityId> updated_entities;
+        std::set<EntityID> updated_entities;
         for (auto& entity_iter : m_entities_map)
         {
             EntityInfo& entity = entity_iter.second;
@@ -486,7 +528,7 @@ namespace brr::render
         }
     }
 
-    void SceneRenderer::Render3D(ViewportId viewport_id,
+    void SceneRenderer::Render3D(ViewportID viewport_id,
                                  Texture2DHandle render_target)
     {
         Viewport& viewport = m_viewports.Get(viewport_id);
@@ -592,16 +634,27 @@ namespace brr::render
             setBuilder.UpdateDescriptorSet(viewport.camera_descriptor_sets[frame_idx]);
         }
 
-        CameraInfo& camera_info = m_cameras.Get(viewport.camera_id);
-        float aspect                = (float)viewport.width / (float)viewport.height;
-        glm::mat4 projection_matrix = glm::perspective(camera_info.camera_fov_y, aspect, camera_info.camera_near,
-                                                       camera_info.camera_far);
-
-        EntityInfo& entity    = m_entities_map[camera_info.owner_entity];
-        glm::mat4 view_matrix = glm::inverse(entity.current_matrix);
-
         CameraUniform camera_uniform;
-        camera_uniform.projection_view = projection_matrix * view_matrix;
+        if (m_cameras.Contains(viewport.camera_id))
+        {
+            CameraInfo& camera_info = m_cameras.Get(viewport.camera_id);
+            float aspect                = (float)viewport.width / (float)viewport.height;
+            glm::mat4 projection_matrix = glm::perspective(camera_info.camera_fov_y, aspect, camera_info.camera_near,
+                                                           camera_info.camera_far);
+
+            EntityInfo& entity    = m_entities_map[camera_info.owner_entity];
+            glm::mat4 view_matrix = glm::inverse(entity.current_matrix);
+            camera_uniform.projection_view = projection_matrix * view_matrix;
+        }
+        else
+        {
+            BRR_LogError(
+                "Trying to create Viewport with Camera (ID: {}) that does not exist. Using identity matrix as Camera ProjectionView.",
+                uint32_t(viewport.camera_id));
+            camera_uniform.projection_view = glm::identity<glm::mat4>();
+            viewport.camera_id = CameraID::NULL_ID;
+        }
+
         for (uint32_t frame_idx = 0; frame_idx < FRAME_LAG; frame_idx++)
         {
             viewport.camera_uniform_buffers[frame_idx].Map();
@@ -666,7 +719,7 @@ namespace brr::render
         }
     }
 
-    bool SceneRenderer::CreateNewLight(LightId light_id, Light&& new_light)
+    bool SceneRenderer::CreateNewLight(LightID light_id, Light&& new_light)
     {
         // TODO: Recreate lights buffer when adding more than MAX_LIGHTS
         if (m_scene_lights.Size() == MAX_LIGHTS)

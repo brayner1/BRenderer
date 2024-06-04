@@ -34,12 +34,11 @@ set(BRenderer_SOURCE_FILES
     "Core/Threading/ThreadPool.cpp"
     "Core/App.cpp"
     "Core/LogSystem.cpp"
-    "Core/PerspectiveCamera.cpp"
+    
     "Core/UUID.cpp"
     
     "Geometry/Geometry.cpp"
     
-    "Scene/Components.cpp"
     "Scene/Entity.cpp"
     "Scene/Scene.cpp"
     
@@ -53,6 +52,7 @@ set(BRenderer_SOURCE_FILES
  
     "Visualization/Image.cpp"
     "Visualization/SceneRendererProxy.cpp"
+    "Visualization/SceneView.cpp"
     "Visualization/Window.cpp" 
     "Visualization/WindowManager.cpp"
     
@@ -92,7 +92,7 @@ set(BRenderer_HEADER_FILES
     "Core/Threading/Work.h"
     "Core/App.h"
     "Core/LogSystem.h"
-    "Core/PerspectiveCamera.h"
+    
     "Core/thirdpartiesInc.h"
     "Core/UUID.h"
     
@@ -111,6 +111,7 @@ set(BRenderer_HEADER_FILES
 
     "Visualization/Image.h"
     "Visualization/SceneRendererProxy.h"
+    "Visualization/SceneView.h"
     "Visualization/Window.h" 
     "Visualization/WindowManager.h"
     

@@ -35,7 +35,7 @@ namespace brr::render
         static void WindowRenderCmd_DestroyWindowRenderer(SDL_Window* window_handle);
         static void WindowRenderCmd_SurfaceLost(SDL_Window* window_handle, glm::uvec2 window_size);
         static void WindowRenderCmd_Resize(SDL_Window* window_handle, glm::uvec2 window_size);
-        static void WindowRenderCmd_SetScene(SDL_Window* window_handle, uint64_t scene_id, CameraId camera_id);
+        static void WindowRenderCmd_SetSceneView(SDL_Window* window_handle, uint64_t scene_id, CameraID camera_id);
 
         /***************************
          * Scene Renderer Commands *
@@ -48,14 +48,14 @@ namespace brr::render
          * Camera Commands *
          *******************/
 
-        static CameraId SceneRenderCmd_CreateCamera(uint64_t scene_id,
-                                                    EntityId owner_entity,
+        static CameraID SceneRenderCmd_CreateCamera(uint64_t scene_id,
+                                                    EntityID owner_entity,
                                                     float camera_fovy,
                                                     float camera_near,
                                                     float camera_far);
-        static void SceneRenderCmd_DestroyCamera(uint64_t scene_id, CameraId camera_id);
+        static void SceneRenderCmd_DestroyCamera(uint64_t scene_id, CameraID camera_id);
         static void SceneRenderCmd_UpdateCameraProjection(uint64_t scene_id,
-                                                          CameraId camera_id,
+                                                          CameraID camera_id,
                                                           float camera_fovy,
                                                           float camera_near,
                                                           float camera_far);
@@ -64,31 +64,31 @@ namespace brr::render
          * Entity Commands *
          *******************/
 
-        static EntityId SceneRenderCmd_CreateEntity(uint64_t scene_id, const glm::mat4& entity_transform = glm::mat4());
-        static void SceneRenderCmd_DestroyEntity(uint64_t scene_id, EntityId entity_id);
-        static void SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id, EntityId entity_id, const glm::mat4& entity_transform);
+        static EntityID SceneRenderCmd_CreateEntity(uint64_t scene_id, const glm::mat4& entity_transform = glm::mat4());
+        static void SceneRenderCmd_DestroyEntity(uint64_t scene_id, EntityID entity_id);
+        static void SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id, EntityID entity_id, const glm::mat4& entity_transform);
 
         /********************
          * Surface Commands *
          ********************/
 
-        static SurfaceId SceneRenderCmd_CreateSurface(uint64_t scene_id,
-                                                     EntityId entity_id,
+        static SurfaceID SceneRenderCmd_CreateSurface(uint64_t scene_id,
+                                                     EntityID entity_id,
                                                      void* vertex_buffer_data,
                                                      size_t vertex_buffer_size,
                                                      void* index_buffer_data,
                                                      size_t index_buffer_size);
 
         static void SceneRenderCmd_DestroySurface(uint64_t scene_id,
-                                                  SurfaceId surface_id);
+                                                  SurfaceID surface_id);
 
         static void SceneRenderCmd_UpdateSurfaceVertexBuffer(uint64_t scene_id,
-                                                             SurfaceId surface_id,
+                                                             SurfaceID surface_id,
                                                              void* vertex_buffer_data,
                                                              size_t vertex_buffer_size);
 
         static void SceneRenderCmd_UpdateSurfaceIndexBuffer(uint64_t scene_id,
-                                                            SurfaceId surface_id,
+                                                            SurfaceID surface_id,
                                                             void* index_buffer_data,
                                                             size_t index_buffer_size);
 
@@ -96,27 +96,27 @@ namespace brr::render
          * Lights Commands *
          *******************/
 
-        static LightId SceneRenderCmd_CreatePointLight(uint64_t scene_id, const glm::vec3& position, const glm::vec3& color, float intensity);
+        static LightID SceneRenderCmd_CreatePointLight(uint64_t scene_id, const glm::vec3& position, const glm::vec3& color, float intensity);
 
-        static void SceneRenderCmd_UpdatePointLight(uint64_t scene_id, LightId light_id, const glm::vec3& position, const glm::vec3& color, float intensity);
+        static void SceneRenderCmd_UpdatePointLight(uint64_t scene_id, LightID light_id, const glm::vec3& position, const glm::vec3& color, float intensity);
 
-        static LightId SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id, const glm::vec3& direction, const glm::vec3& color, float intensity);
+        static LightID SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id, const glm::vec3& direction, const glm::vec3& color, float intensity);
 
-        static void SceneRenderCmd_UpdateDirectionalLight(uint64_t scene_id, LightId light_id, const glm::vec3& direction, const glm::vec3& color,
+        static void SceneRenderCmd_UpdateDirectionalLight(uint64_t scene_id, LightID light_id, const glm::vec3& direction, const glm::vec3& color,
                                     float intensity);
 
-        static LightId SceneRenderCmd_CreateSpotLight(uint64_t scene_id, const glm::vec3& position, float cutoff_angle, const glm::vec3& direction,
+        static LightID SceneRenderCmd_CreateSpotLight(uint64_t scene_id, const glm::vec3& position, float cutoff_angle, const glm::vec3& direction,
                                 float intensity, const glm::vec3& color);
 
-        static void SceneRenderCmd_UpdateSpotLight(uint64_t scene_id, LightId light_id, const glm::vec3& position, float cutoff_angle,
+        static void SceneRenderCmd_UpdateSpotLight(uint64_t scene_id, LightID light_id, const glm::vec3& position, float cutoff_angle,
                              const glm::vec3& direction,
                              float intensity, const glm::vec3& color);
 
-        static LightId SceneRenderCmd_CreateAmbientLight(uint64_t scene_id, const glm::vec3& color, float intensity);
+        static LightID SceneRenderCmd_CreateAmbientLight(uint64_t scene_id, const glm::vec3& color, float intensity);
 
-        static void SceneRenderCmd_UpdateAmbientLight(uint64_t scene_id, LightId light_id, const glm::vec3& color, float intensity);
+        static void SceneRenderCmd_UpdateAmbientLight(uint64_t scene_id, LightID light_id, const glm::vec3& color, float intensity);
 
-        static void SceneRenderCmd_DestroyLight(uint64_t scene_id, LightId light_id);
+        static void SceneRenderCmd_DestroyLight(uint64_t scene_id, LightID light_id);
     };
 
 }

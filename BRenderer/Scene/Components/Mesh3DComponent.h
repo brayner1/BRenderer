@@ -30,7 +30,7 @@ namespace brr
 			const std::vector<Vertex3>& GetVertices() const { return m_vertices; }
 			const std::vector<uint32_t>& GetIndices() const { return m_indices; }
 
-			render::SurfaceId GetRenderSurfaceID() const { return m_surfaceId; }
+			render::SurfaceID GetRenderSurfaceID() const { return m_surfaceId; }
 
 		private:
 			friend class Mesh3DComponent;
@@ -38,13 +38,13 @@ namespace brr
 			std::vector<Vertex3>  m_vertices{};
 			std::vector<uint32_t> m_indices{};
 
-			render::SurfaceId m_surfaceId = render::SurfaceId::NULL_ID;
+			render::SurfaceID m_surfaceId = render::SurfaceID::NULL_ID;
 		};
 
-		render::SurfaceId AddSurface(const std::vector<Vertex3>& vertices, const std::vector<uint32_t>& indices);
-		render::SurfaceId AddSurface(SurfaceData&& surface);
+		render::SurfaceID AddSurface(const std::vector<Vertex3>& vertices, const std::vector<uint32_t>& indices);
+		render::SurfaceID AddSurface(SurfaceData&& surface);
 
-		void RemoveSurface(render::SurfaceId surface_id);
+		void RemoveSurface(render::SurfaceID surface_id);
 
         [[nodiscard]] constexpr size_t GetSurfaceCount() const { return m_surfaces.size(); }
 

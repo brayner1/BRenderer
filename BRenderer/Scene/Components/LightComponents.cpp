@@ -16,7 +16,7 @@ namespace brr
 
     PointLightComponent::~PointLightComponent()
     {
-        if (m_light_id != render::LightId::NULL_ID)
+        if (m_light_id != render::LightID::NULL_ID)
         {
             UnregisterGraphics();
         }
@@ -30,7 +30,7 @@ namespace brr
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
-        other.m_light_id = render::LightId::NULL_ID;
+        other.m_light_id = render::LightID::NULL_ID;
         return *this;
     }
 
@@ -82,7 +82,7 @@ namespace brr
         vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer && "Can't call 'PointLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
         scene_renderer->DestroyLight(m_light_id);
-        m_light_id = render::LightId::NULL_ID;
+        m_light_id = render::LightID::NULL_ID;
     }
 
     DirectionalLightComponent::DirectionalLightComponent(const glm::vec3& direction, const glm::vec3& color,
@@ -98,7 +98,7 @@ namespace brr
 
     DirectionalLightComponent::~DirectionalLightComponent()
     {
-        if (m_light_id != render::LightId::NULL_ID)
+        if (m_light_id != render::LightID::NULL_ID)
         {
             UnregisterGraphics();
         }
@@ -112,7 +112,7 @@ namespace brr
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
-        other.m_light_id = render::LightId::NULL_ID;;
+        other.m_light_id = render::LightID::NULL_ID;;
         return *this;
     }
 
@@ -164,7 +164,7 @@ namespace brr
         vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer && "Can't call 'DirectionalLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
         scene_renderer->DestroyLight(m_light_id);
-        m_light_id = render::LightId::NULL_ID;
+        m_light_id = render::LightID::NULL_ID;
     }
 
     SpotLightComponent::SpotLightComponent(const glm::vec3& position, const glm::vec3& direction, float cuttof_angle,
@@ -181,7 +181,7 @@ namespace brr
 
     SpotLightComponent::~SpotLightComponent()
     {
-        if (m_light_id != render::LightId::NULL_ID)
+        if (m_light_id != render::LightID::NULL_ID)
         {
             UnregisterGraphics();
         }
@@ -197,7 +197,7 @@ namespace brr
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
-        other.m_light_id = render::LightId::NULL_ID;
+        other.m_light_id = render::LightID::NULL_ID;
         return *this;
     }
 
@@ -273,7 +273,7 @@ namespace brr
         vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer && "Can't call 'SpotLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
         scene_renderer->DestroyLight(m_light_id);
-        m_light_id = render::LightId::NULL_ID;
+        m_light_id = render::LightID::NULL_ID;
     }
 
     AmbientLightComponent::AmbientLightComponent(const glm::vec3& color, float intensity)
@@ -288,7 +288,7 @@ namespace brr
 
     AmbientLightComponent::~AmbientLightComponent()
     {
-        if (m_light_id != render::LightId::NULL_ID)
+        if (m_light_id != render::LightID::NULL_ID)
         {
             UnregisterGraphics();
         }
@@ -301,7 +301,7 @@ namespace brr
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
-        other.m_light_id = render::LightId::NULL_ID;
+        other.m_light_id = render::LightID::NULL_ID;
         return *this;
     }
 
@@ -341,6 +341,6 @@ namespace brr
         vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer && "Can't call 'AmbientLightComponent::UnregisterGraphics' when SceneRenderer is NULL.");
         scene_renderer->DestroyLight(m_light_id);
-        m_light_id = render::LightId::NULL_ID;
+        m_light_id = render::LightID::NULL_ID;
     }
 }

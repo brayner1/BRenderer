@@ -27,14 +27,14 @@ namespace brr
         vis::SceneRenderProxy* scene_renderer_proxy = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer_proxy && "Can't call 'Transform3DComponent::UnregisterGraphics' when SceneRenderer is NULL.");
         scene_renderer_proxy->DestroyRenderEntity(*this);
-        m_render_entity_id = render::EntityId::NULL_ID;
+        m_render_entity_id = render::EntityID::NULL_ID;
     }
 
-    void Transform3DComponent::SetTransform(const glm::mat4& transform)
+    void Transform3DComponent::SetTransformationMatrix(const glm::mat4& matrix)
     {
         glm::vec3 skew;
         glm::vec4 perspective;
-        glm::decompose(transform, m_scale_, m_rotation_, m_position_, skew, perspective);
+        glm::decompose(matrix, m_scale_, m_rotation_, m_position_, skew, perspective);
 
         PropagateTransformChange();
     }
@@ -89,7 +89,7 @@ namespace brr
 
     glm::vec3 Transform3DComponent::GetGlobalPosition() const
     {
-        const glm::mat4& global_transf = GetGlobalTransform();
+        const glm::mat4& global_transf = GetGlobalMatrix();
         glm::vec3 position, scale, skew;
         glm::fquat rotation;
         glm::vec4 perspective;
@@ -100,7 +100,7 @@ namespace brr
 
     glm::fquat Transform3DComponent::GetGlobalRotation() const
     {
-        const glm::mat4& global_transf = GetGlobalTransform();
+        const glm::mat4& global_transf = GetGlobalMatrix();
         glm::vec3 position, scale, skew;
         glm::fquat rotation;
         glm::vec4 perspective;
@@ -111,7 +111,7 @@ namespace brr
 
     glm::vec3 Transform3DComponent::GetGlobalScale() const
     {
-        const glm::mat4& global_transf = GetGlobalTransform();
+        const glm::mat4& global_transf = GetGlobalMatrix();
         glm::vec3 position, scale, skew;
         glm::fquat rotation;
         glm::vec4 perspective;
@@ -122,7 +122,7 @@ namespace brr
 
     glm::vec3 Transform3DComponent::GetGlobalRotationEuler() const
     {
-        const glm::mat4& global_transf = GetGlobalTransform();
+        const glm::mat4& global_transf = GetGlobalMatrix();
         glm::vec3 position, scale, skew;
         glm::fquat rotation;
         glm::vec4 perspective;
@@ -131,7 +131,7 @@ namespace brr
         return glm::eulerAngles(rotation);
     }
 
-    glm::mat4 Transform3DComponent::GetTransform() const
+    glm::mat4 Transform3DComponent::GetMatrix() const
     {
         glm::mat4 local_transform = glm::mat4_cast(m_rotation_);
         local_transform = glm::scale(local_transform, m_scale_);
@@ -140,15 +140,15 @@ namespace brr
         return local_transform;
     }
 
-    const glm::mat4& Transform3DComponent::GetGlobalTransform() const
+    const glm::mat4& Transform3DComponent::GetGlobalMatrix() const
     {
         if (m_dirty_ & GLOBAL_DIRTY)
         {
-            m_global_transform_ = GetTransform();
+            m_global_transform_ = GetMatrix();
             if (NodeComponent* parent = GetNodeComponent()->GetParentNode())
             {
                 Transform3DComponent& parent_transform = parent->GetEntity().GetComponent<Transform3DComponent>();
-                m_global_transform_                    = parent_transform.GetGlobalTransform() * m_global_transform_;
+                m_global_transform_                    = parent_transform.GetGlobalMatrix() * m_global_transform_;
             }
             m_dirty_ &= ~GLOBAL_DIRTY;
         }

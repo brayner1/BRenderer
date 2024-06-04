@@ -253,7 +253,7 @@ namespace brr::render
         Frame& current_frame = GetCurrentFrame();
         if (current_frame.frame_in_progress)
         {
-            BRR_LogDebug("Frame is already in progress. Aborting BeginFrame.");
+            BRR_LogError("Error: Called BeginFrame twice before calling EndFrame. Frame {} is already in progress. Aborting BeginFrame.", m_current_frame);
             return m_current_frame;
         }
 
@@ -280,7 +280,7 @@ namespace brr::render
         }
         current_frame.frame_in_progress = true;
 
-        BRR_LogTrace("Begin frame {}", m_current_frame);
+        BRR_LogTrace("Beginning frame. Frame index: {}", m_current_frame);
 
         return m_current_frame;
     }
@@ -288,6 +288,12 @@ namespace brr::render
     void VulkanRenderDevice::EndFrame()
     {
         Frame& current_frame = GetCurrentFrame();
+        if (!current_frame.frame_in_progress)
+        {
+            BRR_LogError(
+                "Error: Called EndFrame before a call to BeginFrame. Call BeginFrame to initialize a frame before ending it.");
+            return;
+        }
 
         current_frame.graphics_cmd_buffer.end();
         current_frame.transfer_cmd_buffer.end();
@@ -303,35 +309,37 @@ namespace brr::render
 
         std::vector<vk::Semaphore>& wait_semaphores = current_frame.images_available_semaphore;
         wait_semaphores.push_back(current_frame.transfer_finished_semaphore);
-        std::vector<vk::PipelineStageFlags> wait_stages (wait_semaphores.size(), vk::PipelineStageFlagBits::eColorAttachmentOutput);
+        std::vector<vk::PipelineStageFlags> wait_stages(wait_semaphores.size(),
+                                                        vk::PipelineStageFlagBits::eColorAttachmentOutput);
         wait_stages.back() = vk::PipelineStageFlagBits::eVertexInput;
 
         bool will_present = current_frame.swapchain_present_infos.size() > 0;
 
         vk::Result result = SubmitGraphicsCommandBuffers(1, &current_frame.graphics_cmd_buffer, wait_semaphores.size(),
-                                                         wait_semaphores.data(), wait_stages.data(), will_present? 1 : 0,
+                                                         wait_semaphores.data(), wait_stages.data(), will_present ? 1 : 0,
                                                          &current_frame.render_finished_semaphore,
                                                          current_frame.in_flight_fences);
         BRR_LogTrace("Graphics command buffer submitted. Buffer: {:#x}. Frame {}. Buffer Index: {}",
                      size_t(VkCommandBuffer(current_frame.graphics_cmd_buffer)), m_current_frame, m_current_buffer);
 
-        BRR_LogTrace("Frame ended. Frame: {}. Buffer: {}", m_current_frame, m_current_buffer);
+        BRR_LogTrace("Frame ended. Frame: {}. Buffer: {}\nBeginning presentations.", m_current_frame, m_current_buffer);
 
         for (uint32_t idx = 0; idx < current_frame.swapchain_present_infos.size(); idx++)
         {
             Frame::SwapchainPresent& swapchain_present = current_frame.swapchain_present_infos[idx];
             swapchain_present.present_info.setWaitSemaphores(current_frame.render_finished_semaphore);
 
-            vk::Result result = m_presentation_queue.presentKHR(swapchain_present.present_info);
+            vk::Result result = m_presentation_queue.presentKHR(&swapchain_present.present_info);
             if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
             {
-                BRR_LogError("Present Result: {}", vk::to_string(result));
+                BRR_LogWarn("Error code on VkPresentKHR. Notifying lost render surface to the Window.\nResult: {}",
+                            vk::to_string(result));
                 Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_present.swapchain_handle);
                 swapchain->window_renderer->Device_NotifySurfaceLost();
             }
             else if (result != vk::Result::eSuccess)
             {
-                BRR_LogError("Presentation Failed.");
+                BRR_LogError("Error code on VkPresentKHR. Result: {}", vk::to_string(result));
             }
         }
         current_frame.swapchain_present_infos.clear();
@@ -458,6 +466,18 @@ namespace brr::render
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
         Frame& current_frame = GetCurrentFrame();
 
+        uint32_t current_image_idx = swapchain->current_image_idx;
+        Texture2D* swapchain_image = m_texture2d_alloc.GetResource(swapchain->image_resources[current_image_idx]);
+        if (swapchain_image->current_image_layout != vk::ImageLayout::ePresentSrcKHR)
+        {
+            
+            TransitionImageLayout(GetCurrentGraphicsCommandBuffer(), *swapchain_image,
+                                 swapchain_image->current_image_layout, vk::ImageLayout::ePresentSrcKHR,
+                                 vk::AccessFlagBits2::eNone, vk::PipelineStageFlagBits2::eNone,
+                                 vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead, vk::PipelineStageFlagBits2::eAllCommands,
+                                 vk::ImageAspectFlagBits::eColor);
+        }
+
         vk::PresentInfoKHR present_info{};
         present_info
             .setSwapchains(swapchain->swapchain)
@@ -480,115 +500,6 @@ namespace brr::render
         Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
 
         return swapchain->image_resources;
-    }
-
-    void VulkanRenderDevice::Swapchain_BeginRendering(SwapchainHandle swapchain_handle, Texture2DHandle depth_image_handle)
-    {
-        if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
-        {
-            BRR_LogError("Can't begin rendering of Swapchain that does not exist.");
-            return;
-        }
-        Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
-        Texture2D* swapchain_image = m_texture2d_alloc.GetResource(swapchain->image_resources[swapchain->current_image_idx]);
-        Texture2D* depth_image = nullptr;
-        if (m_texture2d_alloc.OwnsResource(depth_image_handle))
-        {
-            depth_image = m_texture2d_alloc.GetResource(depth_image_handle);
-        }
-
-        vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
-        // Image transition from Undefined to Color Attachment
-        {
-            TransitionImageLayout(command_buffer, swapchain_image->image,
-                                  vk::ImageLayout::eUndefined,
-                                  vk::ImageLayout::eColorAttachmentOptimal,
-                                  vk::AccessFlagBits2::eMemoryWrite,
-                                  vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
-                                  vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::ImageAspectFlagBits::eColor);
-        }
-
-        // DepthImage transition from Undefined to Depth Attachment
-        if (depth_image)
-        {
-            TransitionImageLayout(command_buffer, depth_image->image,
-                                  vk::ImageLayout::eUndefined,
-                                  vk::ImageLayout::eDepthStencilAttachmentOptimal,
-                                  vk::AccessFlagBits2::eMemoryWrite,
-                                  vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
-                                  vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::ImageAspectFlagBits::eDepth);
-        }
-
-        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.8f, 0.2f, 0.2f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
-        
-
-        vk::Viewport viewport{
-            0, 0,
-            static_cast<float>(swapchain->swapchain_extent.width), static_cast<float>(swapchain->swapchain_extent.height), 0.0, 1.0
-        };
-        vk::Rect2D scissor {{0, 0}, swapchain->swapchain_extent};
-
-        command_buffer.setViewport(0, viewport);
-        command_buffer.setScissor(0, scissor);
-
-        vk::RenderingAttachmentInfo color_attachment_info {};
-        color_attachment_info
-            .setClearValue(clear_values[0])
-            .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
-            .setImageView(swapchain_image->image_view)
-            .setLoadOp(vk::AttachmentLoadOp::eClear)
-            .setStoreOp(vk::AttachmentStoreOp::eStore);
-
-        vk::RenderingInfo rendering_info {};
-        rendering_info
-            .setColorAttachments(color_attachment_info)
-            .setLayerCount(1)
-            .setRenderArea(scissor);
-
-        if (depth_image)
-        {
-            vk::RenderingAttachmentInfo depth_attachment_info {};
-            depth_attachment_info
-                .setClearValue(clear_values[1])
-                .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-                .setImageView(depth_image->image_view)
-                .setLoadOp(vk::AttachmentLoadOp::eClear)
-                .setStoreOp(vk::AttachmentStoreOp::eStore);
-
-            rendering_info.setPDepthAttachment(&depth_attachment_info);
-        }
-
-        command_buffer.beginRendering(rendering_info);
-    }
-
-    void VulkanRenderDevice::Swapchain_EndRendering(SwapchainHandle swapchain_handle)
-    {
-        if (!m_swapchain_alloc.OwnsResource(swapchain_handle))
-        {
-            BRR_LogError("Can't end rendering of Swapchain that does not exist.");
-            return;
-        }
-        Swapchain* swapchain = m_swapchain_alloc.GetResource(swapchain_handle);
-
-        vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
-        command_buffer.endRendering();
-
-        // Image transition from Color Attachment to Present Src
-        {
-            Texture2D* swapchain_image = m_texture2d_alloc.GetResource(swapchain->image_resources[swapchain->current_image_idx]);
-            TransitionImageLayout(command_buffer, swapchain_image->image,
-                                  vk::ImageLayout::eColorAttachmentOptimal,
-                                  vk::ImageLayout::ePresentSrcKHR,
-                                  vk::AccessFlagBits2::eMemoryWrite,
-                                  vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
-                                  vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::ImageAspectFlagBits::eColor);
-        }
     }
 
     void VulkanRenderDevice::RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle,
@@ -623,7 +534,7 @@ namespace brr::render
         vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
         // Image transition from Undefined to Color Attachment
         {
-            TransitionImageLayout(command_buffer, color_attachment->image,
+            TransitionImageLayout(command_buffer, *color_attachment,
                                   vk::ImageLayout::eUndefined,
                                   vk::ImageLayout::eColorAttachmentOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
@@ -635,7 +546,7 @@ namespace brr::render
 
         // DepthImage transition from Undefined to Depth Attachment
         {
-            TransitionImageLayout(command_buffer, depth_attachment->image,
+            TransitionImageLayout(command_buffer, *depth_attachment,
                                   vk::ImageLayout::eUndefined,
                                   vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
@@ -694,18 +605,6 @@ namespace brr::render
 
         vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
         command_buffer.endRendering();
-
-        // Image transition from Color Attachment to Present Src
-        {
-            TransitionImageLayout(command_buffer, color_attachment->image,
-                                  vk::ImageLayout::eColorAttachmentOptimal,
-                                  color_attachment->image_layout,
-                                  vk::AccessFlagBits2::eColorAttachmentWrite,
-                                  vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-                                  vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
-                                  vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::ImageAspectFlagBits::eColor);
-        }
     }
 
     SwapchainWindowHandle VulkanRenderDevice::CreateSwapchainWindowHandle(SDL_Window* window) const
@@ -825,7 +724,9 @@ namespace brr::render
             swapchain.image_resources[i] = m_texture2d_alloc.CreateResource(&swapchain_image);
             swapchain_image->image_extent = swapchain.swapchain_extent;
             swapchain_image->image_format = swapchain.swapchain_image_format;
-            swapchain_image->image_layout = vk::ImageLayout::ePresentSrcKHR;
+            swapchain_image->image_aspect = vk::ImageAspectFlagBits::eColor;
+            swapchain_image->target_image_layout = vk::ImageLayout::ePresentSrcKHR;
+            swapchain_image->current_image_layout= vk::ImageLayout::eUndefined;
 
             // Create swapchain image ImageView
             swapchain_image->image = swapchain_images[i];
@@ -877,6 +778,7 @@ namespace brr::render
         {
             Texture2DHandle& swapchain_image_handle = swapchain.image_resources[i];
             Texture2D* swapchain_image = m_texture2d_alloc.GetResource(swapchain_image_handle);
+            BRR_LogDebug("Swapchain Image Destroyed. VkImage: {:#x}.", size_t(VkImage(swapchain_image->image)));
             swapchain_image->image = VK_NULL_HANDLE;
             if (swapchain_image->image_view)
             {
@@ -999,7 +901,7 @@ namespace brr::render
                     break;
                 }
                 
-                vk::DescriptorImageInfo& image_info = desc_image_infos.emplace_back(m_texture2DSampler, image->image_view, image->image_layout);
+                vk::DescriptorImageInfo& image_info = desc_image_infos.emplace_back(m_texture2DSampler, image->image_view, image->target_image_layout);
 
                 write.setImageInfo(image_info);
             }
@@ -1720,33 +1622,35 @@ namespace brr::render
         texture2d->allocation_info = allocation_info;
         texture2d->image_extent = vk::Extent2D{width, height};
         texture2d->image_format = vk_format;
+        texture2d->image_aspect = img_aspect_flags;
 
         if ((image_usage & ImageUsage::SampledImage) != 0
          || (image_usage & ImageUsage::InputAttachmentImage) != 0)
         {
-            texture2d->image_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+            texture2d->target_image_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
         }
         //else if ((image_usage & ImageUsage::StorageImage) != 0)
         //{
         //    // TODO
-        //    //texture2d->image_layout = vk::ImageLayout::
+        //    //texture2d->target_image_layout = vk::ImageLayout::
         //}
         else if ((image_usage & ImageUsage::ColorAttachmentImage) != 0)
         {
-            texture2d->image_layout = vk::ImageLayout::eColorAttachmentOptimal;
+            texture2d->target_image_layout = vk::ImageLayout::eColorAttachmentOptimal;
         }
         else if ((image_usage & ImageUsage::DepthStencilAttachmentImage) != 0)
         {
-            texture2d->image_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+            texture2d->target_image_layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
         }
         else if ((image_usage & ImageUsage::TransferSrcImage) != 0)
         {
-            texture2d->image_layout = vk::ImageLayout::eTransferSrcOptimal;
+            texture2d->target_image_layout = vk::ImageLayout::eTransferSrcOptimal;
         }
         else if ((image_usage & ImageUsage::TransferDstImage) != 0)
         {
-            texture2d->image_layout = vk::ImageLayout::eTransferDstOptimal;
+            texture2d->target_image_layout = vk::ImageLayout::eTransferDstOptimal;
         }
+        texture2d->current_image_layout = vk::ImageLayout::eUndefined;
 
         return texture2d_handle;
     }
@@ -1770,7 +1674,7 @@ namespace brr::render
     bool VulkanRenderDevice::UpdateTexture2DData(Texture2DHandle texture2d_handle, const void* data, size_t buffer_size,
                                                  const glm::ivec2& image_offset, const glm::uvec2& image_extent)
     {
-        const Texture2D* texture = m_texture2d_alloc.GetResource(texture2d_handle);
+        Texture2D* texture = m_texture2d_alloc.GetResource(texture2d_handle);
         if (!texture)
         {
             return false;
@@ -1780,11 +1684,11 @@ namespace brr::render
         vk::CommandBuffer transfer_cmd_buffer = GetCurrentTransferCommandBuffer();
 
         {
-            TransitionImageLayout(transfer_cmd_buffer, texture->image,
-                                  vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-                                  vk::AccessFlagBits2::eNone, vk::PipelineStageFlagBits2::eNone,
-                                  vk::AccessFlagBits2::eTransferWrite, vk::PipelineStageFlagBits2::eTransfer,
-                                  vk::ImageAspectFlagBits::eColor);
+            TransitionImageLayout(transfer_cmd_buffer, *texture,
+                                 vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+                                 vk::AccessFlagBits2::eNone, vk::PipelineStageFlagBits2::eNone,
+                                 vk::AccessFlagBits2::eTransferWrite, vk::PipelineStageFlagBits2::eTransfer,
+                                 texture->image_aspect);
         }
 
         for (uint32_t y = 0; y < image_extent.y; y += IMAGE_TRANSFER_BLOCK_SIZE)
@@ -1808,28 +1712,29 @@ namespace brr::render
 
         if (IsDifferentTransferQueue())
         {
-            TransitionImageLayout(transfer_cmd_buffer, texture->image,
-                                  vk::ImageLayout::eTransferDstOptimal, texture->image_layout,
+            TransitionImageLayout(transfer_cmd_buffer, *texture,
+                                  vk::ImageLayout::eTransferDstOptimal, texture->target_image_layout,
                                   vk::AccessFlagBits2::eTransferWrite, vk::PipelineStageFlagBits2::eTransfer,
                                   vk::AccessFlagBits2::eNone, vk::PipelineStageFlagBits2::eNone,
-                                  vk::ImageAspectFlagBits::eColor, GetQueueFamilyIndices().m_transferFamily.value(),
+                                  texture->image_aspect, GetQueueFamilyIndices().m_transferFamily.value(),
                                   GetQueueFamilyIndices().m_graphicsFamily.value());
 
-            TransitionImageLayout(cmd_buffer, texture->image,
-                                  vk::ImageLayout::eTransferDstOptimal, texture->image_layout,
+            TransitionImageLayout(cmd_buffer, *texture,
+                                  vk::ImageLayout::eTransferDstOptimal, texture->target_image_layout,
                                   vk::AccessFlagBits2::eTransferWrite, vk::PipelineStageFlagBits2::eTransfer,
-                                  vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eFragmentShader,
-                                  vk::ImageAspectFlagBits::eColor, GetQueueFamilyIndices().m_transferFamily.value(),
+                                  vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eFragmentShader, // TODO: Define pipeline stage and access flags by image usage
+                                  texture->image_aspect, GetQueueFamilyIndices().m_transferFamily.value(),
                                   GetQueueFamilyIndices().m_graphicsFamily.value());
         }
         else
         {
-            TransitionImageLayout(cmd_buffer, texture->image,
-                                  vk::ImageLayout::eTransferDstOptimal, texture->image_layout,
+            TransitionImageLayout(transfer_cmd_buffer, *texture,
+                                  vk::ImageLayout::eTransferDstOptimal, texture->target_image_layout,
                                   vk::AccessFlagBits2::eTransferWrite, vk::PipelineStageFlagBits2::eTransfer,
                                   vk::AccessFlagBits2::eShaderRead, vk::PipelineStageFlagBits2::eFragmentShader,
-                                  vk::ImageAspectFlagBits::eColor);
+                                  texture->image_aspect);
         }
+        BRR_LogDebug("Updated Texture2D Data. VkImage: {:#x}", (size_t)(static_cast<VkImage>(texture->image)));
         return true;
     }
 
@@ -1851,28 +1756,28 @@ namespace brr::render
 
         vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
 
-        // Src Image transition from Undefined to TransferSrc
+        // Src Image transition from current image layout to TransferSrc
         {
-            TransitionImageLayout(command_buffer, src_image->image,
-                                  src_image->image_layout,
+            TransitionImageLayout(command_buffer, *src_image,
+                                  src_image->current_image_layout,
                                   vk::ImageLayout::eTransferSrcOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
                                   vk::PipelineStageFlagBits2::eAllCommands,
                                   vk::AccessFlagBits2::eMemoryRead,
                                   vk::PipelineStageFlagBits2::eTransfer,
-                                  vk::ImageAspectFlagBits::eColor);
+                                  src_image->image_aspect);
         }
 
         // Swapchain Image transition from Undefined to TransferDst
         {
-            TransitionImageLayout(command_buffer, dst_image->image,
+            TransitionImageLayout(command_buffer, *dst_image,
                                   vk::ImageLayout::eUndefined,
                                   vk::ImageLayout::eTransferDstOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
                                   vk::PipelineStageFlagBits2::eAllCommands,
                                   vk::AccessFlagBits2::eMemoryWrite,
                                   vk::PipelineStageFlagBits2::eTransfer,
-                                  vk::ImageAspectFlagBits::eColor);
+                                  dst_image->image_aspect);
         }
 
         vk::ImageBlit2 image_blit {};
@@ -1887,13 +1792,13 @@ namespace brr::render
             .setZ(1);
 
         image_blit.srcSubresource
-            .setAspectMask(vk::ImageAspectFlagBits::eColor)
+            .setAspectMask(src_image->image_aspect)
             .setBaseArrayLayer(0)
             .setLayerCount(1)
             .setMipLevel(0);
 
         image_blit.dstSubresource
-            .setAspectMask(vk::ImageAspectFlagBits::eColor)
+            .setAspectMask(dst_image->image_aspect)
             .setBaseArrayLayer(0)
             .setLayerCount(1)
             .setMipLevel(0);
@@ -1910,28 +1815,28 @@ namespace brr::render
 
         command_buffer.blitImage2(blit_info);
 
-        // Src Image transition from TransferSrc to image`s default layout
+        // Src Image transition from TransferSrc to image`s previous layout
         {
-            TransitionImageLayout(command_buffer, src_image->image,
+            TransitionImageLayout(command_buffer, *src_image,
                                   vk::ImageLayout::eTransferSrcOptimal,
-                                  src_image->image_layout,
+                                  src_image->target_image_layout,
                                   vk::AccessFlagBits2::eMemoryRead,
                                   vk::PipelineStageFlagBits2::eTransfer,
                                   vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
                                   vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::ImageAspectFlagBits::eColor);
+                                  src_image->image_aspect);
         }
 
-        // Image transition from TransferDst to PresentSrc
+        // Image transition from TransferDst to image target layout
         {
-            TransitionImageLayout(command_buffer, dst_image->image,
+            TransitionImageLayout(command_buffer, *dst_image,
                                   vk::ImageLayout::eTransferDstOptimal,
-                                  dst_image->image_layout,
+                                  dst_image->target_image_layout,
                                   vk::AccessFlagBits2::eMemoryWrite,
                                   vk::PipelineStageFlagBits2::eTransfer,
                                   vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead,
                                   vk::PipelineStageFlagBits2::eAllCommands,
-                                  vk::ImageAspectFlagBits::eColor);
+                                  dst_image->image_aspect);
         }
     }
 
@@ -2186,7 +2091,7 @@ namespace brr::render
         }
     }
 
-    bool VulkanRenderDevice::TransitionImageLayout(vk::CommandBuffer cmd_buffer, vk::Image image,
+    bool VulkanRenderDevice::TransitionImageLayout(vk::CommandBuffer cmd_buffer, Texture2D& texture,
                                                    vk::ImageLayout current_layout, vk::ImageLayout new_layout,
                                                    vk::AccessFlags2 src_access_mask,
                                                    vk::PipelineStageFlags2 src_stage_mask,
@@ -2213,7 +2118,7 @@ namespace brr::render
             .setDstStageMask(dst_stage_mask)
             .setSrcQueueFamilyIndex(src_queue_index)
             .setDstQueueFamilyIndex(dst_queue_index)
-            .setImage(image)
+            .setImage(texture.image)
             .setSubresourceRange(img_subresource_range);
 
         vk::DependencyInfo dependency_info;
@@ -2221,6 +2126,8 @@ namespace brr::render
             .setImageMemoryBarriers(img_mem_barrier);
 
         cmd_buffer.pipelineBarrier2(dependency_info);
+
+        texture.current_image_layout = new_layout;
 
         return true;
     }
