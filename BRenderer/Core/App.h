@@ -2,6 +2,8 @@
 #define BRR_APP_H
 #include <Visualization/WindowManager.h>
 
+#include "Events/Event.h"
+
 namespace brr
 {
 	class App
@@ -17,6 +19,10 @@ namespace brr
 		void Init();
 		void MainLoop();
 		void Clear();
+
+		void OnKeyPressed(SDL_KeyCode key_code);
+
+		Event<SDL_KeyCode> m_keydown_event;
 
 		bool m_should_finish = false;
 
