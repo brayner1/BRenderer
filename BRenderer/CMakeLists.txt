@@ -75,6 +75,7 @@ set(BRenderer_SOURCE_FILES
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
     
+    "Core/Events/Event.h"
     "Core/Storage/ContiguousPool.h"
     "Core/Storage/ResourceAllocator.h"
     "Core/Threading/Barrier.h" 
