@@ -2,21 +2,18 @@
 #define BRR_SCENE_H
 
 #include <Core/thirdpartiesInc.h>
-#include <Core/PerspectiveCamera.h>
+
+#include "Core/Events/Event.h"
+#include "Visualization/SceneRendererProxy.h"
 
 namespace brr
 {
-    namespace vis
-	{
-        class SceneRenderer;
-        class WindowRenderer;
-	}
-	class Entity;
+    class PerspectiveCameraComponent;
+    class Entity;
 	class Scene
 	{
 	public:
 		Scene();
-		Scene(PerspectiveCamera* camera);
 		~Scene();
 
 		void InitSceneRenderer();
@@ -26,19 +23,22 @@ namespace brr
 
 		void RemoveEntity(Entity entity);
 
-		PerspectiveCamera* GetMainCamera() const { return m_camera.get(); }
+        PerspectiveCameraComponent* GetMainCamera();
+		void SetMainCamera(Entity main_camera_entity);
 
-		vis::SceneRenderer* GetSceneRenderer() const { return m_scene_renderer.get(); }
+		vis::SceneRenderProxy* GetSceneRendererProxy() const { return m_scene_render_proxy.get(); }
+
+		void Update();
 
 	private:
 		
 		friend class Entity;
-		friend class vis::SceneRenderer;
 
 		entt::registry m_registry {};
 
-		std::unique_ptr<vis::SceneRenderer> m_scene_renderer;
-	    std::unique_ptr<PerspectiveCamera> m_camera {};
+		std::unique_ptr<vis::SceneRenderProxy> m_scene_render_proxy {};
+
+		entt::entity m_main_camera;
 	};
 }
 

@@ -77,6 +77,7 @@ namespace brr::render
         friend class VulkanRenderDevice;
         friend class ShaderBuilder;
     public:
+
         Shader();
 
         Shader(Shader&& other) noexcept;

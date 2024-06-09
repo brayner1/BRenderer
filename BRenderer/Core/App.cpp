@@ -4,10 +4,12 @@
 #include <Scene/Scene.h>
 #include <Scene/Entity.h>
 #include <Scene/Components/Mesh3DComponent.h>
-#include <Core/Events/Event.h>
+#include <Scene/Components/PerspectiveCameraComponent.h>
 
 #include "Importer/Importer.h"
+#include "Renderer/RenderThread.h"
 #include "Scene/Components/LightComponents.h"
+#include "Scene/Components/Transform3DComponent.h"
 
 static bool isLightOn = false;
 static brr::Entity light_entity;
@@ -31,24 +33,24 @@ namespace brr
 	{
 		m_keydown_event.Subscribe(std::make_shared<EventAction<SDL_KeyCode>>(& App::OnKeyPressed, this));
 		
-		m_window_manager.reset(new vis::WindowManager{ 800, 600 });
+		m_window_manager = std::make_unique<vis::WindowManager>(800, 600);
 
-        glm::ivec2 extent = m_window_manager->GetMainWindow()->GetWindowExtent();
-
-		m_scene.reset(new Scene(new PerspectiveCamera (
-			glm::vec3{ 8.f, 2.f, 0.f },
-			glm::vec3{ 0.f },
-			glm::radians(45.f),
-			extent.x / (float)extent.y,
-			0.1f, 100.f)));
+		m_scene.reset(new Scene());
 		m_scene->InitSceneRenderer();
 
-		m_window_manager->GetMainWindow()->SetScene(m_scene.get());
-
-		brr::Entity light_entity = m_scene->Add3DEntity({});
+		Entity light_entity = m_scene->Add3DEntity({});
 		light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(1.0, 0.8, 0.8), 2.0);
 
-		brr::SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", m_scene.get());
+		SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", m_scene.get());
+
+		Entity camera_entity = m_scene->Add3DEntity(Entity());
+		PerspectiveCameraComponent& camera_component = camera_entity.AddComponent<PerspectiveCameraComponent>(glm::radians(45.0), 0.1f, 100.f);
+		camera_component.LookAt({8.0, 2.0, 0.0}, {0.0, 0.0, 0.0}, {0.f, -1.f, 0.f});
+
+		glm::vec3 proj_point = camera_component.TransformToViewportCoords({-4.681385, 1.117334, 3.768916}, 800.f / 600.f);
+		BRR_LogInfo("Point (0, 0, 0) on Viewport Space: {}", glm::to_string(proj_point));
+
+		m_window_manager->GetMainWindow()->GetSceneView().SetCamera(&camera_component);
 	}
 
 	void App::MainLoop()
@@ -61,8 +63,9 @@ namespace brr
 				ProcessEvent(sdl_event);
 			}
 
-			m_window_manager->Update();
+			m_scene->Update();
 
+            render::RenderThread::MainThread_SyncUpdate();
 		}
 	}
 
@@ -96,9 +99,9 @@ namespace brr
 		{
 			if (isLightOn)
 			{
-				SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
 				static std::default_random_engine random_engine;
 				std::uniform_real_distribution<float> distrib (0.0, 1.0);
+				SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
 				spot_light.SetColor({distrib(random_engine), distrib(random_engine), distrib(random_engine)});
 			}
 		}
@@ -126,7 +129,10 @@ namespace brr
 			{
 				m_window_manager->ProcessWindowEvent(pEvent.window);
 				if (m_window_manager->IsMainWindowClosed())
-					m_should_finish = true;
+				{
+				    m_should_finish = true;
+					BRR_LogDebug("Main Window closed. Stopping application.");
+				}
 				break;
 			}
 			case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.

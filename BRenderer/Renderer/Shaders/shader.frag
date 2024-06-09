@@ -25,7 +25,7 @@ struct Light
     float   spotlight_cutoff;
 };
 
-layout(set = 0, binding = 1) buffer Lights
+layout(set = 0, binding = 0) buffer Lights
 {
     Light lights_buffer[];
 };

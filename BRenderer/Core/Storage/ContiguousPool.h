@@ -17,11 +17,10 @@ namespace brr
      *        using the ObjectId identifier to obtain the object index.
      *        That means accessing elements this way is not the fastest way.
      */
-    template<typename T>
+    template<typename KeyType, typename T>
     class ContiguousPool
     {
     public:
-        using ObjectId = uint32_t;
         using iterator = typename std::vector<T>::iterator;
         using const_iterator = typename std::vector<T>::const_iterator;
 
@@ -29,15 +28,15 @@ namespace brr
 
         ContiguousPool(const T& initial_value, uint32_t initial_size = 32);
 
-        ObjectId AddNewObject(const T& value = {});
-        ObjectId AddNewObject(T&& value);
+        bool AddObject(KeyType object_key, const T& value = {});
+        bool AddObject(KeyType object_key, T&& value = {});
 
-        T& Get(ObjectId object_id);
-        const T& Get(ObjectId object_id) const;
+        T& Get(KeyType object_key);
+        const T& Get(KeyType object_key) const;
 
-        void RemoveObject(ObjectId object_id);
+        void RemoveObject(KeyType object_key);
 
-        [[nodiscard]] bool Contains(ObjectId object_id) const { return m_object_index_map.contains(object_id); }
+        [[nodiscard]] bool Contains(KeyType object_key) const { return m_object_index_map.contains(object_key); }
 
         [[nodiscard]] size_t Size() const { return m_active_count; }
 
@@ -51,33 +50,36 @@ namespace brr
 
     private:
 
-        std::unordered_map<ObjectId, uint32_t> m_object_index_map;
+        std::unordered_map<KeyType, uint32_t> m_object_index_map;
         std::vector<T> m_pool;
         uint32_t m_active_count;
-        ObjectId m_current_id;
     };
 
-    template <typename T>
-    ContiguousPool<T>::ContiguousPool(uint32_t initial_size)
+    template<typename KeyType, typename T>
+    ContiguousPool<KeyType, T>::ContiguousPool(uint32_t initial_size)
     : m_pool(initial_size),
-      m_active_count(0),
-      m_current_id(0)
+      m_active_count(0)
     {
     }
 
-    template <typename T>
-    ContiguousPool<T>::ContiguousPool(const T& initial_value, uint32_t initial_size)
+    template<typename KeyType, typename T>
+    ContiguousPool<KeyType, T>::ContiguousPool(const T& initial_value, uint32_t initial_size)
     : m_pool(initial_size, initial_value),
-      m_active_count(0),
-      m_current_id(0)
+      m_active_count(0)
     {
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::ObjectId ContiguousPool<T>::AddNewObject(const T& value)
+    template<typename KeyType, typename T>
+    bool ContiguousPool<KeyType, T>::AddObject(KeyType object_key,
+                                                    const T& value)
     {
-        ObjectId new_id = m_current_id++;
-        m_object_index_map.emplace(new_id, m_active_count);
+        if (m_object_index_map.contains(object_key))
+        {
+            BRR_LogError("Can't add object (ID: {}) to pool. Object with this ID already exists.");
+            return false;
+        }
+        
+        m_object_index_map.emplace(object_key, m_active_count);
         m_active_count++;
         if (m_active_count == m_pool.size())
         {
@@ -87,14 +89,20 @@ namespace brr
         {
             m_pool[m_active_count - 1] = value;
         }
-        return new_id;
+        return true;
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::ObjectId ContiguousPool<T>::AddNewObject(T&& value)
+    template<typename KeyType, typename T>
+    bool ContiguousPool<KeyType, T>::AddObject(KeyType object_key,
+                                              T&& value)
     {
-        ObjectId new_id = m_current_id++;
-        m_object_index_map.emplace(new_id, m_active_count);
+        if (m_object_index_map.contains(object_key))
+        {
+            BRR_LogError("Can't add object (ID: {}) to pool. Object with this ID already exists.");
+            return false;
+        }
+
+        m_object_index_map.emplace(object_key, m_active_count);
         m_active_count++;
         if (m_active_count == m_pool.size())
         {
@@ -104,40 +112,40 @@ namespace brr
         {
             m_pool[m_active_count - 1] = std::move(value);
         }
-        return new_id;
+        return true;
     }
 
-    template <typename T>
-    T& ContiguousPool<T>::Get(ObjectId object_id)
+    template<typename KeyType, typename T>
+    T& ContiguousPool<KeyType, T>::Get(KeyType object_key)
     {
-        assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
+        assert(m_object_index_map.contains(object_key) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
 
-        uint32_t index = m_object_index_map.at(object_id);
+        uint32_t index = m_object_index_map.at(object_key);
         return m_pool.at(index);
     }
 
-    template <typename T>
-    const T& ContiguousPool<T>::Get(ObjectId object_id) const
+    template<typename KeyType, typename T>
+    const T& ContiguousPool<KeyType, T>::Get(KeyType object_key) const
     {
-        assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
+        assert(m_object_index_map.contains(object_key) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
 
-        uint32_t index = m_object_index_map.at(object_id);
+        uint32_t index = m_object_index_map.at(object_key);
         return m_pool.at(index);
     }
 
-    template <typename T>
-    void ContiguousPool<T>::RemoveObject(ObjectId object_id)
+    template<typename KeyType, typename T>
+    void ContiguousPool<KeyType, T>::RemoveObject(KeyType object_key)
     {
-        //assert(m_object_index_map.contains(object_id) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
-        if (!m_object_index_map.contains(object_id))
+        //assert(m_object_index_map.contains(object_key) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
+        if (!m_object_index_map.contains(object_key))
         {
-            BRR_LogError("Need to pass valid ObjectId. Passed ObjectId '{}' does not exist is this ContiguousPool.", uint32_t(object_id));
+            BRR_LogError("Need to pass valid ObjectId. Passed ObjectId '{}' does not exist is this ContiguousPool.", uint32_t(object_key));
             return;
         }
 
         const uint32_t last_index = m_active_count - 1;
-        const uint32_t index = m_object_index_map.at(object_id);
-        m_object_index_map.erase(object_id);
+        const uint32_t index = m_object_index_map.at(object_key);
+        m_object_index_map.erase(object_key);
 
         assert(index < m_active_count && "Invalid index. something is wrong.");
         
@@ -156,30 +164,31 @@ namespace brr
             if (iter.second == last_index)
             {
                 m_object_index_map[iter.first] = index;
+                break;
             }
         }
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::iterator ContiguousPool<T>::begin()
+    template<typename KeyType, typename T>
+    typename ContiguousPool<KeyType, T>::iterator ContiguousPool<KeyType, T>::begin()
     {
         return m_pool.begin();
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::iterator ContiguousPool<T>::end()
+    template<typename KeyType, typename T>
+    typename ContiguousPool<KeyType, T>::iterator ContiguousPool<KeyType, T>::end()
     {
         return m_pool.begin() + m_active_count;
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::const_iterator ContiguousPool<T>::cbegin()
+    template<typename KeyType, typename T>
+    typename ContiguousPool<KeyType, T>::const_iterator ContiguousPool<KeyType, T>::cbegin()
     {
         return m_pool.cbegin();
     }
 
-    template <typename T>
-    typename ContiguousPool<T>::const_iterator ContiguousPool<T>::cend()
+    template<typename KeyType, typename T>
+    typename ContiguousPool<KeyType, T>::const_iterator ContiguousPool<KeyType, T>::cend()
     {
         return m_pool.cbegin() + m_active_count;
     }

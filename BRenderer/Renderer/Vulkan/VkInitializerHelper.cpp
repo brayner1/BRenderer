@@ -771,4 +771,28 @@ namespace brr::render::VkHelpers
         }
         return false;
     }
+
+    void GetRequiredVulkanExtensions(SDL_Window* window_handle,
+        std::vector<const char*>& extensions)
+    {
+        unsigned int extension_count;
+
+		// Get the number of extensions required by the SDL window.
+		if (!SDL_Vulkan_GetInstanceExtensions(window_handle,
+			&extension_count, nullptr))
+		{
+			BRR_LogError("Could not get the number of extensions required by SDL: {}", SDL_GetError());
+			exit(1);
+		}
+
+		const size_t additional_extension_count = extensions.size();
+		extensions.resize(additional_extension_count + extension_count);
+
+		if (!SDL_Vulkan_GetInstanceExtensions(window_handle,
+			&extension_count, extensions.data() + additional_extension_count))
+		{
+			BRR_LogError("Could not get extensions required by SDL: {}", SDL_GetError());
+			exit(1);
+		}
+    }
 }

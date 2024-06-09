@@ -75,6 +75,8 @@ namespace brr::render
     //--------------------------------------------//
     //----------  DescriptorSetUpdater  ----------//
     //--------------------------------------------//
+
+    // Helper class for updating descriptor set bindings.
     class DescriptorSetUpdater {
     public:
         DescriptorSetUpdater() = delete;

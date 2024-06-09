@@ -158,6 +158,7 @@ namespace brr::render
         assert(data_size <= (staging_buffer.m_size - staging_buffer_offset) && "Error: Can't transfer beyond staging buffer allocated size.");
         StagingBlock& block = m_staging_blocks[staging_buffer.m_block_index];
         memcpy(static_cast<char*>(block.mapping) + staging_buffer.m_offset + staging_buffer_offset, data, data_size);
+        vmaFlushAllocation(m_render_device->m_vma_allocator, block.m_allocation, staging_buffer.m_offset + staging_buffer_offset, data_size);
     }
 
     void StagingAllocator::WriteBlockImageToStaging(StagingBufferHandle staging_buffer, const unsigned char* image_data,
@@ -174,6 +175,8 @@ namespace brr::render
 			read_offset += image_size.x * pixel_size;
 			write_offset += line_transfer_size;
 		}
+        const size_t buffer_size = line_transfer_size * block_size.y;
+        vmaFlushAllocation(m_render_device->m_vma_allocator, block.m_allocation, staging_buffer.m_offset, buffer_size);
     }
 
     void StagingAllocator::CopyFromStagingToBuffer(StagingBufferHandle staging_buffer, vk::CommandBuffer transfer_cmd_buffer,
@@ -254,7 +257,7 @@ namespace brr::render
 
         m_staging_blocks.push_back(block);
 
-        BRR_LogInfo("Allocated staging block. Buffer: {:#x}, Size: {}", (size_t)new_buffer, STAGING_BLOCK_SIZE_BYTES);
+        BRR_LogDebug("Allocated staging block. Buffer: {:#x}, Size: {}", (size_t)new_buffer, STAGING_BLOCK_SIZE_BYTES);
 
         return true;
     }
@@ -287,7 +290,7 @@ namespace brr::render
         m_staging_blocks[block_index].m_filled_bytes += size;
         assert(m_staging_blocks[block_index].m_filled_bytes <= STAGING_BLOCK_SIZE_BYTES && "Error: Allocated more memory than available on StagingBlock");
 
-        BRR_LogInfo("Allocating {} bytes in staging block {}.", size, block_index);
+        BRR_LogTrace("Allocating {} bytes in staging block {}.", size, block_index);
 
         return size;
     }

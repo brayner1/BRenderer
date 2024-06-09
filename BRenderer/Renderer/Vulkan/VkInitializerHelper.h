@@ -76,6 +76,8 @@ namespace brr::render::VkHelpers
 
 	bool IsDepthStencilDataFormat(DataFormat data_format);
 
+	void GetRequiredVulkanExtensions(SDL_Window* window_handle, std::vector<const char*>& extensions);
+
 }
 
 #endif

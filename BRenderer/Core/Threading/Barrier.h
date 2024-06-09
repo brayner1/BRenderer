@@ -3,7 +3,7 @@
 #include <mutex>
 
 
-namespace brr::threading
+namespace brr::thread
 {
 	class Barrier
 	{

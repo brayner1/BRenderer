@@ -6,27 +6,21 @@
 
 #include <Core/thirdpartiesInc.h>
 
-namespace brr::vis
-{
-    class WindowRenderer;
-}
-
 namespace brr::render
 {
     class VulkanRenderDevice;
+    class WindowRenderer;
     struct SwapchainWindowHandle;
 
     class DeviceSwapchain
     {
     public:
 
-        DeviceSwapchain(vis::WindowRenderer* window_renderer, SwapchainWindowHandle window_handle, glm::uvec2 drawable_size);
+        DeviceSwapchain(WindowRenderer* window_renderer, SwapchainWindowHandle window_handle, glm::uvec2 drawable_size);
         ~DeviceSwapchain();
 
         uint32_t AcquireNextImage();
         bool PresentCurrentImage();
-        void BeginRendering();
-        void EndRendering();
 
         void Recreate_Swapchain(glm::uvec2 drawable_size);
 

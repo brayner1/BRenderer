@@ -3,8 +3,6 @@
 
 #include <Scene/Components/EntityComponent.h>
 
-#include "Visualization/SceneRenderer.h"
-
 namespace brr
 {
 	struct PointLightComponent : public EntityComponent
@@ -15,9 +13,6 @@ namespace brr
 		~PointLightComponent();
 
 		PointLightComponent& operator=(PointLightComponent&& other) noexcept;
-
-		void RegisterGraphics();
-		void UnregisterGraphics();
 
 	public:
 
@@ -30,11 +25,16 @@ namespace brr
 		const glm::vec3& GetColor() const { return m_color; }
 		void SetColor(const glm::vec3& color);
 
+	public:
+
+		void RegisterGraphics();
+		void UnregisterGraphics();
+
 	private:
         glm::vec3 m_position;
         float m_intensity;
         glm::vec3 m_color;
-        vis::LightId m_light_id = vis::LightId::NULL_ID;
+        render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 
 	struct DirectionalLightComponent : public EntityComponent
@@ -45,9 +45,6 @@ namespace brr
 		~DirectionalLightComponent();
 
 		DirectionalLightComponent& operator=(DirectionalLightComponent&& other) noexcept;
-
-		void RegisterGraphics();
-		void UnregisterGraphics();
 
 	public:
 
@@ -60,11 +57,16 @@ namespace brr
 		const glm::vec3& GetColor() const { return m_color; }
 		void SetColor(const glm::vec3& color);
 
+	public:
+
+		void RegisterGraphics();
+		void UnregisterGraphics();
+
 	private:
 		glm::vec3 m_direction;
 		float m_intensity;
 		glm::vec3 m_color;
-		vis::LightId m_light_id = vis::LightId::NULL_ID;
+		render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 
 	struct SpotLightComponent : public EntityComponent
@@ -75,9 +77,6 @@ namespace brr
 		~SpotLightComponent();
 
 		SpotLightComponent& operator=(SpotLightComponent&& other) noexcept;
-
-		void RegisterGraphics();
-		void UnregisterGraphics();
 
 	public:
 
@@ -96,13 +95,18 @@ namespace brr
 		const glm::vec3& GetColor() const { return m_color; }
 		void SetColor(const glm::vec3& color);
 
+	public:
+
+		void RegisterGraphics();
+		void UnregisterGraphics();
+
 	private:
 		glm::vec3 m_position;
 		float m_cutoff_angle;
 		glm::vec3 m_direction;
 		float m_intensity;
 		glm::vec3 m_color;
-		vis::LightId m_light_id = vis::LightId::NULL_ID;
+		render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 
 	struct AmbientLightComponent : public EntityComponent
@@ -114,9 +118,6 @@ namespace brr
 
 		AmbientLightComponent& operator=(AmbientLightComponent&& other) noexcept;
 
-		void RegisterGraphics();
-		void UnregisterGraphics();
-
 	public:
 
 		const glm::vec3& GetColor() const { return m_color; }
@@ -125,11 +126,16 @@ namespace brr
         float GetIntensity() const { return m_intensity; }
 		void SetIntensity(float intensity);
 
+	public:
+
+		void RegisterGraphics();
+		void UnregisterGraphics();
+
 	private:
 
 		glm::vec3 m_color;
 		float m_intensity;
-		vis::LightId m_light_id = vis::LightId::NULL_ID;
+		render::LightID m_light_id = render::LightID::NULL_ID;
 	};
 }
 

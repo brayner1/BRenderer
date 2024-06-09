@@ -4,7 +4,7 @@
 #include <functional>
 #include <iostream>
 
-namespace brr::threading
+namespace brr::thread
 {
 	class Work
 	{

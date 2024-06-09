@@ -19,15 +19,37 @@ requires std::invocable<decltype(func), T*, Args...>
     };
 }
 
-/*********
- * Event *
- *********/
-
 template <typename ... Args>
 void EventAction<Args...>::Call(Args&&... args) const
 {
     m_function(std::forward<Args>(args)...);
 }
+
+template <typename F>
+    requires std::invocable<F>
+EventAction<>::EventAction(F&& func)
+    : m_function(std::forward<F>(func))
+{
+}
+
+template <typename T>
+EventAction<>::EventAction(void (T::*func)(),
+                           T* object) requires std::invocable<decltype(func), T*>
+{
+    m_function = [object, func]()
+    {
+        std::invoke(func, object);
+    };
+}
+
+inline void EventAction<>::Call() const
+{
+    m_function();
+}
+
+/*********
+ * Event *
+ *********/
 
 template <typename ... Args>
 void Event<Args...>::Subscribe(const std::shared_ptr<EventAction<Args...>>& event_action)

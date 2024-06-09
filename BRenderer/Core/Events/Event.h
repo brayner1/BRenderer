@@ -1,6 +1,10 @@
 #ifndef BRR_EVENT_H
 #define BRR_EVENT_H
 
+#include <concepts>
+#include <functional>
+#include <memory>
+
 namespace brr
 {
     template <typename... Args>
@@ -26,6 +30,26 @@ namespace brr
     private:
         
         std::function<void(Args...)> m_function;
+    };
+
+    template <>
+    class EventAction<>
+    {
+    public:
+
+        template <typename F> 
+            requires std::invocable<F>
+        EventAction(F&& func);
+
+        template <typename T>
+        EventAction(void (T::*func)(),
+                    T* object) requires std::invocable<decltype(func), T*>;
+
+        void Call() const;
+
+    private:
+        
+        std::function<void()> m_function;
     };
 
     /*********

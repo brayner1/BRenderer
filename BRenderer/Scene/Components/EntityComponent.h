@@ -2,6 +2,8 @@
 #define BRR_ENTITYCOMPONENT_H
 #include <Scene/Entity.h>
 
+#include "Core/Events/Event.h"
+
 namespace brr
 {
     struct NodeComponent;
@@ -27,6 +29,8 @@ namespace brr
     public:
 
         void OnInit() {}
+        void OnDestroy() {}
+
         void RegisterGraphics() {}
         void UnregisterGraphics() {}
 
@@ -34,6 +38,9 @@ namespace brr
         friend class Entity;
 
         Entity m_entity;
+
+    public:
+        mutable Event<> m_destroyed_event;
     };
 }
 

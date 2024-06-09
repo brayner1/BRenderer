@@ -12,17 +12,13 @@
 
 #include "glm/vec2.hpp"
 
-namespace brr::vis
-{
-    class WindowRenderer;
-}
-
 namespace brr::render
 {
     struct DescriptorSetBinding;
     struct DescriptorLayoutBindings;
     struct DescriptorLayout;
     class DescriptorSetAllocator;
+    class WindowRenderer;
 
     struct SwapchainWindowHandle
     {
@@ -34,7 +30,7 @@ namespace brr::render
     {
     public:
 
-        static void CreateRenderDevice(vis::Window* window);
+        static void CreateRenderDevice(SDL_Window* window);
         static void DestroyRenderDevice();
 
         static VulkanRenderDevice* GetSingleton();
@@ -46,7 +42,7 @@ namespace brr::render
         uint32_t BeginFrame();
         void EndFrame();
 
-        constexpr uint32_t GetCurrentFrame() const { return m_current_frame; }
+        constexpr uint32_t GetCurrentFrameNumber() const { return m_current_frame; }
 
         constexpr uint32_t GetCurrentFrameBufferIndex() const { return m_current_buffer; }
 
@@ -60,7 +56,7 @@ namespace brr::render
          * Swapchain *
          *************/
 
-        SwapchainHandle Swapchain_Create(vis::WindowRenderer* window_renderer, 
+        SwapchainHandle Swapchain_Create(WindowRenderer* window_renderer, 
                                          SwapchainWindowHandle window_handle,
                                          glm::uvec2   drawable_size);
 
@@ -74,9 +70,6 @@ namespace brr::render
         bool Swapchain_PresentCurrentImage(SwapchainHandle swapchain_handle);
 
         std::vector<Texture2DHandle> GetSwapchainImages(SwapchainHandle swapchain_handle);
-
-        void Swapchain_BeginRendering(SwapchainHandle swapchain_handle, Texture2DHandle depth_image_handle = null_handle);
-        void Swapchain_EndRendering(SwapchainHandle swapchain_handle);
 
         void RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle, Texture2DHandle depth_attachment_handle, bool use_stencil = false);
         void RenderTarget_EndRendering(Texture2DHandle color_attachment_handle);
@@ -106,12 +99,14 @@ namespace brr::render
          * Descriptors *
          ***************/
 
-        DescriptorLayoutHandle CreateDescriptorSetLayout(const DescriptorLayoutBindings& descriptor_layout_bindings);
+        DescriptorLayoutHandle DescriptorSetLayout_Create(const DescriptorLayoutBindings& descriptor_layout_bindings);
 
-        std::vector<DescriptorSetHandle> AllocateDescriptorSet(DescriptorLayoutHandle descriptor_layout,
+        std::vector<DescriptorSetHandle> DescriptorSet_Allocate(DescriptorLayoutHandle descriptor_layout,
                                                                uint32_t               number_sets);
 
-        bool UpdateDescriptorSetResources(DescriptorSetHandle descriptor_set_handle, const std::vector<DescriptorSetBinding>& shader_bindings);
+        void DescriptorSet_Destroy(DescriptorSetHandle descriptor_set_handle);
+
+        bool DescriptorSet_UpdateResources(DescriptorSetHandle descriptor_set_handle, const std::vector<DescriptorSetBinding>& shader_bindings);
 
         /**********
          * Memory *
@@ -214,10 +209,11 @@ namespace brr::render
         void DrawIndexed(uint32_t num_indices, uint32_t num_instances, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
 
     protected:
+        struct Texture2D;
 
         void UpdateBufferData(vk::Buffer dst_buffer, void* data, size_t size, uint32_t src_offset, uint32_t dst_offset);
 
-        static bool TransitionImageLayout(vk::CommandBuffer cmd_buffer, vk::Image image,
+        static bool TransitionImageLayout(vk::CommandBuffer cmd_buffer, Texture2D& texture,
                                           vk::ImageLayout current_layout, vk::ImageLayout new_layout,
                                           vk::AccessFlags2 src_access_mask, vk::PipelineStageFlags2 src_stage_mask,
                                           vk::AccessFlags2 dst_access_mask, vk::PipelineStageFlags2 dst_stage_mask,
@@ -231,13 +227,13 @@ namespace brr::render
 
     private: // Initialization functions
 
-        VulkanRenderDevice(vis::Window* main_window);
+        VulkanRenderDevice(SDL_Window* main_window);
 
         /****************************
          * Initialization Functions *
          ****************************/
 
-        void Init_VkInstance(vis::Window* window);
+        void Init_VkInstance(SDL_Window* window);
         void Init_PhysDevice(vk::SurfaceKHR surface);
         void Init_Queues_Indices(vk::SurfaceKHR surface);
         void Init_Device();
@@ -343,7 +339,9 @@ namespace brr::render
             vk::Extent2D image_extent {};
             vk::DeviceSize buffer_size {};
             vk::Format image_format {};
-            vk::ImageLayout image_layout {};
+            vk::ImageAspectFlags image_aspect {};
+            vk::ImageLayout target_image_layout {};
+            vk::ImageLayout current_image_layout {};
         };
 
         ResourceAllocator<Texture2D> m_texture2d_alloc;
@@ -359,14 +357,13 @@ namespace brr::render
         struct DescriptorSet
         {
             vk::DescriptorSet descriptor_set {};
-            vk::DescriptorPool set_pool {};
         };
 
         ResourceAllocator<DescriptorSet> m_descriptor_set_alloc;
 
         struct Swapchain
         {
-            vis::WindowRenderer* window_renderer = nullptr;
+            WindowRenderer* window_renderer = nullptr;
 
             vk::SurfaceKHR surface {};
 
