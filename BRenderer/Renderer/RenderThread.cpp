@@ -12,6 +12,7 @@
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/SceneRenderer.h>
 
+#include "backends/imgui_impl_sdl2.h"
 #include "Internal/CmdList/Executors/SceneRendererCmdListExecutor.h"
 #include "Internal/CmdList/Executors/WindowCmdListExecutor.h"
 
@@ -37,6 +38,8 @@ static std::allocator<void> s_cmd_data_allocator = std::allocator<void>();
 
 static VulkanRenderDevice* s_render_device = nullptr;
 
+static size_t s_main_frame_number = 0;
+
 namespace
 {
     void ExecuteUpdateCommands(RenderUpdateCmdGroup& render_update_cmds)
@@ -59,10 +62,13 @@ namespace
         {
             front = s_render_update_queue.front();
         }
-        while (!front);
-        s_current_render_update_cmds = std::move(*front);
+        while (!front && !s_stop_rendering);
+        if (!s_stop_rendering)
+        {
+            s_current_render_update_cmds = std::move(*front);
 
-        s_render_update_queue.pop();
+            s_render_update_queue.pop();
+        }
     }
 
 
@@ -70,8 +76,6 @@ namespace
     {
         while (!s_stop_rendering)
         {
-            RenderThread_SyncUpdate();
-
             s_render_device->BeginFrame();
 
             ExecuteUpdateCommands(s_current_render_update_cmds);
@@ -79,18 +83,20 @@ namespace
             SystemOwner<WindowRenderer>& window_renderer_storage = SystemsStorage::GetWindowRendererStorage();
             for (const auto& window_it : window_renderer_storage)
             {
-                window_it.second->RenderWindow();
+                window_it.second->RenderWindow(&s_current_render_update_cmds.imgui_draw_data_snapshot.DrawData);
             }
 
             s_render_device->EndFrame();
+
+            RenderThread_SyncUpdate();
         }
     }
 
     void RenderThreadFunction()
     {
-        // Add 'FRAME_LAG - 1' available update cmd sets.
-        // The other one is already owned by Render Thread.
-        for (uint32_t idx = 0; idx < (FRAME_LAG - 1); idx++)
+        // Add 'FRAME_LAG - 2' available update cmd sets.
+        // One is already owned by Render Thread and the other by the Main Thread.
+        for (uint32_t idx = 0; idx < (FRAME_LAG - 2); idx++)
         {
             s_available_update_queue.emplace();
         }
@@ -117,11 +123,15 @@ void RenderThread::StopRenderingThread()
     BRR_LogDebug("Stopping rendering thread.");
     s_stop_rendering = true;
     s_rendering_thread.join();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
     BRR_LogDebug("Rendering thread joined.");
 }
 
 void RenderThread::MainThread_SyncUpdate()
 {
+    s_current_game_update_cmds.imgui_draw_data_snapshot.SnapUsingSwap(ImGui::GetDrawData(), ImGui::GetTime());
+
     s_render_update_queue.push(std::move(s_current_game_update_cmds));
 
     RenderUpdateCmdGroup* front;
@@ -133,6 +143,7 @@ void RenderThread::MainThread_SyncUpdate()
     s_current_game_update_cmds = std::move(*front);
 
     s_available_update_queue.pop();
+    s_main_frame_number += 1;
 }
 
 void RenderThread::WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle,

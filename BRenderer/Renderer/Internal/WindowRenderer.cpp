@@ -1,6 +1,6 @@
 #include "WindowRenderer.h"
 
-#include <Renderer//SceneRenderer.h>
+#include <Renderer/SceneRenderer.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Core/LogSystem.h>
 
@@ -90,7 +90,7 @@ namespace brr::render
         m_scene_renderer->Render3D(m_viewport, m_swapchain_images[m_swapchain_current_image_idx]);
     }
 
-    void WindowRenderer::RenderWindow()
+    void WindowRenderer::RenderWindow(ImDrawData* imgui_draw_data)
     {
         if (m_minimized)
             return;
@@ -104,7 +104,18 @@ namespace brr::render
 
         Record_CommandBuffer();
 
+        if (imgui_draw_data)
+        {
+            m_render_device->RenderTarget_BeginRendering(m_swapchain_images[m_swapchain_current_image_idx], Texture2DHandle(), false, false, glm::vec3{});
+
+            m_render_device->RecordImGuiCmdBuffer(imgui_draw_data);
+            m_render_device->ExecuteImGuiCmdBuffer();
+
+            m_render_device->RenderTarget_EndRendering(m_swapchain_images[m_swapchain_current_image_idx]);
+        }
+
         m_swapchain->PresentCurrentImage();
+
 
         return;
     }

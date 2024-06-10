@@ -1,15 +1,21 @@
-#include <random>
-#include <Core/App.h>
+#include "App.h"
 #include <Core/LogSystem.h>
-#include <Scene/Scene.h>
+#include <Core/Inputs/InputSystem.h>
+
+#include <Importer/Importer.h>
+
+#include <Renderer/RenderThread.h>
+
 #include <Scene/Entity.h>
+#include <Scene/Scene.h>
+#include <Scene/Components/LightComponents.h>
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Scene/Components/PerspectiveCameraComponent.h>
 
-#include "Importer/Importer.h"
-#include "Renderer/RenderThread.h"
-#include "Scene/Components/LightComponents.h"
-#include "Scene/Components/Transform3DComponent.h"
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_vulkan.h"
+
+#include <random>
 
 static bool isLightOn = false;
 static brr::Entity light_entity;
@@ -31,9 +37,10 @@ namespace brr
 
 	void App::Init()
 	{
-		m_keydown_event.Subscribe(std::make_shared<EventAction<SDL_KeyCode>>(& App::OnKeyPressed, this));
-		
-		m_window_manager = std::make_unique<vis::WindowManager>(800, 600);
+		InputSystem::input_keydown_event.Subscribe(std::make_shared<EventAction<SDL_KeyCode>>(&App::OnKeyPressed, this));
+
+		vis::WindowManager::InitWindowManager(800, 600);
+		m_window_manager = vis::WindowManager::Instance();
 
 		m_scene.reset(new Scene());
 		m_scene->InitSceneRenderer();
@@ -55,15 +62,25 @@ namespace brr
 
 	void App::MainLoop()
 	{
-		while(!m_should_finish)
+		while(!m_window_manager->IsMainWindowClosed())
 		{
-			SDL_Event sdl_event;
-			while (SDL_PollEvent(&sdl_event))
-			{
-				ProcessEvent(sdl_event);
-			}
+			InputSystem::ProcessFrameInputs();
+
+			if (m_window_manager->IsMainWindowClosed())
+				break;
 
 			m_scene->Update();
+
+			// imgui new frame
+			ImGui_ImplVulkan_NewFrame();
+			ImGui_ImplSDL2_NewFrame();
+			ImGui::NewFrame();
+
+			//some imgui UI to test
+			ImGui::ShowDemoWindow();
+
+			//make imgui calculate internal draw structures
+			ImGui::Render();
 
             render::RenderThread::MainThread_SyncUpdate();
 		}
@@ -72,7 +89,7 @@ namespace brr
 	void App::Clear()
 	{
 		m_scene.reset();
-		m_window_manager.reset();
+		vis::WindowManager::DestroyWindowManager();
 	}
 
     void App::OnKeyPressed(SDL_KeyCode key_code)
@@ -106,86 +123,4 @@ namespace brr
 			}
 		}
     }
-
-    void App::ProcessEvent(SDL_Event& pEvent)
-	{
-		switch ((SDL_EventType)pEvent.type)
-		{
-			// Last window closed, close application
-			case SDL_QUIT:
-			{
-				m_should_finish = true;
-				break;
-			}
-			case SDL_APP_TERMINATING: break;
-			case SDL_APP_LOWMEMORY: break;
-			case SDL_APP_WILLENTERBACKGROUND: break;
-			case SDL_APP_DIDENTERBACKGROUND: break;
-			case SDL_APP_WILLENTERFOREGROUND: break;
-			case SDL_APP_DIDENTERFOREGROUND: break;
-			case SDL_LOCALECHANGED: break;
-			case SDL_DISPLAYEVENT: break;
-			case SDL_WINDOWEVENT:
-			{
-				m_window_manager->ProcessWindowEvent(pEvent.window);
-				if (m_window_manager->IsMainWindowClosed())
-				{
-				    m_should_finish = true;
-					BRR_LogDebug("Main Window closed. Stopping application.");
-				}
-				break;
-			}
-			case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.
-		    case SDL_KEYDOWN:
-		    {
-                EventEmitter<SDL_KeyCode>::Emit(m_keydown_event, SDL_KeyCode(pEvent.key.keysym.sym));
-		        break;
-		    }
-			case SDL_KEYUP: break;
-			case SDL_TEXTEDITING: break;
-			case SDL_TEXTINPUT: break;
-			case SDL_KEYMAPCHANGED: break;
-			case SDL_MOUSEMOTION: break;
-			case SDL_MOUSEBUTTONDOWN: break;
-			case SDL_MOUSEBUTTONUP: break;
-			case SDL_MOUSEWHEEL: break;
-			case SDL_JOYAXISMOTION: break;
-			case SDL_JOYBALLMOTION: break;
-			case SDL_JOYHATMOTION: break;
-			case SDL_JOYBUTTONDOWN: break;
-			case SDL_JOYBUTTONUP: break;
-			case SDL_JOYDEVICEADDED: break;
-			case SDL_JOYDEVICEREMOVED: break;
-			case SDL_CONTROLLERAXISMOTION: break;
-			case SDL_CONTROLLERBUTTONDOWN: break;
-			case SDL_CONTROLLERBUTTONUP: break;
-			case SDL_CONTROLLERDEVICEADDED: break;
-			case SDL_CONTROLLERDEVICEREMOVED: break;
-			case SDL_CONTROLLERDEVICEREMAPPED: break;
-			case SDL_CONTROLLERTOUCHPADDOWN: break;
-			case SDL_CONTROLLERTOUCHPADMOTION: break;
-			case SDL_CONTROLLERTOUCHPADUP: break;
-			case SDL_CONTROLLERSENSORUPDATE: break;
-			case SDL_FINGERDOWN: break;
-			case SDL_FINGERUP: break;
-			case SDL_FINGERMOTION: break;
-			case SDL_DOLLARGESTURE: break;
-			case SDL_DOLLARRECORD: break;
-			case SDL_MULTIGESTURE: break;
-			case SDL_CLIPBOARDUPDATE: break;
-			case SDL_DROPFILE: break;
-			case SDL_DROPTEXT: break;
-			case SDL_DROPBEGIN: break;
-			case SDL_DROPCOMPLETE: break;
-			case SDL_AUDIODEVICEADDED: break;
-			case SDL_AUDIODEVICEREMOVED: break;
-			case SDL_SENSORUPDATE: break;
-			case SDL_RENDER_TARGETS_RESET: break;
-			case SDL_RENDER_DEVICE_RESET: break;
-			case SDL_POLLSENTINEL: break;
-			case SDL_USEREVENT: break;
-			case SDL_LASTEVENT: break;
-			default:;
-		}
-	}
 }

@@ -14,7 +14,6 @@ namespace brr
 		void Run();
 
 	private:
-		void ProcessEvent(SDL_Event& pEvent);
 
 		void Init();
 		void MainLoop();
@@ -22,11 +21,7 @@ namespace brr
 
 		void OnKeyPressed(SDL_KeyCode key_code);
 
-		Event<SDL_KeyCode> m_keydown_event;
-
-		bool m_should_finish = false;
-
-		std::unique_ptr<vis::WindowManager> m_window_manager{};
+		vis::WindowManager* m_window_manager{};
 
 		std::unique_ptr<Scene> m_scene;
 	};

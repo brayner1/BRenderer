@@ -1,18 +1,21 @@
 [submodule "BRenderer/dependencies/spdlog"]
-	path = BRenderer/dependencies/spdlog
+	path = 3rdparties/spdlog
 	url = https://github.com/gabime/spdlog.git
 [submodule "BRenderer/dependencies/VulkanMemoryAllocator"]
-	path = BRenderer/dependencies/VulkanMemoryAllocator
+	path = 3rdparties/VulkanMemoryAllocator
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
 [submodule "BRenderer/dependencies/stb"]
-	path = BRenderer/dependencies/stb
+	path = 3rdparties/stb
 	url = https://github.com/nothings/stb.git
 [submodule "BRenderer/dependencies/assimp"]
-	path = BRenderer/dependencies/assimp
+	path = 3rdparties/assimp
 	url = https://github.com/assimp/assimp
 [submodule "BRenderer/dependencies/rigtorp/SPSCQueue"]
-	path = BRenderer/dependencies/rigtorp/SPSCQueue
+	path = 3rdparties/rigtorp/SPSCQueue
 	url = https://github.com/rigtorp/SPSCQueue.git
 [submodule "BRenderer/dependencies/rigtorp/MPMCQueue"]
-	path = BRenderer/dependencies/rigtorp/MPMCQueue
+	path = 3rdparties/rigtorp/MPMCQueue
 	url = https://github.com/rigtorp/MPMCQueue.git
+[submodule "3rdparties/imgui"]
+	path = 3rdparties/imgui
+	url = https://github.com/ocornut/imgui.git

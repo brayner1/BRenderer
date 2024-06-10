@@ -6,7 +6,7 @@
 
 namespace brr::vis
 {
-	typedef Uint32 WindowId;
+	typedef Uint32 WindowID;
 	class Window
 	{
 	public:
@@ -29,14 +29,14 @@ namespace brr::vis
 
 		// Window API
 
-		[[nodiscard]] constexpr WindowId GetWindowID() const { return m_window_id; }
+		[[nodiscard]] constexpr WindowID GetWindowID() const { return m_window_id; }
 		[[nodiscard]] constexpr SDL_Window* GetSDLWindowHandle() const { return m_window; }
 		[[nodiscard]] constexpr bool NeedToClose() const { return m_need_to_close; }
 
 		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
 
     private:
-		WindowId m_window_id = 0;
+		WindowID m_window_id = 0;
 		SDL_Window* m_window = nullptr;
 
 		SceneView m_scene_view;

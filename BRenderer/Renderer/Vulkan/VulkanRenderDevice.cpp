@@ -11,7 +11,12 @@
 #include <filesystem>
 #include <iostream>
 
+#include "imgui.h"
+#include "backends/imgui_impl_sdl2.h"
+#include "backends/imgui_impl_vulkan.h"
+
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
+
 static vk::DynamicLoader VulkanDynamicLoader;
 
 namespace brr::render
@@ -177,17 +182,19 @@ namespace brr::render
         SwapchainWindowHandle window_handle = this->CreateSwapchainWindowHandle(main_window);
         Init_PhysDevice(window_handle.vk_surface);
         Init_Queues_Indices(window_handle.vk_surface);
+        Init_SwapchainProperties(window_handle.vk_surface);
         Init_Device();
         Init_Allocator();
         Init_CommandPool();
         Init_Frames();
+        Init_Texture2DSampler();
+        Init_ImGui(main_window);
 
         m_staging_allocator.Init(this);
 
         m_descriptor_layout_cache.reset(new DescriptorLayoutCache(m_device));
         m_descriptor_allocator.reset(new DescriptorSetAllocator(m_device));
 
-        Init_Texture2DSampler();
 
         BRR_LogInfo("VulkanRenderDevice {:#x} constructed", (size_t)this);
     }
@@ -242,6 +249,11 @@ namespace brr::render
             BRR_LogTrace("Destroyed transfer command pool.");
         }
 
+        ImGui_ImplVulkan_Shutdown();
+        BRR_LogTrace("Vulkan-ImGui Shutdown.");
+		m_device.destroyDescriptorPool(m_imgui_desc_pool);
+        BRR_LogTrace("Destroyed ImGui descriptor pool.");
+
         m_device.destroy();
         BRR_LogTrace("Destroyed Vulkan device.");
 
@@ -280,6 +292,11 @@ namespace brr::render
         }
         current_frame.frame_in_progress = true;
 
+        if (!current_frame.imgui_cmd_buffer_begin)
+        {
+            current_frame.imgui_cmd_buffer.reset();
+        }
+
         BRR_LogTrace("Beginning frame. Frame index: {}", m_current_frame);
 
         return m_current_frame;
@@ -300,6 +317,7 @@ namespace brr::render
 
         current_frame.graphics_cmd_buffer_begin = false;
         current_frame.transfer_cmd_buffer_begin = false;
+        current_frame.imgui_cmd_buffer_begin = false;
 
         vk::Result transfer_result = SubmitTransferCommandBuffers(1, &current_frame.transfer_cmd_buffer, 0, nullptr,
                                                                   nullptr, 1,
@@ -504,23 +522,31 @@ namespace brr::render
 
     void VulkanRenderDevice::RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle,
                                                          Texture2DHandle depth_attachment_handle,
-                                                         bool use_stencil)
+                                                         bool use_stencil,
+                                                         bool to_clear_color,
+                                                         glm::vec3 clear_color,
+                                                         bool to_clear_depth,
+                                                         float clear_depth)
     {
         if (!m_texture2d_alloc.OwnsResource(color_attachment_handle))
         {
             BRR_LogError("Can't begin rendering using color attachment that does not exist.");
             return;
         }
-        if (!m_texture2d_alloc.OwnsResource(depth_attachment_handle))
-        {
-            BRR_LogError("Can't begin rendering using depth attachment that does not exist.");
-            return;
-        }
+        //if (!m_texture2d_alloc.OwnsResource(depth_attachment_handle))
+        //{
+        //    BRR_LogError("Can't begin rendering using depth attachment that does not exist.");
+        //    return;
+        //}
 
         Texture2D* color_attachment = m_texture2d_alloc.GetResource(color_attachment_handle);
-        Texture2D* depth_attachment = m_texture2d_alloc.GetResource(depth_attachment_handle);
+        Texture2D* depth_attachment = nullptr;
+        if (m_texture2d_alloc.OwnsResource(depth_attachment_handle))
+        {
+            depth_attachment = m_texture2d_alloc.GetResource(depth_attachment_handle);
+        }
 
-        if (color_attachment->image_extent != depth_attachment->image_extent)
+        if (depth_attachment && color_attachment->image_extent != depth_attachment->image_extent)
         {
             BRR_LogError(
                 "Can't begin rendering using color attachment and depth attachment of different sizes.\nColor Attachment: {}. Size: {}x{}\nDepth Attachment: {}. Size: {}x{}",
@@ -534,8 +560,9 @@ namespace brr::render
         vk::CommandBuffer command_buffer = GetCurrentGraphicsCommandBuffer();
         // Image transition from Undefined to Color Attachment
         {
+            vk::ImageLayout previousImageLayout = to_clear_color ? vk::ImageLayout::eUndefined : color_attachment->current_image_layout;
             TransitionImageLayout(command_buffer, *color_attachment,
-                                  vk::ImageLayout::eUndefined,
+                                  previousImageLayout,
                                   vk::ImageLayout::eColorAttachmentOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
                                   vk::PipelineStageFlagBits2::eAllCommands,
@@ -545,9 +572,11 @@ namespace brr::render
         }
 
         // DepthImage transition from Undefined to Depth Attachment
+        if (depth_attachment)
         {
+            vk::ImageLayout previousImageLayout = to_clear_depth ? vk::ImageLayout::eUndefined : depth_attachment->current_image_layout;
             TransitionImageLayout(command_buffer, *depth_attachment,
-                                  vk::ImageLayout::eUndefined,
+                                  previousImageLayout,
                                   vk::ImageLayout::eDepthStencilAttachmentOptimal,
                                   vk::AccessFlagBits2::eMemoryWrite,
                                   vk::PipelineStageFlagBits2::eAllCommands,
@@ -555,9 +584,6 @@ namespace brr::render
                                   vk::PipelineStageFlagBits2::eEarlyFragmentTests,
                                   vk::ImageAspectFlagBits::eDepth);
         }
-
-        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {0.2f, 0.8f, 0.4f, 1.f}, vk::ClearDepthStencilValue {1.0, 0} };
-        
 
         vk::Viewport viewport{
             0, 0,
@@ -568,28 +594,38 @@ namespace brr::render
         command_buffer.setViewport(0, viewport);
         command_buffer.setScissor(0, scissor);
 
+        std::array<vk::ClearValue, 2> clear_values { vk::ClearColorValue {clear_color.r, clear_color.g, clear_color.b, 1.f}, vk::ClearDepthStencilValue {clear_depth, 0} };
+
+        vk::AttachmentLoadOp color_load_op = to_clear_color ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eLoad;
+        vk::AttachmentLoadOp depth_load_op = to_clear_depth ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eLoad;
+
         vk::RenderingAttachmentInfo color_attachment_info {};
         color_attachment_info
             .setClearValue(clear_values[0])
             .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
             .setImageView(color_attachment->image_view)
-            .setLoadOp(vk::AttachmentLoadOp::eClear)
-            .setStoreOp(vk::AttachmentStoreOp::eStore);
-
-        vk::RenderingAttachmentInfo depth_attachment_info {};
-        depth_attachment_info
-            .setClearValue(clear_values[1])
-            .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
-            .setImageView(depth_attachment->image_view)
-            .setLoadOp(vk::AttachmentLoadOp::eClear)
+            .setLoadOp(color_load_op)
             .setStoreOp(vk::AttachmentStoreOp::eStore);
 
         vk::RenderingInfo rendering_info {};
         rendering_info
             .setColorAttachments(color_attachment_info)
-            .setPDepthAttachment(&depth_attachment_info)
             .setLayerCount(1)
-            .setRenderArea(scissor);
+            .setRenderArea(scissor)
+            .setFlags(vk::RenderingFlagBits::eContentsSecondaryCommandBuffers);
+
+        if (depth_attachment)
+        {
+            vk::RenderingAttachmentInfo depth_attachment_info {};
+            depth_attachment_info
+                .setClearValue(clear_values[1])
+                .setImageLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal)
+                .setImageView(depth_attachment->image_view)
+                .setLoadOp(depth_load_op)
+                .setStoreOp(vk::AttachmentStoreOp::eStore);
+
+            rendering_info.setPDepthAttachment(&depth_attachment_info);
+        }
 
         command_buffer.beginRendering(rendering_info);
     }
@@ -627,11 +663,8 @@ namespace brr::render
                                             glm::uvec2 drawable_size)
     {
         VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_phys_device, swapchain.surface);
-
-        vk::SurfaceFormatKHR surface_format = VkHelpers::Select_SwapchainFormat(properties.m_surfFormats);
-        vk::PresentModeKHR present_mode     = VkHelpers::Select_SwapchainPresentMode(properties.m_presentModes, {vk::PresentModeKHR::eFifo});
         swapchain.swapchain_extent          = VkHelpers::Select_SwapchainExtent(drawable_size, properties.m_surfCapabilities);
-        swapchain.swapchain_image_format    = surface_format.format;
+        swapchain.swapchain_image_format    = m_swapchain_surface_format.format;
 
         uint32_t imageCount = properties.m_surfCapabilities.minImageCount + 1;
 
@@ -667,11 +700,11 @@ namespace brr::render
             .setSurface(swapchain.surface)
             .setMinImageCount(imageCount)
             .setImageFormat(swapchain.swapchain_image_format)
-            .setImageColorSpace(surface_format.colorSpace)
+            .setImageColorSpace(m_swapchain_surface_format.colorSpace)
             .setImageExtent(swapchain.swapchain_extent)
             .setImageArrayLayers(1)
             .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst)
-            .setPresentMode(present_mode)
+            .setPresentMode(m_swapchain_present_mode)
             .setClipped(true)
             .setPreTransform(preTransform)
             .setCompositeAlpha(compositeAlpha)
@@ -2068,6 +2101,44 @@ namespace brr::render
         current_frame.graphics_cmd_buffer.drawIndexed(num_indices, num_instances, first_index, vertex_offset, first_instance);
     }
 
+    void VulkanRenderDevice::RecordImGuiCmdBuffer(ImDrawData* imgui_draw_data)
+    {
+        Frame& current_frame = GetCurrentFrame();
+        if (current_frame.imgui_cmd_buffer_begin)
+        {
+            return;
+        }
+        current_frame.imgui_cmd_buffer_begin = true;
+
+        vk::Format color_attachment_format = m_swapchain_surface_format.format;
+
+        vk::CommandBufferInheritanceRenderingInfo cmd_buffer_inheritance_rendering_info {};
+        cmd_buffer_inheritance_rendering_info
+            .setColorAttachmentFormats(color_attachment_format)
+            .setRasterizationSamples(vk::SampleCountFlagBits::e1);
+
+        vk::CommandBufferInheritanceInfo cmd_buffer_inheritance_info {};
+        cmd_buffer_inheritance_info.setPNext(&cmd_buffer_inheritance_rendering_info);
+
+        vk::CommandBufferBeginInfo cmd_begin_info {};
+        cmd_begin_info
+            .setFlags(vk::CommandBufferUsageFlagBits::eRenderPassContinue)
+            .setPInheritanceInfo(&cmd_buffer_inheritance_info);
+            
+        current_frame.imgui_cmd_buffer.begin(cmd_begin_info);
+
+	    ImGui_ImplVulkan_RenderDrawData(imgui_draw_data, current_frame.imgui_cmd_buffer);
+
+        current_frame.imgui_cmd_buffer.end();
+    }
+
+    void VulkanRenderDevice::ExecuteImGuiCmdBuffer()
+    {
+        Frame& current_frame = GetCurrentFrame();
+
+        current_frame.graphics_cmd_buffer.executeCommands(current_frame.imgui_cmd_buffer);
+    }
+
     /******************************
      * Vulkan Utilities Functions *
      ******************************/
@@ -2428,6 +2499,14 @@ namespace brr::render
         }
     }
 
+    void VulkanRenderDevice::Init_SwapchainProperties(vk::SurfaceKHR surface)
+    {
+        VkHelpers::SwapChainProperties properties = VkHelpers::Query_SwapchainProperties(m_phys_device, surface);
+
+        m_swapchain_surface_format = VkHelpers::Select_SwapchainFormat(properties.m_surfFormats);
+        m_swapchain_present_mode = VkHelpers::Select_SwapchainPresentMode(properties.m_presentModes, {vk::PresentModeKHR::eFifo});
+    }
+
     void VulkanRenderDevice::Init_Device()
     {
         if (!m_queue_family_indices.m_graphicsFamily.has_value())
@@ -2614,14 +2693,17 @@ namespace brr::render
     {
         std::array<vk::CommandBuffer, FRAME_LAG> graphics_cmd_buffers;
         std::array<vk::CommandBuffer, FRAME_LAG> transfer_cmd_buffers;
+        std::array<vk::CommandBuffer, FRAME_LAG> imgui_cmd_buffers;
 
         allocateCommandBuffer(m_device, m_graphics_command_pool, vk::CommandBufferLevel::ePrimary, FRAME_LAG, graphics_cmd_buffers.data());
         allocateCommandBuffer(m_device, m_transfer_command_pool, vk::CommandBufferLevel::ePrimary, FRAME_LAG, transfer_cmd_buffers.data());
+        allocateCommandBuffer(m_device, m_graphics_command_pool, vk::CommandBufferLevel::eSecondary, FRAME_LAG, imgui_cmd_buffers.data());
 
         for (size_t idx = 0; idx < FRAME_LAG; ++idx)
         {
             m_frames[idx].graphics_cmd_buffer = graphics_cmd_buffers[idx];
             m_frames[idx].transfer_cmd_buffer = transfer_cmd_buffers[idx];
+            m_frames[idx].imgui_cmd_buffer = imgui_cmd_buffers[idx];
 
             // Render finished semaphores
             {
@@ -2683,6 +2765,61 @@ namespace brr::render
         }
 
         m_texture2DSampler = sampler_create_result.value;
+    }
+
+    void VulkanRenderDevice::Init_ImGui(SDL_Window* window)
+    {
+        // 1: create descriptor pool for IMGUI
+	    //  the size of the pool is very oversize, but it's copied from imgui demo
+	    //  itself.
+	    vk::DescriptorPoolSize pool_sizes[] = { { vk::DescriptorType::eSampler, 1000 },
+		    { vk::DescriptorType::eCombinedImageSampler, 1000 },
+		    { vk::DescriptorType::eSampledImage, 1000 },
+		    { vk::DescriptorType::eStorageImage, 1000 },
+		    { vk::DescriptorType::eUniformTexelBuffer, 1000 },
+		    { vk::DescriptorType::eStorageTexelBuffer, 1000 },
+		    { vk::DescriptorType::eUniformBuffer, 1000 },
+		    { vk::DescriptorType::eStorageBuffer, 1000 },
+		    { vk::DescriptorType::eUniformBufferDynamic, 1000 },
+		    { vk::DescriptorType::eStorageBufferDynamic, 1000 },
+		    { vk::DescriptorType::eInputAttachment, 1000 } };
+
+        vk::DescriptorPoolCreateInfo pool_info = {};
+	    pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+        pool_info.maxSets = 1000u;
+        pool_info.setPoolSizes(pool_sizes);
+
+	    auto imgui_pool_result = m_device.createDescriptorPool(pool_info);
+        m_imgui_desc_pool = imgui_pool_result.value;
+
+        // this initializes the core structures of imgui
+	    ImGui::CreateContext();
+
+	    // this initializes imgui for SDL
+	    ImGui_ImplSDL2_InitForVulkan(window);
+
+        // this initializes imgui for Vulkan
+	    ImGui_ImplVulkan_InitInfo init_info = {};
+	    init_info.Instance = m_vulkan_instance;
+	    init_info.PhysicalDevice = m_phys_device;
+	    init_info.Device = m_device;
+	    init_info.Queue = m_graphics_queue;
+	    init_info.DescriptorPool = m_imgui_desc_pool;
+	    init_info.MinImageCount = 3;
+	    init_info.ImageCount = 3;
+	    init_info.UseDynamicRendering = true;
+
+        vk::Format color_attachment_color = m_swapchain_surface_format.format;
+	    //dynamic rendering parameters for imgui to use
+	    init_info.PipelineRenderingCreateInfo = {.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
+	    init_info.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+	    init_info.PipelineRenderingCreateInfo.pColorAttachmentFormats = reinterpret_cast<VkFormat*>(&color_attachment_color);
+
+	    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+
+	    ImGui_ImplVulkan_Init(&init_info);
+
+	    ImGui_ImplVulkan_CreateFontsTexture();
     }
 
     void VulkanRenderDevice::Free_FramePendingResources(Frame& frame)

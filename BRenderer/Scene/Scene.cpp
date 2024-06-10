@@ -1,12 +1,14 @@
-#include "Scene/Scene.h"
+#include "Scene.h"
 
-#include <iostream>
-#include <Scene/Components.h>
-#include <Scene/Entity.h>
 #include <Core/LogSystem.h>
 
-#include "Components/PerspectiveCameraComponent.h"
-#include "Renderer/RenderThread.h"
+#include <Renderer/RenderThread.h>
+
+#include <Scene/Components.h>
+#include <Scene/Entity.h>
+#include <Scene/Components/PerspectiveCameraComponent.h>
+
+#include <iostream>
 
 namespace brr
 {

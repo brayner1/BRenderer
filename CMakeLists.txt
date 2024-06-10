@@ -5,11 +5,12 @@ cmake_minimum_required (VERSION 3.8)
 
 project ("BRenderer")
 
-add_subdirectory ("BRenderer/dependencies/spdlog")
-add_subdirectory ("BRenderer/dependencies/assimp")
-add_subdirectory ("BRenderer/dependencies/VulkanMemoryAllocator")
-add_subdirectory ("BRenderer/dependencies/rigtorp/SPSCQueue")
-add_subdirectory ("BRenderer/dependencies/rigtorp/MPMCQueue")
+add_subdirectory ("3rdparties/spdlog")
+add_subdirectory ("3rdparties/assimp")
+add_subdirectory ("3rdparties/VulkanMemoryAllocator")
+add_subdirectory ("3rdparties/rigtorp/SPSCQueue")
+add_subdirectory ("3rdparties/rigtorp/MPMCQueue")
+add_subdirectory ("3rdparties/imgui")
 
 # Include sub-projects.
 add_subdirectory ("BRenderer")

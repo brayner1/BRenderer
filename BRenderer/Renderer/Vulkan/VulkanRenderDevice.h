@@ -12,6 +12,8 @@
 
 #include "glm/vec2.hpp"
 
+struct ImDrawData;
+
 namespace brr::render
 {
     struct DescriptorSetBinding;
@@ -71,7 +73,7 @@ namespace brr::render
 
         std::vector<Texture2DHandle> GetSwapchainImages(SwapchainHandle swapchain_handle);
 
-        void RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle, Texture2DHandle depth_attachment_handle, bool use_stencil = false);
+        void RenderTarget_BeginRendering(Texture2DHandle color_attachment_handle, Texture2DHandle depth_attachment_handle, bool use_stencil = false, bool to_clear_color = true, glm::vec3 clear_color = {0.f, 0.f, 0.f}, bool to_clear_depth = true, float clear_depth = 1.f);
         void RenderTarget_EndRendering(Texture2DHandle color_attachment_handle);
 
         [[nodiscard]] SwapchainWindowHandle CreateSwapchainWindowHandle(SDL_Window* window) const;
@@ -208,6 +210,13 @@ namespace brr::render
         void Draw(uint32_t num_vertex, uint32_t num_instances, uint32_t first_vertex, uint32_t first_instance);
         void DrawIndexed(uint32_t num_indices, uint32_t num_instances, uint32_t first_index, uint32_t vertex_offset, uint32_t first_instance);
 
+        /*********
+         * ImGui *
+         *********/
+
+        void RecordImGuiCmdBuffer(ImDrawData* imgui_draw_data);
+        void ExecuteImGuiCmdBuffer();
+
     protected:
         struct Texture2D;
 
@@ -236,11 +245,13 @@ namespace brr::render
         void Init_VkInstance(SDL_Window* window);
         void Init_PhysDevice(vk::SurfaceKHR surface);
         void Init_Queues_Indices(vk::SurfaceKHR surface);
+        void Init_SwapchainProperties(vk::SurfaceKHR surface);
         void Init_Device();
         void Init_Allocator();
         void Init_CommandPool();
         void Init_Frames();
         void Init_Texture2DSampler();
+        void Init_ImGui(SDL_Window* window);
 
         /***********************
          * Swapchain Functions *
@@ -424,6 +435,7 @@ namespace brr::render
         {
             vk::CommandBuffer transfer_cmd_buffer {};
             vk::CommandBuffer graphics_cmd_buffer {};
+            vk::CommandBuffer imgui_cmd_buffer {};
 
             vk::Semaphore transfer_finished_semaphore {};
             vk::Semaphore render_finished_semaphore {};
@@ -452,6 +464,7 @@ namespace brr::render
 
             bool graphics_cmd_buffer_begin = false;
             bool transfer_cmd_buffer_begin = false;
+            bool imgui_cmd_buffer_begin = false;
         };
 
         void Free_FramePendingResources(Frame& frame);
@@ -471,11 +484,20 @@ namespace brr::render
         bool m_different_transfer_queue = false;
 
         // Descriptor Sets
+
         vk::Sampler m_texture2DSampler {};
 
         std::unique_ptr<DescriptorSetAllocator> m_descriptor_allocator = nullptr;
         std::unique_ptr<DescriptorLayoutCache> m_descriptor_layout_cache = nullptr;
 
+        // Swapchain Properties
+
+        vk::SurfaceFormatKHR m_swapchain_surface_format {};
+        vk::PresentModeKHR m_swapchain_present_mode {};
+
+        // ImGui Descriptor Pool
+
+        vk::DescriptorPool m_imgui_desc_pool {};
     };
 
     inline VulkanRenderDevice::VertexFormatFlags operator|(VulkanRenderDevice::VertexFormatFlags a, VulkanRenderDevice::VertexFormatFlags b)

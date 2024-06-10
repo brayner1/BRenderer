@@ -13,27 +13,36 @@ namespace brr::vis
 	{
 	public:
 
-		WindowManager(uint32_t width, uint32_t height);
+		static WindowManager* Instance();
+
+		static void InitWindowManager(uint32_t width, uint32_t height);
+		static void DestroyWindowManager();
 
 		~WindowManager();
 
-		void CloseWindow(WindowId pWindowID);
+		void CloseWindow(WindowID pWindowID);
+
+		void CloseMainWindow();
 
 		// Process a window event
 		void ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent);
 
 		[[nodiscard]] bool IsMainWindowClosed() const { return m_main_window_closed; }
 
-		WindowId GetMainWindowID() const { return m_main_window_ID; }
+		WindowID GetMainWindowID() const { return m_main_window_ID; }
 		Window* GetMainWindow() const { return m_main_window.get(); }
 
 	private:
-		WindowId m_main_window_ID = 0;
+
+		WindowManager(uint32_t width, uint32_t height);
+
+	private:
+		WindowID m_main_window_ID = 0;
 		std::unique_ptr<Window> m_main_window{};
 		bool m_main_window_closed = true;
 
 		//TODO: Here for posterior support for multiple windows
-		std::unordered_map<WindowId, uint32_t> m_secondaryWindowsID_index_map{};
+		std::unordered_map<WindowID, uint32_t> m_secondaryWindowsID_index_map{};
 		std::vector<std::unique_ptr<Window>> m_secondary_windows{};
 
 		render::VulkanRenderDevice* m_render_device {};

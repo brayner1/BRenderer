@@ -30,6 +30,7 @@ endif()
 set(BRenderer_SOURCE_FILES
     "BRenderer.cpp" 
     
+    "Core/Inputs/InputSystem.cpp"
     "Core/Threading/MainThread.cpp"
     "Core/Threading/ThreadPool.cpp"
     "Core/App.cpp"
@@ -60,6 +61,7 @@ set(BRenderer_SOURCE_FILES
     
     "Renderer/Allocators/StagingAllocator.cpp"
     "Renderer/Allocators/SystemsOwner.cpp"
+    "Renderer/GUI/ImDrawDataSnapshot.cpp"
     "Renderer/Internal/CmdList/Executors/SceneRendererCmdListExecutor.cpp"
     "Renderer/Internal/CmdList/Executors/WindowCmdListExecutor.cpp"
     "Renderer/Internal/WindowRenderer.cpp"
@@ -77,12 +79,13 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Shader.cpp" 
     
     "Files/FilesUtils.cpp" 
-)
+  )
 
 set(BRenderer_HEADER_FILES
     "BRenderer.h" 
     
     "Core/Events/Event.h"
+    "Core/Inputs/InputSystem.h"
     "Core/Storage/ContiguousPool.h"
     "Core/Storage/ResourceAllocator.h"
     "Core/Threading/Barrier.h" 
@@ -119,6 +122,7 @@ set(BRenderer_HEADER_FILES
     
     "Renderer/Allocators/StagingAllocator.h"
     "Renderer/Allocators/SystemsOwner.h"
+    "Renderer/GUI/ImDrawDataSnapshot.h"
     "Renderer/Internal/CmdList/Executors/SceneRendererCmdListExecutor.h"
     "Renderer/Internal/CmdList/Executors/WindowCmdListExecutor.h"
     "Renderer/Internal/CmdList/CmdList.h"
@@ -144,7 +148,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/Shader.h"
    
     "Files/FilesUtils.h"
-) 
+ ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")
@@ -171,11 +175,11 @@ if (WIN32)
     add_definitions(-DNOMINMAX)
 endif()
 
-target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "dependencies" )
+target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_SOURCE_DIR}/3rdparties" )
 
 target_link_directories(BRenderer PUBLIC $<TARGET_LINKER_FILE_DIR:Vulkan::Vulkan>)
 
-target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" PRIVATE Vulkan::Headers assimp::assimp spdlog::spdlog VulkanMemoryAllocator SPSCQueue)
+target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" PRIVATE Vulkan::Headers assimp::assimp spdlog::spdlog VulkanMemoryAllocator SPSCQueue imgui)
 
 if (TARGET spdlog)
     message("SpdLog Found!")
