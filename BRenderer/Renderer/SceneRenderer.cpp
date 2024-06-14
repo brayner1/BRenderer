@@ -4,10 +4,6 @@
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Core/LogSystem.h>
 
-#include "Core/App.h"
-#include "Core/App.h"
-#include "Core/App.h"
-#include "Core/App.h"
 #include "Internal/IdOwner.h"
 
 #define MAX_LIGHTS 256
@@ -40,8 +36,8 @@ namespace brr::render
             // Sets should be organized from less frequently updated to more frequently updated.
             ShaderBuilder shader_builder;
             shader_builder
-                .SetVertexShaderFile("vert.spv")
-                .SetFragmentShaderFile("frag.spv")
+                .SetVertexShaderFile("Engine/Shaders/vert.spv")
+                .SetFragmentShaderFile("Engine/Shaders/frag.spv")
                 .AddVertexInputBindingDescription(0, sizeof(Vertex3))
                 .AddVertexAttributeDescription(0, 0, DataFormat::R32G32B32_Float, offsetof(Vertex3, pos))
                 .AddVertexAttributeDescription(0, 1, DataFormat::R32_Float, offsetof(Vertex3, u))

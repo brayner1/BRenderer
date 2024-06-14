@@ -2,6 +2,11 @@
 #define BRR_WINDOWMANAGER_H
 #include <Visualization/Window.h>
 
+namespace brr
+{
+    class Engine;
+}
+
 namespace brr::render
 {
     class VulkanRenderDevice;
@@ -14,9 +19,6 @@ namespace brr::vis
 	public:
 
 		static WindowManager* Instance();
-
-		static void InitWindowManager(uint32_t width, uint32_t height);
-		static void DestroyWindowManager();
 
 		~WindowManager();
 
@@ -33,6 +35,7 @@ namespace brr::vis
 		Window* GetMainWindow() const { return m_main_window.get(); }
 
 	private:
+		friend class Engine;
 
 		WindowManager(uint32_t width, uint32_t height);
 

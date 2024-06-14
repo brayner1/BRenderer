@@ -7,7 +7,7 @@
 
 namespace brr::vis
 {
-	static std::unique_ptr<WindowManager> s_window_manager {};
+	static WindowManager* s_window_manager {nullptr};
 
 	WindowManager::WindowManager(uint32_t width, uint32_t height)
 	{
@@ -28,33 +28,14 @@ namespace brr::vis
 
 		m_main_window->InitWindowRenderer();
 
+		s_window_manager = this;
+
 		BRR_LogInfo("WindowManager initialized.");
 	}
 
     WindowManager* WindowManager::Instance()
     {
-		return s_window_manager.get();
-    }
-
-    void WindowManager::InitWindowManager(uint32_t width,
-                                           uint32_t height)
-    {
-		if (s_window_manager)
-		{
-		    BRR_LogError("Error: Can't call 'WindowManager::InitWindowManager' when WindowManager instance is already initialized.");
-			return;
-		}
-		s_window_manager.reset(new WindowManager(width, height));
-    }
-
-    void WindowManager::DestroyWindowManager()
-    {
-		if (!s_window_manager)
-		{
-		    BRR_LogError("Error: Can't call 'WindowManager::DestroyWindowManager' when WindowManager instance is not initialized.");
-			return;
-		}
-		s_window_manager.reset();
+		return s_window_manager;
     }
 
     WindowManager::~WindowManager()
@@ -91,6 +72,11 @@ namespace brr::vis
 
     void WindowManager::CloseMainWindow()
     {
+		if (m_main_window_closed)
+		{
+		    return;
+		}
+
 		m_main_window->CloseWindow();
 		m_main_window_closed = true;
 

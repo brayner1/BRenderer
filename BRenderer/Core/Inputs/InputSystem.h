@@ -11,9 +11,20 @@ namespace brr
     {
     public:
 
-        static void ProcessFrameInputs();
+        static InputSystem* Instance();
 
-        static Event<SDL_KeyCode> input_keydown_event;
+        Event<SDL_KeyCode>& GetKeydownEvent() { return m_input_keydown_event; }
+
+    private:
+        friend class Engine;
+
+        InputSystem();
+
+        void ProcessFrameInputs();
+
+    private:
+
+        Event<SDL_KeyCode> m_input_keydown_event;
     };
 }
 

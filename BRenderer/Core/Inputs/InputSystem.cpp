@@ -6,16 +6,21 @@
 #include <SDL2/SDL.h>
 #include <backends/imgui_impl_sdl2.h>
 
+#include "Core/Engine.h"
 #include "Visualization/WindowManager.h"
 
 namespace brr
 {
-    namespace
+    void InputSystem::ProcessFrameInputs()
     {
-        void ProcessEvent(SDL_Event& pEvent)
-	    {
+        SDL_Event sdl_event;
+		while (SDL_PollEvent(&sdl_event))
+		{
+			//send SDL event to imgui for handling
+            ImGui_ImplSDL2_ProcessEvent(&sdl_event);
+
 			vis::WindowManager* window_manager = vis::WindowManager::Instance();
-		    switch ((SDL_EventType)pEvent.type)
+		    switch ((SDL_EventType)sdl_event.type)
 		    {
 			    // Last window closed, close application
 			    case SDL_QUIT:
@@ -36,10 +41,9 @@ namespace brr
 			    case SDL_DISPLAYEVENT: break;
 			    case SDL_WINDOWEVENT:
 			    {
-					
 					if (window_manager)
 					{
-						window_manager->ProcessWindowEvent(pEvent.window);
+						window_manager->ProcessWindowEvent(sdl_event.window);
 						if (window_manager->IsMainWindowClosed())
 						{
 						    BRR_LogDebug("Main Window closed. Stopping application.");
@@ -50,7 +54,7 @@ namespace brr
 			    case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.
 		        case SDL_KEYDOWN:
 		        {
-                    EventEmitter<SDL_KeyCode>::Emit(InputSystem::input_keydown_event, SDL_KeyCode(pEvent.key.keysym.sym));
+                    EventEmitter<SDL_KeyCode>::Emit(m_input_keydown_event, SDL_KeyCode(sdl_event.key.keysym.sym));
 		            break;
 		        }
 			    case SDL_KEYUP: break;
@@ -99,20 +103,16 @@ namespace brr
 			    case SDL_LASTEVENT: break;
 			    default:;
 		    }
-	    }
+		}
     }
 
-	Event<SDL_KeyCode> InputSystem::input_keydown_event {};
-
-    void InputSystem::ProcessFrameInputs()
+    InputSystem* InputSystem::Instance()
     {
-        SDL_Event sdl_event;
-		while (SDL_PollEvent(&sdl_event))
-		{
-			//send SDL event to imgui for handling
-            ImGui_ImplSDL2_ProcessEvent(&sdl_event);
+		return Engine::GetInputSystem();
+    }
 
-			ProcessEvent(sdl_event);
-		}
+    InputSystem::InputSystem()
+    {
+
     }
 }
