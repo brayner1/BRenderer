@@ -52,7 +52,8 @@ set(BRenderer_SOURCE_FILES
     "Visualization/Image.cpp"
     "Visualization/SceneRendererProxy.cpp"
     "Visualization/SceneView.cpp"
-    "Visualization/Window.cpp" 
+    "Visualization/Window.cpp"
+    "Visualization/WindowImGuiLayer.cpp"
     "Visualization/WindowManager.cpp"
     
     "Importer/Importer.cpp"
@@ -77,7 +78,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Shader.cpp" 
     
     "Files/FilesUtils.cpp" 
-   )
+    )
 
 set(BRenderer_HEADER_FILES
     "Core/Events/Event.h"
@@ -111,7 +112,8 @@ set(BRenderer_HEADER_FILES
     "Visualization/Image.h"
     "Visualization/SceneRendererProxy.h"
     "Visualization/SceneView.h"
-    "Visualization/Window.h" 
+    "Visualization/Window.h"
+    "Visualization/WindowImGuiLayer.h"
     "Visualization/WindowManager.h"
     
     "Importer/Importer.h"
@@ -144,7 +146,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/Shader.h"
    
     "Files/FilesUtils.h"
-  ) 
+   ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")
@@ -212,14 +214,14 @@ SET( BRENDERER_BIN_INSTALL_DIR "bin" CACHE STRING
 #        ARCHIVE DESTINATION ${BRENDERER_LIB_INSTALL_DIR}
 #        RUNTIME DESTINATION ${BRENDERER_BIN_INSTALL_DIR})
 #
-#INSTALL( TARGETS BRenderer
+INSTALL( TARGETS BRenderer
 #        EXPORT "brendererTargets"
-#        LIBRARY DESTINATION ${BRENDERER_LIB_INSTALL_DIR}# COMPONENT ${LIBASSIMP_COMPONENT}
-#        ARCHIVE DESTINATION ${BRENDERER_LIB_INSTALL_DIR}# COMPONENT ${LIBASSIMP-DEV_COMPONENT}
-#        RUNTIME DESTINATION ${BRENDERER_BIN_INSTALL_DIR}# COMPONENT ${LIBASSIMP_COMPONENT}
-#        FRAMEWORK DESTINATION ${BRENDERER_LIB_INSTALL_DIR}# COMPONENT ${LIBASSIMP_COMPONENT}
-#        INCLUDES DESTINATION ${BRENDERER_INCLUDE_INSTALL_DIR}\
-#)
+        LIBRARY DESTINATION ${BRENDERER_LIB_INSTALL_DIR}# COMPONENT ${LIBASSIMP_COMPONENT}
+        ARCHIVE DESTINATION ${BRENDERER_LIB_INSTALL_DIR}# COMPONENT ${LIBASSIMP-DEV_COMPONENT}
+        RUNTIME DESTINATION ${BRENDERER_BIN_INSTALL_DIR}# COMPONENT ${LIBASSIMP_COMPONENT}
+        FRAMEWORK DESTINATION ${BRENDERER_LIB_INSTALL_DIR}# COMPONENT ${LIBASSIMP_COMPONENT}
+        INCLUDES DESTINATION ${BRENDERER_INCLUDE_INSTALL_DIR}
+)
 
 #export(
 #    TARGETS BRenderer spdlog imgui assimp zlibstatic VulkanMemoryAllocator

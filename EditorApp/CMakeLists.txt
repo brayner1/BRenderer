@@ -2,6 +2,8 @@ find_package(Vulkan)
 
 set(Editor_SRC_FILES
 	"EditorApp.cpp"
+	"EditorGUI/EditorGuiLayer.h" 
+	"EditorGUI/EditorGuiLayer.cpp"
 )
 
 add_executable (EditorApp ${Editor_SRC_FILES})

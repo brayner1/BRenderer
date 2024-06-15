@@ -4,6 +4,7 @@
 #include <Core/Inputs/InputSystem.h>
 #include <Core/Engine.h>
 
+#include "EditorGUI/EditorGuiLayer.h"
 #include "Importer/Importer.h"
 #include "Scene/Components/LightComponents.h"
 #include "Scene/Components/PerspectiveCameraComponent.h"
@@ -13,9 +14,21 @@ using namespace brr;
 
 class EditorApp : public brr::App
 {
+public:
+	EditorApp()
+	: App()
+	{
+	    m_light_color_changed_action = std::make_shared<EventAction<glm::vec3>>(&EditorApp::OnLightColorChanged, this);
+	    m_light_toggled_action = std::make_shared<EventAction<bool>>(&EditorApp::OnLightToggled, this);
+	}
+
 	void OnInit() override
 	{
 		m_window_manager = Engine::GetWindowManager();
+		m_editor_gui_layer = std::make_shared<editor::EditorGuiLayer>();
+		m_window_manager->GetMainWindow()->SetImGuiLayer(m_editor_gui_layer);
+		m_editor_gui_layer->GetLightColorChangedEvent().Subscribe(m_light_color_changed_action);
+		m_editor_gui_layer->GetLightToggledEvent().Subscribe(m_light_toggled_action);
 		InputSystem::Instance()->GetKeydownEvent().Subscribe(std::make_shared<EventAction<SDL_KeyCode>>(&EditorApp::OnKeyPressed, this));
 
 		Scene* main_scene = Engine::GetMainScene();
@@ -41,28 +54,10 @@ private:
 
 	void OnKeyPressed(SDL_KeyCode key_code)
 	{
-	    Scene* main_scene = Engine::GetMainScene();
-		if (key_code == SDL_KeyCode::SDLK_l)
+
+		if (key_code == SDL_KeyCode::SDLK_u)
 		{
-			if (!isLightOn)
-			{
-				isLightOn = true;
-				light_entity = main_scene->Add3DEntity({});
-				//light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, -3.0), glm::vec3(0.7, 0.7, 1.0), 3.0);
-				light_entity.AddComponent<SpotLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(0.0, -1.0, 0.0),
-					                                          glm::radians(45.0/2.0), glm::vec3(1.0), 3.0);
-				//light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(0.0, -0.42, 0.91), glm::vec3(1.0), 1.0);
-				//light_entity.AddComponent<AmbientLightComponent>(glm::vec3(0.2, 0.2, 0.2), 1);
-			}
-			else
-			{
-				isLightOn = false;
-				main_scene->RemoveEntity(light_entity);
-			}
-		}
-		else if (key_code == SDL_KeyCode::SDLK_u)
-		{
-			if (isLightOn)
+			if (m_light_is_on)
 			{
 				static std::default_random_engine random_engine;
 				std::uniform_real_distribution<float> distrib (0.0, 1.0);
@@ -70,13 +65,52 @@ private:
 				spot_light.SetColor({distrib(random_engine), distrib(random_engine), distrib(random_engine)});
 			}
 		}
+		else if (key_code == SDLK_m)
+		{
+		    m_editor_gui_layer->ToggleWindowOpen(!m_editor_gui_layer->IsWindowOpen());
+		}
 	}
 
-	bool isLightOn = false;
+	void OnLightToggled(bool value)
+	{
+		Scene* main_scene = Engine::GetMainScene();
+		m_light_is_on = value;
+	    if (m_light_is_on)
+		{
+			light_entity = main_scene->Add3DEntity({});
+			//light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, -3.0), glm::vec3(0.7, 0.7, 1.0), 3.0);
+			light_entity.AddComponent<SpotLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(0.0, -1.0, 0.0),
+					                                      glm::radians(45.0/2.0), m_light_color, 3.0);
+			//light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(0.0, -0.42, 0.91), glm::vec3(1.0), 1.0);
+			//light_entity.AddComponent<AmbientLightComponent>(glm::vec3(0.2, 0.2, 0.2), 1);
+		}
+		else
+		{
+			m_light_is_on = false;
+			main_scene->RemoveEntity(light_entity);
+		}
+	}
+
+	void OnLightColorChanged(glm::vec3 color)
+	{
+		m_light_color = color;
+	    if (m_light_is_on)
+		{
+			SpotLightComponent& spot_light = light_entity.GetComponent<SpotLightComponent>();
+			spot_light.SetColor(m_light_color);
+		}
+	}
+
+	bool m_light_is_on = false;
+	glm::vec3 m_light_color = {.8, .8f, .8f};
     Entity light_entity;
 
 	vis::WindowManager* m_window_manager {};
 
+	std::shared_ptr<editor::EditorGuiLayer> m_editor_gui_layer {};
+
+	std::shared_ptr<EventAction<glm::vec3>> m_light_color_changed_action;
+	std::shared_ptr<EventAction<bool>> m_light_toggled_action;
 };
 
 int main(int argc, char* argv[])

@@ -11,7 +11,6 @@ namespace brr::render::internal
     {
         WindowCmdList window_cmd_list;
         std::unordered_map<uint64_t, SceneRendererCmdList> scene_cmd_list_map;
-        //vk::CommandBuffer imgui_cmd_buffer;
         ImDrawDataSnapshot imgui_draw_data_snapshot;
     };
 }

@@ -2,7 +2,8 @@
 #define BRR_WINDOW_H
 #include <Scene/Scene.h>
 
-#include "SceneView.h"
+#include <Visualization/SceneView.h>
+#include <Visualization/WindowImGuiLayer.h>
 
 namespace brr::vis
 {
@@ -24,6 +25,14 @@ namespace brr::vis
 		// Process a window event
 		void ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent);
 
+		// Render Window ImGui layer.
+		void RenderImGuiLayer();
+
+		std::shared_ptr<WindowImGuiLayer> GetImGuiLayer() const { return m_imgui_layer; }
+
+		// Set the Window ImGui layer.
+		void SetImGuiLayer(std::shared_ptr<WindowImGuiLayer> imgui_layer);
+
 		// Get Window SceneView
 		SceneView& GetSceneView() { return m_scene_view; }
 
@@ -38,6 +47,8 @@ namespace brr::vis
     private:
 		WindowID m_window_id = 0;
 		SDL_Window* m_window = nullptr;
+
+		std::shared_ptr<WindowImGuiLayer> m_imgui_layer {};
 
 		SceneView m_scene_view;
 

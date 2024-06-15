@@ -49,7 +49,7 @@ namespace brr
 		Entity(entt::entity entity_handle, Scene* scene);
 
 		template <ComponentType T>
-		void OnComponentDestroyed(entt::registry& registry, entt::entity entity);
+		static void OnComponentDestroyed(entt::registry& registry, entt::entity entity);
 
 		Scene* m_scene = nullptr;
 		entt::entity m_entity{ entt::null };
@@ -71,7 +71,7 @@ namespace brr
 		{
 		    component.RegisterGraphics();
 		}
-		m_scene->m_registry.on_destroy<T>().connect<&Entity::OnComponentDestroyed<T>>(*this);
+		m_scene->m_registry.on_destroy<T>().connect<&Entity::OnComponentDestroyed<T>>();
 
 		return component;
 	}
@@ -131,7 +131,7 @@ namespace brr
         entt::entity entity)
     {
 		T& component = registry.get<T>(entity);
-		EventEmitter<>::Emit(component.m_destroyed_event);
+		component.m_destroyed_event.Emit();
     }
 }
 

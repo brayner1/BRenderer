@@ -54,7 +54,7 @@ namespace brr
 			    case SDL_SYSWMEVENT: break; // This event is disabled by default. Encouraged to avoid if you can find less platform-specific way to accomplish your goals.
 		        case SDL_KEYDOWN:
 		        {
-                    EventEmitter<SDL_KeyCode>::Emit(m_input_keydown_event, SDL_KeyCode(sdl_event.key.keysym.sym));
+                    m_input_keydown_event.Emit (SDL_KeyCode(sdl_event.key.keysym.sym));
 		            break;
 		        }
 			    case SDL_KEYUP: break;

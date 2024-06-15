@@ -104,6 +104,19 @@ namespace brr::vis
 		}
 	}
 
+    void Window::RenderImGuiLayer()
+    {
+		if (m_imgui_layer)
+		{
+		    m_imgui_layer->OnImGuiRender();
+		}
+    }
+
+    void Window::SetImGuiLayer(std::shared_ptr<WindowImGuiLayer> imgui_layer)
+    {
+		m_imgui_layer = std::move(imgui_layer);
+    }
+
     glm::ivec2 Window::GetWindowExtent() const
 	{
 		int width, height;

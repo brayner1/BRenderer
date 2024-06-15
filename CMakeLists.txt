@@ -18,10 +18,4 @@ add_subdirectory ("3rdparties/imgui")
 # Include sub-projects.
 add_subdirectory ("BRenderer")
 
-#install(
-#    EXPORT "brendererTargets"
-#    NAMESPACE "brenderer::"
-#    DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-#)
-
 add_subdirectory("EditorApp")

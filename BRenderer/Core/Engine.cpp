@@ -76,7 +76,8 @@ namespace brr
 		ImGui::NewFrame();
 
 		//some imgui UI to test
-		ImGui::ShowDemoWindow();
+		//ImGui::ShowDemoWindow();
+        s_window_manager->GetMainWindow()->RenderImGuiLayer();
 
 		//make imgui calculate internal draw structures
 		ImGui::Render();
