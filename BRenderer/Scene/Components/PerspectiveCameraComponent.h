@@ -9,7 +9,7 @@ namespace brr
     class PerspectiveCameraComponent : public EntityComponent
     {
     public:
-        PerspectiveCameraComponent(float fovy, float near, float far);
+        PerspectiveCameraComponent(float fov_y, float near, float far);
 
         /**
          * Transform the camera to look at a target from a specified position and an up vector.
@@ -45,6 +45,40 @@ namespace brr
          * @return Point projected on viewport coordinates.
          */
         [[nodiscard]] glm::vec3 TransformToViewportCoords(const glm::vec3& point, float aspect) const;
+
+
+        /**
+         * @return Vertical field of view (in radians)
+         */
+        [[nodiscard]] float GetFovY() const { return m_fov_y; }
+
+        /**
+         * @return Near plane of the camera viewport.
+         */
+        [[nodiscard]] float GetNear() const { return m_near; }
+
+        /**
+         * @return Far plane of the camera viewport.
+         */
+        [[nodiscard]] float GetFar() const { return m_far; }
+
+        /**
+         * Set the camera's vertical field of view.
+         * @param fov_y vertical field of view (in radians)
+         */
+        void SetFovY(float fov_y); 
+
+        /**
+         * 
+         * @param near 
+         */
+        void SetNear(float near); 
+
+        /**
+         * 
+         * @param far 
+         */
+        void SetFar(float far); 
 
 
         /**

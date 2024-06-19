@@ -35,12 +35,12 @@ public:
 
 		main_scene->InitSceneRenderer();
 
-		Entity light_entity = main_scene->Add3DEntity({});
+		Entity light_entity = main_scene->Add3DEntity("Point Light");
 		light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(1.0, 0.8, 0.8), 2.0);
 
 		SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", main_scene);
 
-		Entity camera_entity = main_scene->Add3DEntity(Entity());
+		Entity camera_entity = main_scene->Add3DEntity("Camera");
 		PerspectiveCameraComponent& camera_component = camera_entity.AddComponent<PerspectiveCameraComponent>(glm::radians(45.0), 0.1f, 100.f);
 		camera_component.LookAt({8.0, 2.0, 0.0}, {0.0, 0.0, 0.0}, {0.f, -1.f, 0.f});
 
@@ -77,7 +77,7 @@ private:
 		m_light_is_on = value;
 	    if (m_light_is_on)
 		{
-			light_entity = main_scene->Add3DEntity({});
+			light_entity = main_scene->Add3DEntity("Spot Light");
 			//light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, -3.0), glm::vec3(0.7, 0.7, 1.0), 3.0);
 			light_entity.AddComponent<SpotLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(0.0, -1.0, 0.0),
 					                                      glm::radians(45.0/2.0), m_light_color, 3.0);

@@ -42,7 +42,7 @@ namespace brr::vis
 		[[nodiscard]] constexpr SDL_Window* GetSDLWindowHandle() const { return m_window; }
 		[[nodiscard]] constexpr bool NeedToClose() const { return m_need_to_close; }
 
-		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
+		[[nodiscard]] glm::ivec2 GetWindowSize() const;
 
     private:
 		WindowID m_window_id = 0;

@@ -100,7 +100,7 @@ namespace brr
 		m_scene_render_proxy.reset();
     }
 
-    Entity Scene::Add3DEntity(Entity parent)
+    Entity Scene::Add3DEntity(std::string entity_name, Transform3DComponent* parent)
 	{
 		BRR_LogInfo("Adding new 3D Entity");
 		entt::entity new_entity = m_registry.create();
@@ -108,13 +108,27 @@ namespace brr
 		Entity new_entity_struct(new_entity, this);
 
 		NodeComponent& node = new_entity_struct.AddComponent<NodeComponent>();
+		node.SetName(std::move(entity_name));
 
 		Transform3DComponent& transform = new_entity_struct.AddComponent<Transform3DComponent>();
 
+        bool is_root = true;
 		if (parent)
 		{
-			assert(m_registry.valid(parent.m_entity) && "Parent Entity must be valid.");
-			transform.SetParent(&parent.GetComponent<Transform3DComponent>());
+			if (m_registry.valid(parent->GetEntity().m_entity))
+			{
+			    transform.SetParent(parent);
+                is_root = false;
+			}
+		    else
+		    {
+			    BRR_LogError("Parent Transform3DComponent must be valid and belong to an entity in this Scene.");
+		    }
+		}
+
+		if (is_root)
+		{
+		    m_root_nodes.push_back(new_entity);
 		}
 
 		return Entity{new_entity, this};
@@ -143,6 +157,16 @@ namespace brr
 		m_registry.destroy(entity.m_entity);
     }
 
+    std::vector<Entity> Scene::GetRootEntities() const
+    {
+		std::vector<Entity> root_entities;
+		for (auto& root_entity : m_root_nodes)
+		{
+		    root_entities.push_back({root_entity, const_cast<Scene*>(this)});
+		}
+		return root_entities;
+    }
+
     PerspectiveCameraComponent* Scene::GetMainCamera()
     {
 		if (m_main_camera == entt::null)
@@ -169,6 +193,24 @@ namespace brr
 		if (m_scene_render_proxy)
 		{
 		    m_scene_render_proxy->FlushUpdateCommands();
+		}
+    }
+
+    void Scene::ParentChanged(NodeComponent* changed_node)
+    {
+		entt::entity node_entity = changed_node->GetEntity().m_entity;
+		auto root_entt_iter = std::find(m_root_nodes.begin(), m_root_nodes.end(), node_entity);
+		bool is_currently_root = root_entt_iter != m_root_nodes.end();
+
+		// Node has a new parent. Remove from root nodes.
+		if (changed_node->GetParentNode() && is_currently_root)
+		{
+		    m_root_nodes.erase(root_entt_iter);
+		}
+		// Node have parent removed. Add it in root nodes.
+		else if (!changed_node->GetParentNode() && !is_currently_root)
+		{
+		    m_root_nodes.push_back(node_entity);
 		}
     }
 }

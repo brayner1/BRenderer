@@ -46,6 +46,8 @@ namespace brr
 
 		void RemoveSurface(render::SurfaceID surface_id);
 
+		const std::vector<SurfaceData>& GetMeshSurfaces() const { return m_surfaces; }
+
         [[nodiscard]] constexpr size_t GetSurfaceCount() const { return m_surfaces.size(); }
 
 	public:

@@ -36,7 +36,7 @@ set(BRenderer_SOURCE_FILES
     "Core/LogSystem.cpp"
     "Core/UUID.cpp"
     
-    "Geometry/Geometry.cpp"
+    
     
     "Scene/Entity.cpp"
     "Scene/Scene.cpp"
@@ -146,7 +146,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/Shader.h"
    
     "Files/FilesUtils.h"
-   ) 
+    "Scene/SceneComponentsView.h") 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")

@@ -19,9 +19,11 @@ namespace brr
 		void InitSceneRenderer();
 		void DestroySceneRenderer();
 
-		Entity Add3DEntity(Entity parent);
+		Entity Add3DEntity(std::string entity_name, Transform3DComponent* parent = nullptr);
 
 		void RemoveEntity(Entity entity);
+
+		std::vector<Entity> GetRootEntities() const;
 
         PerspectiveCameraComponent* GetMainCamera();
 		void SetMainCamera(Entity main_camera_entity);
@@ -33,8 +35,15 @@ namespace brr
 	private:
 		
 		friend class Entity;
+		friend struct NodeComponent;
+		template <typename...>
+		friend class SceneComponentsView;
+
+		void ParentChanged(NodeComponent* changed_node);
 
 		entt::registry m_registry {};
+
+		std::vector<entt::entity> m_root_nodes {};
 
 		std::unique_ptr<vis::SceneRenderProxy> m_scene_render_proxy {};
 

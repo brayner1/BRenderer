@@ -1,7 +1,10 @@
 #ifndef EDITOR_EDITORGUILAYER_H
 #define EDITOR_EDITORGUILAYER_H
+
+#include <unordered_set>
 #include <Core/Events/Event.h>
-#include <glm/vec3.hpp>
+#include <Scene/Scene.h>
+#include <Scene/Entity.h>
 #include <Visualization/WindowImGuiLayer.h>
 
 namespace brr::editor
@@ -22,10 +25,21 @@ namespace brr::editor
 
     private:
 
+        void DrawSceneTree(Scene* scene);
+        void DrawSceneNode(NodeComponent* node_component);
+
+        void DrawEntityComponents(Entity entity);
+
         bool m_window_active = true;
+
+        int m_current_light_option = 0;
 
         bool m_light_active = false;
         glm::vec3 m_light_color = {.8, .8f, .8f};
+
+        glm::vec2 m_navigator_window_size {};
+
+        std::unordered_set<Entity> m_selected_entities {};
 
         Event<bool> m_light_toggled_event;
         Event<glm::vec3> m_light_color_changed_event;

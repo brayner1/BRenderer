@@ -1,5 +1,6 @@
 #include "SceneRenderer.h"
 
+#include <ranges>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Core/LogSystem.h>
@@ -112,7 +113,14 @@ namespace brr::render
         }
 
         m_cameras.RemoveObject(camera_id);
-        // TODO: Need to check and update viewports that use this camera!
+        // TODO: Should this be optmized?
+        for (Viewport& viewport : m_viewports)
+        {
+            if (viewport.camera_id == camera_id)
+            {
+                viewport.camera_uniform_dirty.fill(true);
+            }
+        }
     }
 
     void SceneRenderer::UpdateCameraProjection(CameraID camera_id,
@@ -125,7 +133,14 @@ namespace brr::render
         camera_info.camera_near  = camera_near;
         camera_info.camera_far   = camera_far;
 
-        // TODO: Need to check and update viewports that use this camera!
+        // TODO: Should this be optmized?
+        for (Viewport& viewport : m_viewports)
+        {
+            if (viewport.camera_id == camera_id)
+            {
+                viewport.camera_uniform_dirty.fill(true);
+            }
+        }
     }
 
     void SceneRenderer::CreateEntity(EntityID entity_id,

@@ -45,6 +45,8 @@ namespace brr
 
 	private:
 		friend class Scene;
+		friend std::ostream& operator<<(std::ostream& os, const Entity& c);
+		friend struct std::hash<Entity>;
 
 		Entity(entt::entity entity_handle, Scene* scene);
 
@@ -54,6 +56,11 @@ namespace brr
 		Scene* m_scene = nullptr;
 		entt::entity m_entity{ entt::null };
 	};
+
+    inline std::ostream& operator<<(std::ostream& os, const Entity& c)
+    { 
+      return os << uint32_t(c.m_entity); 
+    }
 
 	/**********************
 	 *** Implementation ***
@@ -134,5 +141,13 @@ namespace brr
 		component.m_destroyed_event.Emit();
     }
 }
+
+template <>
+struct std::hash<brr::Entity>
+{
+    [[nodiscard]] size_t operator()(const brr::Entity& entity) const noexcept {
+        return std::hash<brr::Scene*>()(entity.m_scene) + std::hash<size_t>()(static_cast<size_t>(entity.m_entity));
+    }
+};
 
 #endif

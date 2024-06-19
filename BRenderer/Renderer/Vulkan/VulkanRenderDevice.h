@@ -10,8 +10,6 @@
 #include <Renderer/RenderResourcesHandles.h>
 #include <Renderer/Shader.h>
 
-#include "glm/vec2.hpp"
-
 struct ImDrawData;
 
 namespace brr::render

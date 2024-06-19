@@ -12,9 +12,10 @@
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/SceneRenderer.h>
 
-#include "backends/imgui_impl_sdl2.h"
 #include "Internal/CmdList/Executors/SceneRendererCmdListExecutor.h"
 #include "Internal/CmdList/Executors/WindowCmdListExecutor.h"
+
+#include "backends/imgui_impl_sdl2.h"
 
 using namespace brr::render;
 using namespace internal;
@@ -146,13 +147,26 @@ void RenderThread::MainThread_SyncUpdate()
     s_main_frame_number += 1;
 }
 
-void RenderThread::WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle,
-                                                      glm::uvec2 window_size)
+glm::uvec2 GetSDLWindowDrawableSize(SDL_Window* window_handle)
+{
+    int width, height;
+    if ((SDL_GetWindowFlags(window_handle) & SDL_WINDOW_MINIMIZED) != 0)
+    {
+        width = height = 0;
+    }
+    else
+    {
+        SDL_Vulkan_GetDrawableSize(window_handle, &width, &height);
+    }
+    return {width, height};
+}
+
+void RenderThread::WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle)
 {
     SwapchainWindowHandle swapchain_window_handle = VKRD::GetSingleton()->CreateSwapchainWindowHandle(window_handle);
     const uint32_t window_id                      = SDL_GetWindowID(window_handle);
     const WindowCommand window_cmd                = WindowCommand::BuildCreateWindowCommand(window_id,
-                                                                             window_size, swapchain_window_handle);
+                                                                             GetSDLWindowDrawableSize(window_handle), swapchain_window_handle);
     BRR_LogDebug("Pushing RenderCmd to initialize window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
@@ -164,23 +178,22 @@ void RenderThread::WindowRenderCmd_DestroyWindowRenderer(SDL_Window* window_hand
     s_current_game_update_cmds.window_cmd_list.emplace_back(WindowCommand::BuildDestroyWindowCommand(window_id));
 }
 
-void RenderThread::WindowRenderCmd_SurfaceLost(SDL_Window* window_handle,
-                                               glm::uvec2 window_size)
+void RenderThread::WindowRenderCmd_SurfaceLost(SDL_Window* window_handle)
 {
     SwapchainWindowHandle swapchain_window_handle = VKRD::GetSingleton()->CreateSwapchainWindowHandle(window_handle);
     const uint32_t window_id                      = SDL_GetWindowID(window_handle);
     const WindowCommand window_cmd                = WindowCommand::BuildSurfaceLostCommand(window_id,
-                                                                            window_size, swapchain_window_handle);
+                                                                            GetSDLWindowDrawableSize(window_handle), swapchain_window_handle);
     BRR_LogDebug("Pushing RenderCmd to update surface of window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
-void RenderThread::WindowRenderCmd_Resize(SDL_Window* window_handle,
-                                          glm::uvec2 window_size)
+void RenderThread::WindowRenderCmd_Resize(SDL_Window* window_handle)
 {
     const uint32_t window_id       = SDL_GetWindowID(window_handle);
+    
     const WindowCommand window_cmd = WindowCommand::BuildWindowResizedCommand(window_id,
-                                                                              window_size);
+                                                                              GetSDLWindowDrawableSize(window_handle));
     BRR_LogDebug("Pushing RenderCmd to resize window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }

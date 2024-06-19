@@ -43,6 +43,7 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 
 		aiNode* node = node_info.assimp_node;
 		{
+			node_transform.GetNodeComponent()->SetName(node->mName.C_Str());
 			if (node->mNumMeshes > 0)
 			{
 				brr::Mesh3DComponent& mesh_component = entity.AddComponent<brr::Mesh3DComponent>();
@@ -112,6 +113,7 @@ namespace brr
 		if (!assimp_scene)
 		{
 			BRR_LogError("Assimp could not load Scene. Assimp Error Code:\n{}", assimp_importer.GetErrorString());
+			return;
 		}
 
 		ConvertAssimpScene(assimp_scene, *scene, parent);

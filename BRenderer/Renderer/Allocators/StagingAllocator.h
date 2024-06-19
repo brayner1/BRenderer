@@ -1,8 +1,7 @@
 #ifndef BRR_STAGINALLOCATOR_H
 #define BRR_STAGINALLOCATOR_H
+#include <Core/thirdpartiesInc.h>
 #include <Renderer/Vulkan/VulkanInc.h>
-
-#include "glm/vec2.hpp"
 
 namespace brr::render
 {

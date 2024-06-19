@@ -2,7 +2,6 @@
 
 #include <Core/LogSystem.h>
 
-#include <Scene/Components/PerspectiveCameraComponent.h>
 #include <Visualization/SceneView.h>
 #include <Renderer/RenderThread.h>
 
@@ -33,9 +32,6 @@ namespace brr::vis
 		m_window_id = winId;
 
 		BRR_LogInfo("Window {} Created", winId);
-		int width, height;
-		SDL_Vulkan_GetDrawableSize(m_window, &width, &height);
-		const glm::ivec2 extent{ width, height };
 	}
 
 	void Window::CloseWindow()
@@ -58,7 +54,7 @@ namespace brr::vis
 
     void Window::InitWindowRenderer()
     {
-		render::RenderThread::WindowRenderCmd_InitializeWindowRenderer(m_window, GetWindowExtent());
+		render::RenderThread::WindowRenderCmd_InitializeWindowRenderer(m_window);
     }
 
     void Window::ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent)
@@ -71,19 +67,19 @@ namespace brr::vis
 		case SDL_WINDOWEVENT_MOVED: break;
 		case SDL_WINDOWEVENT_RESIZED:
 			BRR_LogInfo("Window {} resized.", m_window_id);
-			render::RenderThread::WindowRenderCmd_Resize(m_window, GetWindowExtent());
+			render::RenderThread::WindowRenderCmd_Resize(m_window);
 			//m_window_renderer->Window_Resized();
 			break;
 		case SDL_WINDOWEVENT_SIZE_CHANGED: break;
 		case SDL_WINDOWEVENT_MINIMIZED:
 			BRR_LogInfo("Window {} minimized.", m_window_id);
-			render::RenderThread::WindowRenderCmd_Resize(m_window, {0, 0});
+			render::RenderThread::WindowRenderCmd_Resize(m_window);
 			m_minimized = true;
 			break;
 		case SDL_WINDOWEVENT_MAXIMIZED: break;
 		case SDL_WINDOWEVENT_RESTORED:
 			BRR_LogInfo("Window {} restored.", m_window_id);
-			render::RenderThread::WindowRenderCmd_Resize(m_window, GetWindowExtent());
+			render::RenderThread::WindowRenderCmd_Resize(m_window);
 			m_minimized = false;
 			break;
 		case SDL_WINDOWEVENT_ENTER: break;
@@ -117,10 +113,10 @@ namespace brr::vis
 		m_imgui_layer = std::move(imgui_layer);
     }
 
-    glm::ivec2 Window::GetWindowExtent() const
+    glm::ivec2 Window::GetWindowSize() const
 	{
 		int width, height;
-		SDL_Vulkan_GetDrawableSize(m_window, &width, &height);
+		SDL_GetWindowSize(m_window, &width, &height);
 		return { width, height };
 	}
 }

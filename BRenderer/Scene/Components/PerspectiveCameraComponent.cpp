@@ -4,8 +4,8 @@
 
 namespace brr
 {
-    PerspectiveCameraComponent::PerspectiveCameraComponent(float fovy, float near, float far)
-    : m_fov_y(fovy),
+    PerspectiveCameraComponent::PerspectiveCameraComponent(float fov_y, float near, float far)
+    : m_fov_y(fov_y),
 	  m_near(near),
 	  m_far(far),
 	  m_camera_id(render::CameraID::NULL_ID)
@@ -48,6 +48,36 @@ namespace brr
         glm::vec4 point_view_coords = view_matrix * point_vec;
         glm::vec4 point_ndc_coords = proj_matrix * point_view_coords;
         return {point_ndc_coords.x / point_ndc_coords.w, point_ndc_coords.y / point_ndc_coords.w, point_view_coords.z};
+    }
+
+    void PerspectiveCameraComponent::SetFovY(float fov_y)
+    {
+        if (m_fov_y != fov_y)
+        {
+            m_fov_y = fov_y;
+            vis::SceneRenderProxy* scene_render_proxy = GetScene()->GetSceneRendererProxy();
+            scene_render_proxy->UpdateCameraProjectionMatrix(m_camera_id, m_fov_y, m_near, m_far);
+        }
+    }
+
+    void PerspectiveCameraComponent::SetNear(float near)
+    {
+        if (m_near != near)
+        {
+            m_near = near;
+            vis::SceneRenderProxy* scene_render_proxy = GetScene()->GetSceneRendererProxy();
+            scene_render_proxy->UpdateCameraProjectionMatrix(m_camera_id, m_fov_y, m_near, m_far);
+        }
+    }
+
+    void PerspectiveCameraComponent::SetFar(float far)
+    {
+        if (m_far != far)
+        {
+            m_far = far;
+            vis::SceneRenderProxy* scene_render_proxy = GetScene()->GetSceneRendererProxy();
+            scene_render_proxy->UpdateCameraProjectionMatrix(m_camera_id, m_fov_y, m_near, m_far);
+        }
     }
 
     void PerspectiveCameraComponent::OnInit()

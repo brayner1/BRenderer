@@ -4,24 +4,26 @@ namespace brr
 {
 	void NodeComponent::SetParent(NodeComponent* parent)
 	{
-		if (mParent_)
+		if (m_parent)
 		{
-			mParent_->RemoveChild(this);
+			m_parent->RemoveChild(this);
 		}
 
-		mParent_ = parent;
-		if (mParent_)
+		m_parent = parent;
+		if (m_parent)
 		{
-			mParent_->mChildren_.push_back(this);
+			m_parent->m_children.push_back(this);
 		}
+
+		GetEntity().GetScene()->ParentChanged(this);
 	}
 
 	void NodeComponent::RemoveChild(NodeComponent* child)
 	{
-		auto It = std::find(mChildren_.begin(), mChildren_.end(), child);
-		assert(It != mChildren_.end() && "Children must be present to be removed!");
+		auto It = std::find(m_children.begin(), m_children.end(), child);
+		assert(It != m_children.end() && "Children must be present to be removed!");
 
-		mChildren_.erase(It);
-		child->mParent_ = nullptr;
+		m_children.erase(It);
+		child->m_parent = nullptr;
 	}
 }
