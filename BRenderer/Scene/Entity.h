@@ -45,6 +45,7 @@ namespace brr
 
 	private:
 		friend class Scene;
+		friend std::ostream& operator<<(std::ostream& os, const Entity& c);
 
 		Entity(entt::entity entity_handle, Scene* scene);
 
@@ -54,6 +55,11 @@ namespace brr
 		Scene* m_scene = nullptr;
 		entt::entity m_entity{ entt::null };
 	};
+
+    inline std::ostream& operator<<(std::ostream& os, const Entity& c)
+    { 
+      return os << uint32_t(c.m_entity); 
+    }
 
 	/**********************
 	 *** Implementation ***

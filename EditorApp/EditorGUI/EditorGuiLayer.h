@@ -2,6 +2,7 @@
 #define EDITOR_EDITORGUILAYER_H
 #include <Core/Events/Event.h>
 #include <glm/vec3.hpp>
+#include <Scene/Scene.h>
 #include <Visualization/WindowImGuiLayer.h>
 
 namespace brr::editor
@@ -22,7 +23,11 @@ namespace brr::editor
 
     private:
 
+        void DrawSceneTree(Scene* scene);
+
         bool m_window_active = true;
+
+        int m_current_light_option = 0;
 
         bool m_light_active = false;
         glm::vec3 m_light_color = {.8, .8f, .8f};
