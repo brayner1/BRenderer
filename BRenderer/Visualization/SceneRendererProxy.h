@@ -3,6 +3,7 @@
 
 #include <Core/thirdpartiesInc.h>
 #include <cstdint>
+#include <Core/Storage/ContiguousPool.h>
 
 #include <Renderer/SceneObjectsIDs.h>
 
@@ -36,7 +37,7 @@ namespace brr::vis
         void UpdateCameraProjectionMatrix(render::CameraID camera_id,
                                           float camera_fovy,
                                           float camera_near,
-                                          float camera_far) const;
+                                          float camera_far);
 
         // Render Entity
         render::EntityID CreateRenderEntity(const Transform3DComponent& entity_transform) const;
@@ -101,8 +102,17 @@ namespace brr::vis
         uint64_t m_scene_renderer_id;
 
         using EntityUpdatePair = std::pair<render::EntityID, glm::mat4>;
-        std::vector<EntityUpdatePair> m_entity_updates;
-        std::unordered_map<render::EntityID, uint32_t> m_entity_updates_idx_map;
+
+        struct CameraUpdateData
+        {
+            render::CameraID camera_id;
+            float camera_fov_y;
+            float camera_near;
+            float camera_far;
+        };
+
+        ContiguousPool<render::EntityID, EntityUpdatePair> m_entity_updates;
+        ContiguousPool<render::CameraID, CameraUpdateData> m_camera_updates;
     };
 }
 

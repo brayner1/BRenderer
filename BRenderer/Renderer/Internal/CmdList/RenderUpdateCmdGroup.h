@@ -3,6 +3,7 @@
 
 #include "WindowCmdList.h"
 #include "SceneRendererCmdList.h"
+#include <Renderer/GUI/ImDrawDataSnapshot.h>
 
 namespace brr::render::internal
 {
@@ -10,6 +11,7 @@ namespace brr::render::internal
     {
         WindowCmdList window_cmd_list;
         std::unordered_map<uint64_t, SceneRendererCmdList> scene_cmd_list_map;
+        ImDrawDataSnapshot imgui_draw_data_snapshot;
     };
 }
 

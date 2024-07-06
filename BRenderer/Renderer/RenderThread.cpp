@@ -15,6 +15,8 @@
 #include "Internal/CmdList/Executors/SceneRendererCmdListExecutor.h"
 #include "Internal/CmdList/Executors/WindowCmdListExecutor.h"
 
+#include "backends/imgui_impl_sdl2.h"
+
 using namespace brr::render;
 using namespace internal;
 
@@ -36,6 +38,8 @@ static IdOwner<uint32_t> s_light_id_generator;
 static std::allocator<void> s_cmd_data_allocator = std::allocator<void>();
 
 static VulkanRenderDevice* s_render_device = nullptr;
+
+static size_t s_main_frame_number = 0;
 
 namespace
 {
@@ -59,10 +63,13 @@ namespace
         {
             front = s_render_update_queue.front();
         }
-        while (!front);
-        s_current_render_update_cmds = std::move(*front);
+        while (!front && !s_stop_rendering);
+        if (!s_stop_rendering)
+        {
+            s_current_render_update_cmds = std::move(*front);
 
-        s_render_update_queue.pop();
+            s_render_update_queue.pop();
+        }
     }
 
 
@@ -70,8 +77,6 @@ namespace
     {
         while (!s_stop_rendering)
         {
-            RenderThread_SyncUpdate();
-
             s_render_device->BeginFrame();
 
             ExecuteUpdateCommands(s_current_render_update_cmds);
@@ -79,18 +84,20 @@ namespace
             SystemOwner<WindowRenderer>& window_renderer_storage = SystemsStorage::GetWindowRendererStorage();
             for (const auto& window_it : window_renderer_storage)
             {
-                window_it.second->RenderWindow();
+                window_it.second->RenderWindow(&s_current_render_update_cmds.imgui_draw_data_snapshot.DrawData);
             }
 
             s_render_device->EndFrame();
+
+            RenderThread_SyncUpdate();
         }
     }
 
     void RenderThreadFunction()
     {
-        // Add 'FRAME_LAG - 1' available update cmd sets.
-        // The other one is already owned by Render Thread.
-        for (uint32_t idx = 0; idx < (FRAME_LAG - 1); idx++)
+        // Add 'FRAME_LAG - 2' available update cmd sets.
+        // One is already owned by Render Thread and the other by the Main Thread.
+        for (uint32_t idx = 0; idx < (FRAME_LAG - 2); idx++)
         {
             s_available_update_queue.emplace();
         }
@@ -117,11 +124,15 @@ void RenderThread::StopRenderingThread()
     BRR_LogDebug("Stopping rendering thread.");
     s_stop_rendering = true;
     s_rendering_thread.join();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
     BRR_LogDebug("Rendering thread joined.");
 }
 
 void RenderThread::MainThread_SyncUpdate()
 {
+    s_current_game_update_cmds.imgui_draw_data_snapshot.SnapUsingSwap(ImGui::GetDrawData(), ImGui::GetTime());
+
     s_render_update_queue.push(std::move(s_current_game_update_cmds));
 
     RenderUpdateCmdGroup* front;
@@ -133,15 +144,29 @@ void RenderThread::MainThread_SyncUpdate()
     s_current_game_update_cmds = std::move(*front);
 
     s_available_update_queue.pop();
+    s_main_frame_number += 1;
 }
 
-void RenderThread::WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle,
-                                                      glm::uvec2 window_size)
+glm::uvec2 GetSDLWindowDrawableSize(SDL_Window* window_handle)
+{
+    int width, height;
+    if ((SDL_GetWindowFlags(window_handle) & SDL_WINDOW_MINIMIZED) != 0)
+    {
+        width = height = 0;
+    }
+    else
+    {
+        SDL_Vulkan_GetDrawableSize(window_handle, &width, &height);
+    }
+    return {width, height};
+}
+
+void RenderThread::WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle)
 {
     SwapchainWindowHandle swapchain_window_handle = VKRD::GetSingleton()->CreateSwapchainWindowHandle(window_handle);
     const uint32_t window_id                      = SDL_GetWindowID(window_handle);
     const WindowCommand window_cmd                = WindowCommand::BuildCreateWindowCommand(window_id,
-                                                                             window_size, swapchain_window_handle);
+                                                                             GetSDLWindowDrawableSize(window_handle), swapchain_window_handle);
     BRR_LogDebug("Pushing RenderCmd to initialize window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
@@ -153,23 +178,22 @@ void RenderThread::WindowRenderCmd_DestroyWindowRenderer(SDL_Window* window_hand
     s_current_game_update_cmds.window_cmd_list.emplace_back(WindowCommand::BuildDestroyWindowCommand(window_id));
 }
 
-void RenderThread::WindowRenderCmd_SurfaceLost(SDL_Window* window_handle,
-                                               glm::uvec2 window_size)
+void RenderThread::WindowRenderCmd_SurfaceLost(SDL_Window* window_handle)
 {
     SwapchainWindowHandle swapchain_window_handle = VKRD::GetSingleton()->CreateSwapchainWindowHandle(window_handle);
     const uint32_t window_id                      = SDL_GetWindowID(window_handle);
     const WindowCommand window_cmd                = WindowCommand::BuildSurfaceLostCommand(window_id,
-                                                                            window_size, swapchain_window_handle);
+                                                                            GetSDLWindowDrawableSize(window_handle), swapchain_window_handle);
     BRR_LogDebug("Pushing RenderCmd to update surface of window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
-void RenderThread::WindowRenderCmd_Resize(SDL_Window* window_handle,
-                                          glm::uvec2 window_size)
+void RenderThread::WindowRenderCmd_Resize(SDL_Window* window_handle)
 {
     const uint32_t window_id       = SDL_GetWindowID(window_handle);
+    
     const WindowCommand window_cmd = WindowCommand::BuildWindowResizedCommand(window_id,
-                                                                              window_size);
+                                                                              GetSDLWindowDrawableSize(window_handle));
     BRR_LogDebug("Pushing RenderCmd to resize window. Window ID: {}", window_id);
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }

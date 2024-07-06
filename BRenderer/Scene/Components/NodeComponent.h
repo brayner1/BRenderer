@@ -11,8 +11,11 @@ namespace brr
 		NodeComponent ()
 		{}
 
-		[[nodiscard]] NodeComponent* GetParentNode() const { return mParent_; }
-		[[nodiscard]] const std::vector<NodeComponent*>& GetChildren() const { return mChildren_; }
+		const std::string& GetName() const { return m_node_name; }
+		void SetName(std::string node_name) { m_node_name = std::move(node_name); }
+
+		[[nodiscard]] NodeComponent* GetParentNode() const { return m_parent; }
+		[[nodiscard]] const std::vector<NodeComponent*>& GetChildren() const { return m_children; }
 
 	private:
 		friend struct Transform3DComponent;
@@ -21,8 +24,10 @@ namespace brr
 		void SetParent(NodeComponent* parent);
 		void RemoveChild(NodeComponent* child);
 
-		NodeComponent* mParent_{ nullptr };
-		std::vector<NodeComponent*> mChildren_{};
+		std::string m_node_name = "Object";
+
+		NodeComponent* m_parent{ nullptr };
+		std::vector<NodeComponent*> m_children{};
 	};
 }
 

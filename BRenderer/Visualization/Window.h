@@ -2,11 +2,12 @@
 #define BRR_WINDOW_H
 #include <Scene/Scene.h>
 
-#include "SceneView.h"
+#include <Visualization/SceneView.h>
+#include <Visualization/WindowImGuiLayer.h>
 
 namespace brr::vis
 {
-	typedef Uint32 WindowId;
+	typedef Uint32 WindowID;
 	class Window
 	{
 	public:
@@ -24,20 +25,30 @@ namespace brr::vis
 		// Process a window event
 		void ProcessWindowEvent(const SDL_WindowEvent& pWindowEvent);
 
+		// Render Window ImGui layer.
+		void RenderImGuiLayer();
+
+		std::shared_ptr<WindowImGuiLayer> GetImGuiLayer() const { return m_imgui_layer; }
+
+		// Set the Window ImGui layer.
+		void SetImGuiLayer(std::shared_ptr<WindowImGuiLayer> imgui_layer);
+
 		// Get Window SceneView
 		SceneView& GetSceneView() { return m_scene_view; }
 
 		// Window API
 
-		[[nodiscard]] constexpr WindowId GetWindowID() const { return m_window_id; }
+		[[nodiscard]] constexpr WindowID GetWindowID() const { return m_window_id; }
 		[[nodiscard]] constexpr SDL_Window* GetSDLWindowHandle() const { return m_window; }
 		[[nodiscard]] constexpr bool NeedToClose() const { return m_need_to_close; }
 
-		[[nodiscard]] glm::ivec2 GetWindowExtent() const;
+		[[nodiscard]] glm::ivec2 GetWindowSize() const;
 
     private:
-		WindowId m_window_id = 0;
+		WindowID m_window_id = 0;
 		SDL_Window* m_window = nullptr;
+
+		std::shared_ptr<WindowImGuiLayer> m_imgui_layer {};
 
 		SceneView m_scene_view;
 

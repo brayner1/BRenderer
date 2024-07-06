@@ -177,7 +177,7 @@ namespace brr
             scene_renderer_proxy->UpdateRenderEntityTransform(*this);
         }
 
-        for (NodeComponent* child : GetNodeComponent()->mChildren_)
+        for (NodeComponent* child : GetNodeComponent()->m_children)
         {
             Transform3DComponent& child_transform = child->GetEntity().GetComponent<Transform3DComponent>();
             child_transform.PropagateTransformChange();

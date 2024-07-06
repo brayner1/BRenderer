@@ -1,10 +1,10 @@
 #ifndef BRR_SCENEVIEW_H
 #define BRR_SCENEVIEW_H
 
+#include <Core/Events/Event.h>
+
 #include <Scene/Scene.h>
 #include <Scene/Components/PerspectiveCameraComponent.h>
-
-#include "Core/Events/Event.h"
 
 namespace brr::vis
 {

@@ -13,38 +13,17 @@ template <typename T>
 EventAction<Args...>::EventAction(void(T::* func)(Args...), T* object)
 requires std::invocable<decltype(func), T*, Args...>
 {
-    m_function = [object, func](Args... args)
+    m_function = [object, func](Args&&... args)
     {
         std::invoke(func, object, std::forward<Args>(args)...);
     };
 }
 
 template <typename ... Args>
-void EventAction<Args...>::Call(Args&&... args) const
+template <typename ... Args2>
+void EventAction<Args...>::Call(Args2&&... args) const
 {
-    m_function(std::forward<Args>(args)...);
-}
-
-template <typename F>
-    requires std::invocable<F>
-EventAction<>::EventAction(F&& func)
-    : m_function(std::forward<F>(func))
-{
-}
-
-template <typename T>
-EventAction<>::EventAction(void (T::*func)(),
-                           T* object) requires std::invocable<decltype(func), T*>
-{
-    m_function = [object, func]()
-    {
-        std::invoke(func, object);
-    };
-}
-
-inline void EventAction<>::Call() const
-{
-    m_function();
+     m_function(std::forward<Args2>(args)...);
 }
 
 /*********
@@ -76,28 +55,11 @@ void Event<Args...>::Unsubscribe(const std::shared_ptr<EventAction<Args...>>& ev
 }
 
 template <typename ... Args>
-void Event<Args...>::Emit(Args&&... args) const
+template <typename ... Args2>
+void Event<Args...>::Emit(Args2&&... args) const
 {
     for (auto& event_action : m_event_actions)
     {
-        event_action->Call(std::forward<Args>(args)...);
+        event_action->Call(std::forward<Args2>(args)...);
     }
-}
-
-/****************
- * EventEmitter *
- ****************/
-
-template <typename ... Args>
-void EventEmitter<Args...>::Emit(Args&&... args) const
-{
-    m_event.Emit(std::forward<Args>(args)...);
-}
-
-template <typename ... Args>
-void EventEmitter<Args...>::Emit(const Event<Args...>& event,
-    Args&&... args)
-{
-    EventEmitter<Args...> event_emitter (event);
-    event_emitter.Emit(std::forward<Args>(args)...);
 }

@@ -5,6 +5,8 @@
 
 #include <Renderer/SceneObjectsIDs.h>
 
+#include "imgui.h"
+
 namespace brr::render
 {
 
@@ -31,10 +33,10 @@ namespace brr::render
          * Window Commands *
          *******************/
 
-        static void WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle, glm::uvec2 window_size);
+        static void WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle);
         static void WindowRenderCmd_DestroyWindowRenderer(SDL_Window* window_handle);
-        static void WindowRenderCmd_SurfaceLost(SDL_Window* window_handle, glm::uvec2 window_size);
-        static void WindowRenderCmd_Resize(SDL_Window* window_handle, glm::uvec2 window_size);
+        static void WindowRenderCmd_SurfaceLost(SDL_Window* window_handle);
+        static void WindowRenderCmd_Resize(SDL_Window* window_handle);
         static void WindowRenderCmd_SetSceneView(SDL_Window* window_handle, uint64_t scene_id, CameraID camera_id);
 
         /***************************

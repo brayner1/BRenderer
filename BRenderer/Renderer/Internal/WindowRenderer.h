@@ -52,7 +52,7 @@ namespace brr{
             /**
              * Render this window on the screen.
              */
-            void RenderWindow();
+            void RenderWindow(ImDrawData* imgui_draw_data);
 
             /**
 			 * Set the SceneRenderer and the Camera that will be used to render this window.

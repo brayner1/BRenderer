@@ -2,7 +2,6 @@
 #define VKR_ThirdpartiesInc_H
 
 #include "SDL2/SDL.h"
-#include "SDL2/SDL_vulkan.h"
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_LEFT_HANDED

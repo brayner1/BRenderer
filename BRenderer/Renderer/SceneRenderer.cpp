@@ -1,13 +1,10 @@
 #include "SceneRenderer.h"
 
+#include <ranges>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Core/LogSystem.h>
 
-#include "Core/App.h"
-#include "Core/App.h"
-#include "Core/App.h"
-#include "Core/App.h"
 #include "Internal/IdOwner.h"
 
 #define MAX_LIGHTS 256
@@ -40,8 +37,8 @@ namespace brr::render
             // Sets should be organized from less frequently updated to more frequently updated.
             ShaderBuilder shader_builder;
             shader_builder
-                .SetVertexShaderFile("vert.spv")
-                .SetFragmentShaderFile("frag.spv")
+                .SetVertexShaderFile("Engine/Shaders/vert.spv")
+                .SetFragmentShaderFile("Engine/Shaders/frag.spv")
                 .AddVertexInputBindingDescription(0, sizeof(Vertex3))
                 .AddVertexAttributeDescription(0, 0, DataFormat::R32G32B32_Float, offsetof(Vertex3, pos))
                 .AddVertexAttributeDescription(0, 1, DataFormat::R32_Float, offsetof(Vertex3, u))
@@ -116,7 +113,14 @@ namespace brr::render
         }
 
         m_cameras.RemoveObject(camera_id);
-        // TODO: Need to check and update viewports that use this camera!
+        // TODO: Should this be optmized?
+        for (Viewport& viewport : m_viewports)
+        {
+            if (viewport.camera_id == camera_id)
+            {
+                viewport.camera_uniform_dirty.fill(true);
+            }
+        }
     }
 
     void SceneRenderer::UpdateCameraProjection(CameraID camera_id,
@@ -129,7 +133,14 @@ namespace brr::render
         camera_info.camera_near  = camera_near;
         camera_info.camera_far   = camera_far;
 
-        // TODO: Need to check and update viewports that use this camera!
+        // TODO: Should this be optmized?
+        for (Viewport& viewport : m_viewports)
+        {
+            if (viewport.camera_id == camera_id)
+            {
+                viewport.camera_uniform_dirty.fill(true);
+            }
+        }
     }
 
     void SceneRenderer::CreateEntity(EntityID entity_id,

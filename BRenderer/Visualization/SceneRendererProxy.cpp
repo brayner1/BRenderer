@@ -26,6 +26,15 @@ namespace brr::vis
             RenderThread::SceneRenderCmd_UpdateEntityTransform(m_scene_renderer_id, entity_update_pair.first,
                                                                entity_update_pair.second);
         }
+        m_entity_updates.Clear();
+
+        for (CameraUpdateData& camera_update_data : m_camera_updates)
+        {
+            RenderThread::SceneRenderCmd_UpdateCameraProjection(m_scene_renderer_id, camera_update_data.camera_id,
+                                                                camera_update_data.camera_fov_y, camera_update_data.camera_near,
+                                                                camera_update_data.camera_far);
+        }
+        m_camera_updates.Clear();
     }
 
     CameraID SceneRenderProxy::CreateCamera(const Transform3DComponent& owner_entity,
@@ -45,9 +54,18 @@ namespace brr::vis
     void SceneRenderProxy::UpdateCameraProjectionMatrix(CameraID camera_id,
                                                         float camera_fovy,
                                                         float camera_near,
-                                                        float camera_far) const
+                                                        float camera_far)
     {
-        RenderThread::SceneRenderCmd_UpdateCameraProjection(m_scene_renderer_id, camera_id, camera_fovy, camera_near, camera_far);
+        CameraUpdateData update_data = {camera_id, camera_fovy, camera_near, camera_far};
+        auto camera_update_data = m_camera_updates.Find(camera_id);
+        if (camera_update_data == m_camera_updates.end())
+        {
+            m_camera_updates.AddObject(camera_id, update_data);
+        }
+        else
+        {
+            *camera_update_data = update_data;
+        }
     }
 
     // Entities
@@ -66,16 +84,14 @@ namespace brr::vis
     {
         EntityID entity_id = entity_transform.GetRenderEntityID();
         EntityUpdatePair update_pair = {entity_id, entity_transform.GetGlobalMatrix()};
-        auto entity_update_iter = m_entity_updates_idx_map.find(entity_id);
-        if (entity_update_iter == m_entity_updates_idx_map.end())
+        auto entity_update_iter = m_entity_updates.Find(entity_id);
+        if (entity_update_iter == m_entity_updates.end())
         {
-            m_entity_updates.push_back(update_pair);
-            m_entity_updates_idx_map.emplace(entity_id, m_entity_updates.size() - 1);
+            m_entity_updates.AddObject(entity_id, update_pair);
         }
         else
         {
-            uint32_t entity_update_idx = entity_update_iter->second;
-            m_entity_updates[entity_update_idx] = update_pair;
+            *entity_update_iter = update_pair;
         }
     }
 

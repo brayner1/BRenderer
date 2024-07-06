@@ -34,7 +34,11 @@ namespace brr
         T& Get(KeyType object_key);
         const T& Get(KeyType object_key) const;
 
+        iterator Find(KeyType object_key);
+
         void RemoveObject(KeyType object_key);
+
+        void Clear();
 
         [[nodiscard]] bool Contains(KeyType object_key) const { return m_object_index_map.contains(object_key); }
 
@@ -80,15 +84,15 @@ namespace brr
         }
         
         m_object_index_map.emplace(object_key, m_active_count);
-        m_active_count++;
         if (m_active_count == m_pool.size())
         {
             m_pool.push_back(value);
         }
         else
         {
-            m_pool[m_active_count - 1] = value;
+            m_pool[m_active_count] = value;
         }
+        m_active_count++;
         return true;
     }
 
@@ -103,15 +107,15 @@ namespace brr
         }
 
         m_object_index_map.emplace(object_key, m_active_count);
-        m_active_count++;
         if (m_active_count == m_pool.size())
         {
             m_pool.push_back(std::move(value));
         }
         else
         {
-            m_pool[m_active_count - 1] = std::move(value);
+            m_pool[m_active_count] = std::move(value);
         }
+        m_active_count++;
         return true;
     }
 
@@ -131,6 +135,18 @@ namespace brr
 
         uint32_t index = m_object_index_map.at(object_key);
         return m_pool.at(index);
+    }
+
+    template <typename KeyType, typename T>
+    typename ContiguousPool<KeyType, T>::iterator ContiguousPool<KeyType, T>::Find(KeyType object_key)
+    {
+        auto iter = m_object_index_map.find(object_key);
+        if (iter == m_object_index_map.end())
+        {
+            return end();
+        }
+
+        return m_pool.begin() + iter->second;
     }
 
     template<typename KeyType, typename T>
@@ -167,6 +183,14 @@ namespace brr
                 break;
             }
         }
+    }
+
+    template <typename KeyType, typename T>
+    void ContiguousPool<KeyType, T>::Clear()
+    {
+        m_pool.clear();
+        m_object_index_map.clear();
+        m_active_count = 0;
     }
 
     template<typename KeyType, typename T>
