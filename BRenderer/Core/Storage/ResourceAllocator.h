@@ -1,11 +1,15 @@
 #ifndef BRR_RESOURCEALLOCATOR_H
 #define BRR_RESOURCEALLOCATOR_H
+#include <ranges>
 #include <Core/LogSystem.h>
 
 #include <set>
+#include <mutex>
 
 namespace brr
 {
+    template<typename T>
+    class ResourceAllocator;
 
     struct ResourceHandle
     {
@@ -30,7 +34,7 @@ namespace brr
 
     protected:
 
-        template<typename T > friend class ResourceAllocator;
+        template<typename T> friend class ResourceAllocator;
 
         uint32_t index;
         uint32_t validation;
@@ -38,11 +42,9 @@ namespace brr
     static constexpr ResourceHandle null_handle = ResourceHandle{};
 
     /**
-     * \brief ResourceAllocator is a thread-safe, template allocator for storing non-RAII structures.
-     * This means that the destructor of the resource T is not called when destroying a resource.
-     * If the resource T have ownership over some data, the data needs to be released before destroying the resource.
+     * \brief ResourceAllocator is a thread-safe, template allocator for storing resources.
      *
-     * When creating a resource, a ResourceHandle is generated to represent this unique resource.
+     * When creating a resource, a ResourceHandle is return to represent the new resource.
      * The resource's pointer (T*) can be obtained using the ResourceHandle.
      * WARNING: After using any non-const function of the allocator, using any resource pointer (T*)
      * previously obtained is undefined behaviour.
@@ -53,9 +55,10 @@ namespace brr
     {
     public:
 
-        ResourceAllocator() = default;
+        ResourceAllocator();
 
-        ResourceHandle CreateResource(T** new_resource_ref = nullptr);
+        template <typename... Args>
+        ResourceHandle CreateResource(T** new_resource_ref = nullptr, Args&&... args);
 
         bool DestroyResource(const ResourceHandle& handle);
 
@@ -64,12 +67,14 @@ namespace brr
         bool OwnsResource(const ResourceHandle& handle) const;
 
     private:
+        static constexpr size_t TypeSize = sizeof(T);
 
         bool ValidateHandle(const ResourceHandle& handle) const;
 
         static constexpr uint32_t INVALID_BIT = 0x80000000;
 
-        std::vector<T> m_resources;
+        T* m_resources;
+        size_t m_current_buffer_size;
         std::vector<uint32_t> m_validation;
         std::set<uint32_t> m_free_set;
         mutable std::mutex m_mutex;
@@ -97,16 +102,48 @@ namespace brr
     }
 
     template <typename T>
-    ResourceHandle ResourceAllocator<T>::CreateResource(T** new_resource_ref)
+    ResourceAllocator<T>::ResourceAllocator()
+    {
+        std::allocator<T> allocator;
+        m_resources                         = allocator.allocate(32); // Initialize with 32 elements
+        m_current_buffer_size               = 32;
+        static constexpr auto initial_range = std::ranges::iota_view{0, 32};
+        m_free_set.insert(initial_range.begin(), initial_range.end());
+        m_validation = std::vector<uint32_t> (32, INVALID_BIT);
+    }
+
+    template <typename T>
+    template <typename... Args>
+    ResourceHandle ResourceAllocator<T>::CreateResource(T** new_resource_ref, Args&&... args)
     {
         ResourceHandle handle;
         std::lock_guard lock_guard (m_mutex);
 
         if (m_free_set.empty())
         {
-            m_resources.push_back({});
-            handle.index =  m_resources.size() - 1;
-            handle.validation = m_validation.emplace_back(ValidatorGen::GetNextValidation());
+            size_t previous_size = m_current_buffer_size;
+            T* previous_buffer = m_resources;
+
+            std::allocator<T> allocator;
+            m_current_buffer_size = std::ceil(m_current_buffer_size * 1.5f);
+            m_resources = allocator.allocate(m_current_buffer_size);
+            std::uninitialized_move(previous_buffer, previous_buffer + previous_size, m_resources);
+            allocator.deallocate(previous_buffer, previous_size);
+
+            if constexpr (!std::is_trivial_v<T>)
+            {
+                T* resource = m_resources + previous_size;
+                std::construct_at(resource, std::forward<Args>(args)...);
+            }
+
+            handle.index =  previous_size;
+
+            m_validation.resize(m_current_buffer_size, INVALID_BIT);
+            handle.validation = m_validation[handle.index] = ValidatorGen::GetNextValidation();
+            assert((handle.validation & INVALID_BIT) == 0 && "Validation value can't contain INVALID_BIT");
+
+            auto new_range = std::ranges::iota_view{previous_size + 1, m_current_buffer_size};
+            m_free_set.insert(new_range.begin(), new_range.end());
         }
         else
         {
@@ -116,13 +153,18 @@ namespace brr
             handle.index = free_idx;
 
             handle.validation = m_validation[free_idx] = ValidatorGen::GetNextValidation();
+            assert((handle.validation & INVALID_BIT) == 0 && "Validation value can't contain INVALID_BIT");
 
-            m_resources[handle.index] = T();
+            if constexpr (!std::is_trivial_v<T>)
+            {
+                T* resource = m_resources + handle.index;
+                std::construct_at(resource, std::forward<Args>(args)...);
+            }
         }
 
         if (new_resource_ref)
         {
-            *new_resource_ref = &m_resources[handle.index];
+            *new_resource_ref = m_resources + handle.index;
         }
 
         return handle;
@@ -139,6 +181,12 @@ namespace brr
 
         m_free_set.emplace(handle.index);
         m_validation[handle.index] |= INVALID_BIT;
+
+        if constexpr (!std::is_trivial_v<T> && std::is_destructible_v<T>)
+        {
+            T* resource = m_resources + handle.index;
+            std::destroy_at(resource);
+        }
 
         return true;
     }
@@ -159,8 +207,7 @@ namespace brr
     bool ResourceAllocator<T>::OwnsResource(const ResourceHandle& handle) const
     {
         std::lock_guard lock_guard (m_mutex);
-        if (handle.index >= m_resources.size() 
-         || handle.validation != m_validation[handle.index])
+        if (!ValidateHandle(handle))
         {
             return false;
         }
@@ -171,24 +218,24 @@ namespace brr
     template <typename T>
     bool ResourceAllocator<T>::ValidateHandle(const ResourceHandle& handle) const
     {
-        if (handle.index >= m_resources.size())
+        if (handle.index >= m_current_buffer_size)
         {
-            BRR_LogError(
-                "Invalid resource handle. Index points to non-existent resource.\n\tHandle index:\t{}\n\tResources count:\t{}",
-                handle.index, m_resources.size());
+            BRR_LogTrace(
+                "Error: Invalid resource handle. Index points to non-existent resource.\n\tHandle index:\t{}\n\tResources count:\t{}",
+                handle.index, m_current_buffer_size);
             return false;
         }
 
         if (handle.validation & INVALID_BIT)
         {
-            BRR_LogError("Invalid handle. Handle References a deleted resource.");
+            BRR_LogTrace("Error: Invalid handle. Handle References a deleted resource.");
             return false;
         }
 
         if (handle.validation != m_validation[handle.index])
         {
-            BRR_LogError(
-                "Invalid handle. Handle validation does not match.\n\tHandle validation:\t{}\n\tResource validation\t{}",
+            BRR_LogTrace(
+                "Error: Invalid handle. Handle validation does not match.\n\tHandle validation:\t{}\n\tResource validation\t{}",
                 handle.validation, m_validation[handle.index]);
             return false;
         }
