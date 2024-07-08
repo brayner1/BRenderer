@@ -36,8 +36,6 @@ set(BRenderer_SOURCE_FILES
     "Core/LogSystem.cpp"
     "Core/UUID.cpp"
     
-    
-    
     "Scene/Entity.cpp"
     "Scene/Scene.cpp"
     
@@ -83,6 +81,7 @@ set(BRenderer_SOURCE_FILES
 set(BRenderer_HEADER_FILES
     "Core/Events/Event.h"
     "Core/Inputs/InputSystem.h"
+    "Core/Resources/ResourceManager.h"
     "Core/Storage/ContiguousPool.h"
     "Core/Storage/ResourceAllocator.h"
     "Core/Threading/Barrier.h" 
