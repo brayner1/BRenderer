@@ -18,7 +18,6 @@ namespace brr::vis
         if (!std::filesystem::exists(image_path))
         {
             BRR_LogError("Invalid input file path '{}'. File does not exist.", image_path.string());
-            BRR_LogInfo("Current path: {}", std::filesystem::current_path().string());
             return;
         }
 
@@ -33,6 +32,8 @@ namespace brr::vis
         m_width = w;
         m_height = h;
         m_totalSize = w * h * 4;
+
+        SetPath(image_path.string());
     }
 
     Image::Image(uint32_t width, uint32_t height, uint8_t* data)

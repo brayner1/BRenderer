@@ -1,11 +1,13 @@
 #ifndef BRR_IMAGE_H
 #define BRR_IMAGE_H
 
+#include <Core/Assets/Asset.h>
+
 #include <filesystem>
 
 namespace brr::vis
 {
-    class Image
+    class Image : public Asset
     {
     public:
 

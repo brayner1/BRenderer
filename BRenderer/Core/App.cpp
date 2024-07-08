@@ -1,4 +1,7 @@
 #include "App.h"
+
+#include <Core/Assets/AssetManager.h>
+#include <Core/Assets/Asset.h>
 #include <Core/LogSystem.h>
 #include <Core/Inputs/InputSystem.h>
 
@@ -45,6 +48,9 @@ namespace brr
 		m_window_manager = Engine::GetWindowManager();
 
 		OnInit();
+
+		m_image_ref = new vis::Image("Resources/UV_Grid.png");
+		BRR_LogDebug("Loaded image with size: ({} x {})", m_image_ref->Width(), m_image_ref->Height());
 	}
 
 	void App::MainLoop()
