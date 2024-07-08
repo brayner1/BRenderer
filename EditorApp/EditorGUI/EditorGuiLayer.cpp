@@ -16,6 +16,7 @@ namespace brr::editor
 {
     EditorGuiLayer::EditorGuiLayer()
     {
+        ImGui::GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
     }
 
     void EditorGuiLayer::OnImGuiRender()
@@ -55,8 +56,12 @@ namespace brr::editor
         }
 
         Scene* main_scene = Engine::GetMainScene();
+
+        ImGuiStyle& style = ImGui::GetStyle();
+        float child_w = (ImGui::GetContentRegionAvail().x - 4 * style.ItemSpacing.x) / 3;
         
         const char* light_options[] = { "Point", "Directional", "Spot", "Ambient" };
+        ImGui::SetNextItemWidth(child_w);
         ImGui::Combo("Light Type", &m_current_light_option, light_options, std::size(light_options));
         ImGui::SameLine();
         if (ImGui::Button("Create Light"))
@@ -82,9 +87,7 @@ namespace brr::editor
                 break;
             }
         }
-
-        ImGuiStyle& style = ImGui::GetStyle();
-        float child_w = (ImGui::GetContentRegionAvail().x - 4 * style.ItemSpacing.x);
+        
         float child_h = (ImGui::GetContentRegionAvail().y - 4 * style.ItemSpacing.x) / 2;
 
         ImGui::BeginGroup();
