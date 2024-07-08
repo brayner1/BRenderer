@@ -8,9 +8,10 @@
 	}; \
 	static AppRegister_##TYPE s_##TYPE_register = AppRegister_##TYPE{}; \
 
-#include <Visualization/WindowManager.h>
+#include <Core/Ref.h>
 
-#include "Events/Event.h"
+#include <Visualization/Resources/Image.h>
+#include <Visualization/WindowManager.h>
 
 namespace brr
 {
@@ -38,6 +39,7 @@ namespace brr
 		//void OnKeyPressed(SDL_KeyCode key_code);
 
 		vis::WindowManager* m_window_manager {};
+		Ref<vis::Image> m_image_ref {};
 	};
 
 	REGISTER_DEFAULT_APP(App)

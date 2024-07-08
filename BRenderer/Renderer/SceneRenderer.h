@@ -7,7 +7,7 @@
 #include <Renderer/RenderDefs.h>
 #include <Renderer/SceneObjectsIDs.h>
 #include <Scene/Scene.h>
-#include <Visualization/Image.h>
+#include <Visualization/Resources/Image.h>
 
 // TODO: How do Camera, Viewport and Window connect with each other?
 

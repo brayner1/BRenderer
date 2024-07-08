@@ -156,7 +156,7 @@ namespace brr::render
         }
     }
 
-    std::unique_ptr<VulkanRenderDevice> VulkanRenderDevice::device_instance {};
+    static std::unique_ptr<VulkanRenderDevice> device_instance {};
 
     void VulkanRenderDevice::CreateRenderDevice(SDL_Window* window)
     {

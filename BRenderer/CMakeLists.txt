@@ -28,6 +28,8 @@ endif()
 
 # Define the project files
 set(BRenderer_SOURCE_FILES
+    "Core/Assets/Asset.cpp"
+    "Core/Assets/AssetManager.cpp"
     "Core/Inputs/InputSystem.cpp"
     "Core/Threading/MainThread.cpp"
     "Core/Threading/ThreadPool.cpp"
@@ -35,8 +37,6 @@ set(BRenderer_SOURCE_FILES
     "Core/Engine.cpp"
     "Core/LogSystem.cpp"
     "Core/UUID.cpp"
-    
-    
     
     "Scene/Entity.cpp"
     "Scene/Scene.cpp"
@@ -49,7 +49,7 @@ set(BRenderer_SOURCE_FILES
     "Scene/Components/PerspectiveCameraComponent.cpp"
     "Scene/Components/Transform3DComponent.cpp"
  
-    "Visualization/Image.cpp"
+    "Visualization/Resources/Image.cpp"
     "Visualization/SceneRendererProxy.cpp"
     "Visualization/SceneView.cpp"
     "Visualization/Window.cpp"
@@ -81,6 +81,8 @@ set(BRenderer_SOURCE_FILES
     )
 
 set(BRenderer_HEADER_FILES
+    "Core/Assets/Asset.h"
+    "Core/Assets/AssetManager.h"
     "Core/Events/Event.h"
     "Core/Inputs/InputSystem.h"
     "Core/Storage/ContiguousPool.h"
@@ -93,14 +95,13 @@ set(BRenderer_HEADER_FILES
     "Core/App.h"
     "Core/Engine.h"
     "Core/LogSystem.h"
+    "Core/Ref.h"
+    "Core/RefCounted.h"
     "Core/thirdpartiesInc.h"
     "Core/UUID.h"
     
     "Geometry/Geometry.h"
     
-    "Scene/Components.h"
-    "Scene/Entity.h"
-    "Scene/Scene.h" 
     "Scene/Components/EntityComponent.h"
     "Scene/Components/LightComponents.h"
     "Scene/Components/MaterialComponent.h"
@@ -108,8 +109,12 @@ set(BRenderer_HEADER_FILES
     "Scene/Components/NodeComponent.h"
     "Scene/Components/PerspectiveCameraComponent.h"
     "Scene/Components/Transform3DComponent.h"
+    "Scene/Components.h"
+    "Scene/Entity.h"
+    "Scene/Scene.h" 
+    "Scene/SceneComponentsView.h"
 
-    "Visualization/Image.h"
+    "Visualization/Resources/Image.h"
     "Visualization/SceneRendererProxy.h"
     "Visualization/SceneView.h"
     "Visualization/Window.h"
@@ -146,7 +151,7 @@ set(BRenderer_HEADER_FILES
     "Renderer/Shader.h"
    
     "Files/FilesUtils.h"
-    "Scene/SceneComponentsView.h") 
+     ) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")

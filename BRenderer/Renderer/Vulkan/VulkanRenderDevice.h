@@ -402,9 +402,6 @@ namespace brr::render
         friend class DescriptorLayoutBuilder;
         friend class DescriptorSetUpdater;
 
-        // Singleton Device
-        static std::unique_ptr<VulkanRenderDevice> device_instance;
-
         // Vulkan Instance
 
         vk::Instance m_vulkan_instance {};
