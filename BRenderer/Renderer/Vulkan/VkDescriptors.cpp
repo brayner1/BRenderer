@@ -1,6 +1,6 @@
 #include "VkDescriptors.h"
 #include <Renderer/Vulkan/VkInitializerHelper.h>
-#include <Renderer/Descriptors.h>
+#include <Renderer/GpuResources/Descriptors.h>
 
 vk::DescriptorPool CreatePool(vk::Device device, const brr::render::DescriptorSetAllocator::PoolSizes& poolSizes, int count, vk::DescriptorPoolCreateFlags flags)
 {
@@ -239,7 +239,7 @@ namespace brr::render
         const vk::DescriptorPool pool = pool_iter->second;
         m_set_pool_map.erase(descriptor_set);
 
-        m_device.freeDescriptorSets(pool, descriptor_set);
+        //m_device.freeDescriptorSets(pool, descriptor_set);
         return true;
     }
 

@@ -18,7 +18,7 @@ namespace brr::vis
         Image(uint32_t width, uint32_t height, uint8_t* data);
 
         // Destructor
-        ~Image();
+        ~Image() override;
 
         uint32_t Width() const { return m_width; }
         uint32_t Height() const { return m_height; }

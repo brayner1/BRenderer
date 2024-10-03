@@ -16,7 +16,9 @@ namespace brr
 
         Asset(UUID uuid);
 
-        ~Asset();
+        virtual ~Asset();
+
+        UUID GetUUID() const { return m_asset_uuid; }
 
         [[nodiscard]] const std::string& GetPath() const { return m_asset_path; }
         void SetPath(std::string resource_path, bool replace_previous_path = false);

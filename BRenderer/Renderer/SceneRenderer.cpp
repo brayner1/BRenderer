@@ -1,9 +1,12 @@
 #include "SceneRenderer.h"
 
 #include <ranges>
+
+#include <Renderer/Storages/RenderStorageGlobals.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Scene/Components/Mesh3DComponent.h>
 #include <Core/LogSystem.h>
+#include <Core/Assets/AssetManager.h>
 
 #include "Internal/IdOwner.h"
 
@@ -62,7 +65,7 @@ namespace brr::render
 
         SetupSceneUniforms();
 
-        m_image = std::make_unique<vis::Image>("Resources/UV_Grid.png");
+        m_image = Ref<vis::Image>(AssetManager::GetAsset("Resources/UV_Grid.png"));//std::make_unique<vis::Image>("Resources/UV_Grid.png");
 
         m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(),
                                                                 ImageUsage::TransferDstImage |
@@ -78,10 +81,7 @@ namespace brr::render
 
     SceneRenderer::~SceneRenderer()
     {
-        for (SurfaceRenderData& render_data : m_render_data)
-        {
-            DestroySurfaceBuffers(render_data);
-        }
+        m_render_device->WaitIdle();
         m_render_device->DestroyTexture2D(m_texture_2d_handle);
         m_render_device->DestroyGraphicsPipeline(m_graphics_pipeline);
     }
@@ -192,51 +192,93 @@ namespace brr::render
         entity_it->second.uniform_dirty.fill(true);
     }
 
-    void SceneRenderer::CreateSurface(SurfaceID surface_id,
-                                         EntityID owner_entity,
-                                         void* vertex_buffer_data,
-                                         size_t vertex_buffer_size,
-                                         void* index_buffer_data,
-                                         size_t index_buffer_size)
+    void SceneRenderer::AppendSurfaceToEntity(SurfaceID surface_id,
+                                              EntityID owner_entity)
     {
-        if (!m_render_data.AddObject(surface_id, {owner_entity}))
+        auto entity_it = m_entities_map.find(owner_entity);
+        if (entity_it == m_entities_map.end())
         {
-            BRR_LogError("Can't create Surface (ID: {}). A surface with this ID already exists.",
-                         static_cast<uint32_t>(surface_id));
+            BRR_LogError("Can't append Surface (ID: {}) to SceneRenderer Entity (ID: {}) because this entity doesn't exist.",
+                         static_cast<uint64_t>(surface_id), static_cast<uint32_t>(owner_entity));
             return;
         }
 
-        BRR_LogDebug("Adding new SurfaceRenderData (ID: {}).", static_cast<uint32_t>(surface_id));
-
-        SurfaceRenderData& render_data = m_render_data.Get(surface_id);
-        render_data.m_my_surface_id = surface_id;
-        CreateVertexBuffer(vertex_buffer_data, vertex_buffer_size, render_data);
-        CreateIndexBuffer(index_buffer_data, index_buffer_size, render_data);
-    }
-
-    void SceneRenderer::DestroySurface(SurfaceID surface_id)
-    {
-        if (!m_render_data.Contains(surface_id))
+        MeshStorage::RenderSurface* render_surface = RenderStorageGlobals::mesh_storage.GetSurface(surface_id);
+        if (!render_surface)
         {
-            BRR_LogError("Can't destroy Surface (ID: {}). This surface doesn't exist.", static_cast<uint32_t>(surface_id));
+            BRR_LogError("Can't append Surface (ID: {}) to SceneRenderer Entity (ID: {}) because this Surface doesn't exist in renderer surface storage.",
+                         static_cast<uint64_t>(surface_id), static_cast<uint32_t>(owner_entity));
             return;
         }
-        SurfaceRenderData& render_data = m_render_data.Get(surface_id);
-        DestroySurfaceBuffers(render_data);
 
-        m_render_data.RemoveObject(surface_id);
+        EntityInfo& entity_info = entity_it->second;
+        if (std::find(entity_info.surfaces.begin(), entity_info.surfaces.end(), surface_id) != entity_info.surfaces.end())
+        {
+            BRR_LogError("Can't append Surface (ID: {}) to SceneRenderer Entity (ID: {}) because this Surface is already assigned to this entity.",
+                         static_cast<uint64_t>(surface_id), static_cast<uint32_t>(owner_entity));
+            return;
+        }
+
+        entity_info.surfaces.push_back(surface_id);
+        entity_info.surfaces_dirty = true;
+        BRR_LogInfo("Appended Surface (ID: {}) to Entity (ID: {}).", static_cast<uint64_t>(surface_id), static_cast<uint32_t>(owner_entity));
+
+        if (m_cached_surfaces.Contains(surface_id))
+        {
+            SurfaceRenderData& render_data = m_cached_surfaces.Get(surface_id);
+            render_data.m_owner_nodes.push_back(owner_entity);
+        }
+        else
+        {
+            SurfaceRenderData render_data (owner_entity);
+            render_data.m_my_surface_id = surface_id;
+            render_data.m_vertex_buffer_handle = render_surface->m_vertex_buffer;
+            render_data.m_index_buffer_handle = render_surface->m_index_buffer;
+            render_data.m_num_vertices = render_surface->num_vertices;
+            render_data.m_num_indices = render_surface->num_indices;
+
+            m_cached_surfaces.AddObject(surface_id, render_data);
+        }
     }
 
-    void SceneRenderer::UpdateSurfaceVertexBuffer(SurfaceID surface_id,
-                                                  void* vertex_buffer_data,
-                                                  size_t vertex_buffer_size)
+    void SceneRenderer::NotifySurfaceChanged(SurfaceID surface_id)
     {
-    }
+        if (m_cached_surfaces.Contains(surface_id))
+        {
+            SurfaceRenderData& surface_cached_data = m_cached_surfaces.Get(surface_id);
+            surface_cached_data.m_surface_dirty = true;
 
-    void SceneRenderer::UpdateSurfaceIndexBuffer(SurfaceID surface_id,
-                                                 void* index_buffer_data,
-                                                 size_t index_buffer_size)
-    {
+            MeshStorage::RenderSurface* render_surface = RenderStorageGlobals::mesh_storage.GetSurface(surface_id);
+            bool is_removed = render_surface == nullptr;
+
+            // Mark entities surfaces as dirty. Delete SurfaceID from entity surfaces if surface was removed.
+            for (auto& owner_node : surface_cached_data.m_owner_nodes)
+            {
+                auto entity_it = m_entities_map.find(owner_node);
+                if (entity_it != m_entities_map.end())
+                {
+                    EntityInfo& entity_info = entity_it->second;
+                    entity_info.surfaces_dirty = true;
+                    if (is_removed)
+                    {
+                        std::erase(entity_info.surfaces, surface_id);
+                    }
+                }
+            }
+
+            // Update surface cached data or remove it from cached data if it was removed.
+            if (!is_removed)
+            {
+                surface_cached_data.m_vertex_buffer_handle = render_surface->m_vertex_buffer;
+                surface_cached_data.m_index_buffer_handle = render_surface->m_index_buffer;
+                surface_cached_data.m_num_vertices = render_surface->num_vertices;
+                surface_cached_data.m_num_indices = render_surface->num_indices;
+            }
+            else
+            {
+                m_cached_surfaces.RemoveObject(surface_id);
+            }
+        }
     }
 
     void SceneRenderer::CreatePointLight(LightID light_id,
@@ -486,6 +528,12 @@ namespace brr::render
                 entity.uniform_dirty[m_current_buffer] = false;
                 updated_entities.emplace(entity_iter.first);
             }
+
+            if (entity.surfaces_dirty)
+            {
+                // TODO: maintain AABB updated.
+                entity.surfaces_dirty = false;
+            }
         }
 
         for (Viewport& viewport : m_viewports)
@@ -560,32 +608,36 @@ namespace brr::render
         m_render_device->Bind_DescriptorSet(m_graphics_pipeline, m_material_descriptor_sets[m_current_buffer], 2);
         // TODO: create a proper material system
 
-        for (SurfaceRenderData& render_data : m_render_data)
+        for (SurfaceRenderData& render_data : m_cached_surfaces)
         {
-            // Entity uniform (model matrix)
-            auto entity_iter = m_entities_map.find(render_data.m_owner_node);
-            if (entity_iter == m_entities_map.end())
+            for (EntityID owner_node : render_data.m_owner_nodes)
             {
-                BRR_LogError(
-                    "Surface (ID: {}) is owned by non-existing Entity (ID: {}).\nSkipping rendering of this Surface.",
-                    uint32_t(render_data.m_my_surface_id), uint32_t(render_data.m_owner_node));
-                continue;
-            }
-            EntityInfo& entity_info = entity_iter->second;
-            m_render_device->Bind_DescriptorSet(m_graphics_pipeline, entity_info.descriptor_sets[m_current_buffer], 3);
+                auto entity_iter = m_entities_map.find(owner_node);
+                if (entity_iter == m_entities_map.end())
+                {
+                    BRR_LogError(
+                        "Surface (ID: {}) is owned by non-existing Entity (ID: {}).\nSkipping rendering of this Surface.",
+                        uint64_t(render_data.m_my_surface_id), uint32_t(owner_node));
+                    continue;
+                }
+                EntityInfo& entity_info = entity_iter->second;
 
-            assert(
-                render_data.m_vertex_buffer_handle.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
-            m_render_device->BindVertexBuffer(render_data.m_vertex_buffer_handle);
+                // Entity uniform (model matrix)
+                m_render_device->Bind_DescriptorSet(m_graphics_pipeline, entity_info.descriptor_sets[m_current_buffer], 3);
 
-            if (render_data.m_index_buffer_handle.IsValid())
-            {
-                m_render_device->BindIndexBuffer(render_data.m_index_buffer_handle);
-                m_render_device->DrawIndexed(render_data.num_indices, 1, 0, 0, 0);
-            }
-            else
-            {
-                m_render_device->Draw(render_data.num_vertices, 1, 0, 0);
+                assert(
+                    render_data.m_vertex_buffer_handle.IsValid() && "Vertex buffer must be valid to bind to a command buffer.");
+                m_render_device->BindVertexBuffer(render_data.m_vertex_buffer_handle);
+
+                if (render_data.m_index_buffer_handle.IsValid())
+                {
+                    m_render_device->BindIndexBuffer(render_data.m_index_buffer_handle);
+                    m_render_device->DrawIndexed(render_data.m_num_indices, 1, 0, 0, 0);
+                }
+                else
+                {
+                    m_render_device->Draw(render_data.m_num_vertices, 1, 0, 0);
+                }
             }
         }
 
@@ -743,49 +795,5 @@ namespace brr::render
         m_scene_uniform_info.m_light_storage_dirty.fill(true);
         m_scene_uniform_info.m_light_storage_size_changed.fill(true);
         return true;
-    }
-
-    void SceneRenderer::CreateVertexBuffer(void* vertex_buffer_data,
-                                           size_t vertex_buffer_size,
-                                           SurfaceRenderData& render_data)
-    {
-        if (!vertex_buffer_data || vertex_buffer_size == 0)
-        {
-            BRR_LogError("Vertex Buffer data can't be null or empty.");
-            return;
-        }
-
-        BRR_LogInfo("Creating Vertex Buffer.");
-
-        VulkanRenderDevice::VertexFormatFlags vertex_format = VulkanRenderDevice::VertexFormatFlags::COLOR;
-        Vertex3* vertex3_data = (Vertex3*)vertex_buffer_data;
-        render_data.m_vertex_buffer_handle = m_render_device->CreateVertexBuffer(
-            vertex_buffer_size, vertex_format, vertex_buffer_data);
-
-        render_data.num_vertices = vertex_buffer_size / sizeof(Vertex3);
-        // TODO: Calculate vertex number based on vertex buffer format
-    }
-
-    void SceneRenderer::CreateIndexBuffer(void* index_buffer_data,
-                                          size_t index_buffer_size,
-                                          SurfaceRenderData& render_data)
-    {
-        if (!index_buffer_data || index_buffer_size == 0)
-            return;
-
-        BRR_LogInfo("Creating Index Buffer.");
-
-        VulkanRenderDevice::IndexType index_type = VulkanRenderDevice::IndexType::UINT32;
-
-        render_data.m_index_buffer_handle = m_render_device->CreateIndexBuffer(
-            index_buffer_size, index_type, index_buffer_data);
-
-        render_data.num_indices = index_buffer_size / sizeof(uint32_t);
-    }
-
-    void SceneRenderer::DestroySurfaceBuffers(SurfaceRenderData& render_data)
-    {
-        m_render_device->DestroyVertexBuffer(render_data.m_vertex_buffer_handle);
-        m_render_device->DestroyIndexBuffer(render_data.m_index_buffer_handle);
     }
 }

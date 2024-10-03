@@ -1,7 +1,7 @@
 #ifndef BRR_RENDERER_H
 #define BRR_RENDERER_H
 #include <Core/thirdpartiesInc.h>
-#include <Renderer/DeviceSwapchain.h>
+#include <Renderer/GpuResources/DeviceSwapchain.h>
 #include <Renderer/SceneRenderer.h>
 
 namespace brr{
@@ -54,6 +54,13 @@ namespace brr{
              */
             void RenderWindow(ImDrawData* imgui_draw_data);
 
+
+            /**
+			 * Get this window's scene renderer.
+			 * @return scene renderer associated with this window.
+			 */
+			SceneRenderer* GetSceneRenderer() const { return m_scene_renderer; }
+
             /**
 			 * Set the SceneRenderer and the Camera that will be used to render this window.
 			 * @param scene_renderer The window's new scene renderer.
@@ -84,7 +91,7 @@ namespace brr{
 
 			ViewportID m_viewport = ViewportID::NULL_ID;
 
-			SceneRenderer* m_scene_renderer;
+			SceneRenderer* m_scene_renderer = nullptr;
 
 			// DeviceSwapchain
 			std::unique_ptr<DeviceSwapchain> m_swapchain{};

@@ -1,13 +1,16 @@
 #ifndef BRR_SCENERENDERER_H
 #define BRR_SCENERENDERER_H
 #include <map>
+#include <Core/Ref.h>
 #include <Core/Storage/ContiguousPool.h>
-#include <Renderer/Descriptors.h>
-#include <Renderer/DeviceBuffer.h>
+#include <Renderer/GpuResources/Descriptors.h>
+#include <Renderer/GpuResources/DeviceBuffer.h>
 #include <Renderer/RenderDefs.h>
 #include <Renderer/SceneObjectsIDs.h>
 #include <Scene/Scene.h>
 #include <Visualization/Resources/Image.h>
+
+#include "Storages/MeshStorage.h"
 
 // TODO: How do Camera, Viewport and Window connect with each other?
 
@@ -49,21 +52,9 @@ namespace brr::render
         //--- Surface Functions ---//
         //-------------------------//
 
-        void CreateSurface(SurfaceID surface_id,
-                           EntityID owner_entity,
-                           void* vertex_buffer_data,
-                           size_t vertex_buffer_size,
-                           void* index_buffer_data,
-                           size_t index_buffer_size);
+        void AppendSurfaceToEntity(SurfaceID surface_id, EntityID owner_entity);
 
-        void DestroySurface(SurfaceID surface_id);
-
-        void UpdateSurfaceVertexBuffer(SurfaceID surface_id,
-                                       void* vertex_buffer_data,
-                                       size_t vertex_buffer_size);
-        void UpdateSurfaceIndexBuffer(SurfaceID surface_id,
-                                      void* index_buffer_data,
-                                      size_t index_buffer_size);
+        void NotifySurfaceChanged(SurfaceID surface_id);
 
         //------------------------//
         //--- Lights Functions ---//
@@ -148,15 +139,6 @@ namespace brr::render
 
         bool CreateNewLight(LightID light_id, Light&& new_light);
 
-        void CreateVertexBuffer(void* vertex_buffer_data,
-                                size_t vertex_buffer_size,
-                                SurfaceRenderData& render_data);
-        void CreateIndexBuffer(void* index_buffer_data,
-                               size_t index_buffer_size,
-                               SurfaceRenderData& render_data);
-        void DestroySurfaceBuffers(SurfaceRenderData& render_data);
-
-        //Scene* m_scene;
         VulkanRenderDevice* m_render_device = nullptr;
 
         struct Viewport
@@ -204,29 +186,32 @@ namespace brr::render
             std::array<DeviceBuffer, FRAME_LAG> uniform_buffers;
             std::array<DescriptorSetHandle, FRAME_LAG> descriptor_sets;
             std::array<bool, FRAME_LAG> uniform_dirty{true};
+
+            std::vector<SurfaceID> surfaces;
+            bool surfaces_dirty = false;
         };
 
         struct SurfaceRenderData
         {
             SurfaceRenderData()
-                : m_owner_node(EntityID::NULL_ID)
+                : m_owner_nodes()
             {
             }
 
             SurfaceRenderData(EntityID owner_node_id)
-                : m_owner_node(owner_node_id)
+                : m_owner_nodes(1, owner_node_id)
             {
             }
 
-            EntityID m_owner_node;
+            std::vector<EntityID> m_owner_nodes;
             SurfaceID m_my_surface_id;
 
             VertexBufferHandle m_vertex_buffer_handle{};
             IndexBufferHandle m_index_buffer_handle{};
-            bool m_vertices_dirty = true;
-            bool m_indices_dirty  = true;
 
-            uint32_t num_vertices = 0, num_indices = 0;
+            uint32_t m_num_vertices = 0, m_num_indices = 0;
+
+            bool m_surface_dirty = false;
         };
 
         struct SceneUniformInfo
@@ -243,14 +228,14 @@ namespace brr::render
 
         ContiguousPool<LightID, Light> m_scene_lights;
 
-        std::map<EntityID, EntityInfo> m_entities_map;
+        ContiguousPool<size_t, SurfaceRenderData> m_cached_surfaces;
 
-        ContiguousPool<SurfaceID, SurfaceRenderData> m_render_data;
+        std::map<EntityID, EntityInfo> m_entities_map;
 
         DescriptorLayout m_material_descriptor_layout;
         std::array<DescriptorSetHandle, FRAME_LAG> m_material_descriptor_sets{};
 
-        std::unique_ptr<vis::Image> m_image;
+        Ref<vis::Image> m_image;
         Texture2DHandle m_texture_2d_handle;
         ResourceHandle m_graphics_pipeline;
 

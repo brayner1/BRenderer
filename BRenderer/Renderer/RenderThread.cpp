@@ -9,11 +9,14 @@
 #include <Renderer/Internal/CmdList/RenderUpdateCmdGroup.h>
 #include <Renderer/Internal/IdOwner.h>
 #include <Renderer/Internal/WindowRenderer.h>
+#include <Renderer/Storages/MeshStorage.h>
+#include <Renderer/Storages/RenderStorageGlobals.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 #include <Renderer/SceneRenderer.h>
 
 #include "Internal/CmdList/Executors/SceneRendererCmdListExecutor.h"
 #include "Internal/CmdList/Executors/WindowCmdListExecutor.h"
+#include "Internal/CmdList/Executors/ResourceCmdListExecutor.h"
 
 #include "backends/imgui_impl_sdl2.h"
 
@@ -31,7 +34,6 @@ static RenderUpdateCmdGroup s_current_game_update_cmds;   // RenderUpdateCmdGrou
 
 static IdOwner<uint64_t> s_scene_id_generator;
 static IdOwner<uint32_t> s_entity_id_generator;
-static IdOwner<uint32_t> s_surface_id_generator;
 static IdOwner<uint32_t> s_camera_id_generator;
 static IdOwner<uint32_t> s_light_id_generator;
 
@@ -45,6 +47,10 @@ namespace
 {
     void ExecuteUpdateCommands(RenderUpdateCmdGroup& render_update_cmds)
     {
+        ResourceCmdListExecutor resource_cmd_list_executor (render_update_cmds.resource_cmd_list);
+        resource_cmd_list_executor.ExecuteCmdList();
+        render_update_cmds.resource_cmd_list.clear();
+
         SceneRendererCmdListExecutor scene_renderer_cmd_list_executor(render_update_cmds.scene_cmd_list_map);
         scene_renderer_cmd_list_executor.ExecuteCmdList();
         render_update_cmds.scene_cmd_list_map.clear();
@@ -102,6 +108,10 @@ namespace
             s_available_update_queue.emplace();
         }
         RenderThreadLoop();
+
+        // Execute the last submitted commands from game thread.
+        VKRD::GetSingleton()->WaitIdle();
+        ExecuteUpdateCommands(s_current_render_update_cmds);
 
         SystemsStorage::GetWindowRendererStorage().Clear();
         SystemsStorage::GetSceneRendererStorage().Clear();
@@ -257,6 +267,7 @@ void RenderThread::SceneRenderCmd_UpdateCameraProjection(uint64_t scene_id,
                                                          float camera_near,
                                                          float camera_far)
 {
+    BRR_LogDebug("Pushing RenderCmd to update SceneRenderer Camera projection. Scene ID: {}. Camera ID: {}", scene_id, static_cast<uint32_t>(camera_id));
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateCameraProjectionCommand(
         camera_id, camera_fovy, camera_near, camera_far);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
@@ -277,6 +288,7 @@ EntityID RenderThread::SceneRenderCmd_CreateEntity(uint64_t scene_id,
 void RenderThread::SceneRenderCmd_DestroyEntity(uint64_t scene_id,
                                                 EntityID entity_id)
 {
+    BRR_LogDebug("Pushing RenderCmd to destroy SceneRenderer Entity. Scene ID: {}. Entity ID: {}", scene_id, static_cast<uint32_t>(entity_id));
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyEntityCommand(entity_id);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
@@ -286,54 +298,67 @@ void RenderThread::SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id,
                                                         EntityID entity_id,
                                                         const glm::mat4& entity_transform)
 {
+    BRR_LogDebug("Pushing RenderCmd to update SceneRenderer Entity transform. Scene ID: {}. Entity ID: {}", scene_id, static_cast<uint32_t>(entity_id));
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateEntityTransformCommand(entity_id, entity_transform);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
 }
 
-SurfaceID RenderThread::SceneRenderCmd_CreateSurface(uint64_t scene_id,
-                                                     EntityID entity_id,
-                                                     void* vertex_buffer_data,
-                                                     size_t vertex_buffer_size,
-                                                     void* index_buffer_data,
-                                                     size_t index_buffer_size)
+void RenderThread::SceneRenderCmd_AppendSurfaceToEntity(uint64_t scene_id,
+                                                        EntityID entity_id,
+                                                        SurfaceID surface_id)
 {
-    SurfaceID surface_id           = SurfaceID(s_surface_id_generator.GetNewId());
-    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateSurfaceCommand(
-        entity_id, surface_id, vertex_buffer_data, vertex_buffer_size, index_buffer_data, index_buffer_size);
+    BRR_LogDebug("Pushing RenderCmd to append Surface to SceneRenderer Entity. Scene ID: {}. Entity ID: {}. Surface ID: {}", scene_id, static_cast<uint32_t>(entity_id), static_cast<size_t>(surface_id));
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildAppendSurfaceCommand(entity_id, surface_id);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
+}
+
+// TODO: Notify SceneRenderers when surface is changed/deleted
+// TODO: Verify destruction of surfaces (some exception thrown when closing)
+
+SurfaceID RenderThread::ResourceCmd_CreateSurface(void* vertex_buffer_data,
+                                                  size_t vertex_buffer_size,
+                                                  void* index_buffer_data,
+                                                  size_t index_buffer_size)
+{
+    SurfaceID surface_id         = RenderStorageGlobals::mesh_storage.AllocateSurface();
+    BRR_LogDebug("Pushing RenderCmd to create Render Surface. Surface ID: {}", static_cast<size_t>(surface_id));
+    ResourceCommand resource_cmd = ResourceCommand::BuildCreateSurfaceCommand(surface_id, vertex_buffer_data,
+                                                                              vertex_buffer_size, index_buffer_data,
+                                                                              index_buffer_size);
+
+    ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    resource_cmd_list.push_back(resource_cmd);
     return surface_id;
 }
 
-void RenderThread::SceneRenderCmd_DestroySurface(uint64_t scene_id,
-                                                 SurfaceID surface_id)
+void RenderThread::ResourceCmd_DestroySurface(SurfaceID surface_id)
 {
-    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroySurfaceCommand(surface_id);
-    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
-    scene_cmd_list.push_back(scene_cmd);
+    BRR_LogDebug("Pushing RenderCmd to destroy Render Surface. Surface ID: {}", static_cast<size_t>(surface_id));
+    ResourceCommand resource_cmd       = ResourceCommand::BuildDestroySurfaceCommand(surface_id);
+    ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    resource_cmd_list.push_back(resource_cmd);
 }
 
-void RenderThread::SceneRenderCmd_UpdateSurfaceVertexBuffer(uint64_t scene_id,
-                                                            SurfaceID surface_id,
-                                                            void* vertex_buffer_data,
-                                                            size_t vertex_buffer_size)
+void RenderThread::ResourceCmd_UpdateSurfaceVertexBuffer(SurfaceID surface_id,
+                                                         void* vertex_buffer_data,
+                                                         size_t vertex_buffer_size)
 {
-    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateSurfaceVertexBufferCommand(
-        surface_id, vertex_buffer_data, vertex_buffer_size);
-    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
-    scene_cmd_list.push_back(scene_cmd);
+    //ResourceCommand resource_cmd = ResourceCommand::BuildUpdateSurfaceVertexBufferCommand(
+    //    surface_id, vertex_buffer_data, vertex_buffer_size);
+    //ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    //resource_cmd_list.push_back(resource_cmd);
 }
 
-void RenderThread::SceneRenderCmd_UpdateSurfaceIndexBuffer(uint64_t scene_id,
-                                                           SurfaceID surface_id,
-                                                           void* index_buffer_data,
-                                                           size_t index_buffer_size)
+void RenderThread::ResourceCmd_UpdateSurfaceIndexBuffer(SurfaceID surface_id,
+                                                        void* index_buffer_data,
+                                                        size_t index_buffer_size)
 {
-    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateSurfaceIndexBufferCommand(
-        surface_id, index_buffer_data, index_buffer_size);
-    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
-    scene_cmd_list.push_back(scene_cmd);
+    //ResourceCommand resource_cmd = ResourceCommand::BuildUpdateSurfaceIndexBufferCommand(
+    //    surface_id, index_buffer_data, index_buffer_size);
+    //ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    //resource_cmd_list.push_back(resource_cmd);
 }
 
 LightID RenderThread::SceneRenderCmd_CreatePointLight(uint64_t scene_id,

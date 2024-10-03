@@ -6,7 +6,7 @@ namespace brr::render::internal
 {
     void WindowCmdListExecutor::ExecuteCmdList()
     {
-        for (auto& window_cmd : m_cmd_list)
+        for (auto& window_cmd : m_window_cmd_list)
         {
             ExecuteWindowCommand(window_cmd);
         }

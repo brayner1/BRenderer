@@ -1,7 +1,7 @@
 #include "SceneRendererProxy.h"
 
-#include "Renderer/RenderThread.h"
-#include "Scene/Components/Transform3DComponent.h"
+#include <Renderer/RenderThread.h>
+#include <Scene/Components/Transform3DComponent.h>
 
 using namespace brr::render;
 
@@ -97,20 +97,14 @@ namespace brr::vis
 
     // Surfaces
 
-    SurfaceID SceneRenderProxy::CreateSurface(const Transform3DComponent& owner_entity,
-                                              void* vertex_buffer_data,
-                                              size_t vertex_buffer_size,
-                                              void* index_buffer_data,
-                                              size_t index_buffer_size) const
+    void SceneRenderProxy::AppendSurfaceToEntity(const Transform3DComponent& owner_entity, render::SurfaceID surface_id) const
     {
-        return render::RenderThread::SceneRenderCmd_CreateSurface(m_scene_renderer_id, owner_entity.GetRenderEntityID(),
-                                                                  vertex_buffer_data, vertex_buffer_size, index_buffer_data,
-                                                                  index_buffer_size);
+        RenderThread::SceneRenderCmd_AppendSurfaceToEntity(m_scene_renderer_id, owner_entity.GetRenderEntityID(), surface_id);
     }
 
-    void SceneRenderProxy::DestroySurface(SurfaceID surface_id) const
+    void SceneRenderProxy::EraseSurfaceFromEntity(SurfaceID surface_id) const
     {
-        RenderThread::SceneRenderCmd_DestroySurface(m_scene_renderer_id, surface_id);
+        //RenderThread::ResourceCmd_DestroySurface(surface_id);
     }
 
     // Lights

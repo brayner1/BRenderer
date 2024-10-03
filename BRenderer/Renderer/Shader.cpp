@@ -1,7 +1,7 @@
 #include "Shader.h"
 
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
-#include <Renderer/Descriptors.h>
+#include <Renderer/GpuResources/Descriptors.h>
 #include <Core/LogSystem.h>
 #include <Files/FilesUtils.h>
 

@@ -32,9 +32,15 @@ namespace brr
             return IsValid();
         }
 
+        constexpr operator size_t() const
+        {
+            return (validation << sizeof(uint32_t)) | index;
+        }
+
     protected:
 
         template<typename T> friend class ResourceAllocator;
+        friend struct std::hash<ResourceHandle>;
 
         uint32_t index;
         uint32_t validation;
@@ -46,6 +52,7 @@ namespace brr
      *
      * When creating a resource, a ResourceHandle is returned to represent the new resource.
      * The resource's pointer (T*) can be obtained using the ResourceHandle.
+     * A resource's pointer remains valid until the resource is destroyed.
      * \tparam T Resource type managed by the ResourceAllocator
      */
     template<typename T>
@@ -53,21 +60,68 @@ namespace brr
     {
     public:
 
+        /**
+         * Default constructor
+         * @param chunk_size Size of each data chunk.
+         */
         ResourceAllocator(size_t chunk_size = 65536);
 
+        /**
+         * Allocate a resource but don't initialize it.
+         * @return handle for uninitialized allocated resource
+         */
+        ResourceHandle AllocateResource();
+
+        /**
+         * Initialize (construct) allocated resource.
+         * @tparam Args List of parameters for resource construction.
+         * @param handle Resource handle.
+         * @param args Parameters for initializing resource.
+         * @return Resource pointer. Returns `nullptr` if handle is not valid.
+         */
+        template <typename... Args>
+        T* InitializeResource(const ResourceHandle& handle, Args&&... args);
+
+        /**
+         * Allocate and initialize a new resource.
+         * @tparam Args List of parameters for resource construction.
+         * @param new_resource_ref Pointer to a pointer of the resource. If not `nullptr`, will be assigned with the new resource pointer.
+         * @param args Parameters for initializing resource.
+         * @return Handle of the new resource.
+         */
         template <typename... Args>
         ResourceHandle CreateResource(T** new_resource_ref = nullptr, Args&&... args);
 
+        /**
+         * Destroy the resource owned by the passed handle.
+         * @param handle Resource handle.
+         * @return `true` if resource was succesfully destroyed. `false` otherwise.
+         */
         bool DestroyResource(const ResourceHandle& handle);
 
+        /**
+         * Get a pointer to the resource owned by the passed handle.
+         * @param handle Resource handle.
+         * @return Resource pointer. `nullptr` if handle is not valid.
+         */
         T* GetResource(const ResourceHandle& handle);
 
+        /**
+         * Check if allocator owns resource.
+         * @param handle Resource handle.
+         * @return `true` if allocator owns resource with the passed handle. `false` otherwise.
+         */
         bool OwnsResource(const ResourceHandle& handle) const;
 
     private:
         static constexpr size_t TypeSize = sizeof(T);
 
-        bool ValidateHandle(const ResourceHandle& handle) const;
+        ResourceHandle _AllocateResource();
+
+        template <typename... Args>
+        T* _InitializeResource(const ResourceHandle& handle, Args&&... args);
+
+        bool OwnsHandle(const ResourceHandle& handle) const;
 
         static constexpr uint32_t INVALID_BIT = 0x80000000;
 
@@ -117,41 +171,32 @@ namespace brr
     }
 
     template <typename T>
+    ResourceHandle ResourceAllocator<T>::AllocateResource()
+    {
+        std::lock_guard lock_guard (m_mutex);
+        return _AllocateResource();
+    }
+
+    template <typename T>
+    template <typename ... Args>
+    T* ResourceAllocator<T>::InitializeResource(const ResourceHandle& handle, Args&&... args)
+    {
+        std::lock_guard lock_guard (m_mutex);
+        if (!OwnsHandle(handle))
+        {
+            return nullptr;
+        }
+        return _InitializeResource(handle, std::forward<Args>(args)...);
+    }
+
+    template <typename T>
     template <typename... Args>
     ResourceHandle ResourceAllocator<T>::CreateResource(T** new_resource_ref, Args&&... args)
     {
-        ResourceHandle handle;
         std::lock_guard lock_guard (m_mutex);
+        ResourceHandle handle = _AllocateResource();
 
-        if (m_free_set.empty())
-        {
-            uint32_t previous_size = m_allocated_elements;
-
-            std::allocator<T> allocator;
-            T* new_chunk = allocator.allocate(m_elements_in_chunk * sizeof(T));
-            m_chunks.push_back(new_chunk);
-            m_allocated_elements += m_elements_in_chunk;
-
-            auto new_range = std::ranges::iota_view{previous_size, m_allocated_elements};
-            m_free_set.insert(new_range.begin(), new_range.end());
-
-            m_validation.resize(m_allocated_elements, INVALID_BIT);
-        }
-
-        const uint32_t free_idx = *(m_free_set.begin());
-        m_free_set.erase(m_free_set.begin());
-
-        const uint32_t chunk_idx = free_idx / m_elements_in_chunk;
-        const uint32_t element_idx = free_idx % m_elements_in_chunk;
-
-        handle.index = free_idx;
-
-        handle.validation = m_validation[free_idx] = ValidatorGen::GetNextValidation();
-        assert((handle.validation & INVALID_BIT) == 0 && "Validation value can't contain INVALID_BIT");
-
-        T* resource = m_chunks[chunk_idx] + element_idx;
-        std::construct_at(resource, std::forward<Args>(args)...);
-
+        T* resource = _InitializeResource(handle, std::forward<Args>(args)...);
         if (new_resource_ref)
         {
             *new_resource_ref = resource;
@@ -164,7 +209,7 @@ namespace brr
     bool ResourceAllocator<T>::DestroyResource(const ResourceHandle& handle)
     {
         std::lock_guard lock_guard (m_mutex);
-        if (!ValidateHandle(handle))
+        if (!OwnsHandle(handle))
         {
             return false;
         }
@@ -187,7 +232,7 @@ namespace brr
     T* ResourceAllocator<T>::GetResource(const ResourceHandle& handle)
     {
         std::lock_guard lock_guard (m_mutex);
-        if (!ValidateHandle(handle))
+        if (!OwnsHandle(handle))
         {
             return nullptr;
         }
@@ -202,16 +247,55 @@ namespace brr
     bool ResourceAllocator<T>::OwnsResource(const ResourceHandle& handle) const
     {
         std::lock_guard lock_guard (m_mutex);
-        if (!ValidateHandle(handle))
-        {
-            return false;
-        }
-
-        return true;
+        return OwnsHandle(handle);
     }
 
     template <typename T>
-    bool ResourceAllocator<T>::ValidateHandle(const ResourceHandle& handle) const
+    ResourceHandle ResourceAllocator<T>::_AllocateResource()
+    {
+        ResourceHandle handle;
+
+        if (m_free_set.empty())
+        {
+            uint32_t previous_size = m_allocated_elements;
+
+            std::allocator<T> allocator;
+            T* new_chunk = allocator.allocate(m_elements_in_chunk * sizeof(T));
+            m_chunks.push_back(new_chunk);
+            m_allocated_elements += m_elements_in_chunk;
+
+            auto new_range = std::ranges::iota_view{previous_size, m_allocated_elements};
+            m_free_set.insert(new_range.begin(), new_range.end());
+
+            m_validation.resize(m_allocated_elements, INVALID_BIT);
+        }
+
+        const uint32_t free_idx = *(m_free_set.begin());
+        m_free_set.erase(m_free_set.begin());
+
+        handle.index = free_idx;
+
+        handle.validation = m_validation[free_idx] = ValidatorGen::GetNextValidation();
+        assert((handle.validation & INVALID_BIT) == 0 && "Validation value can't contain INVALID_BIT");
+
+        return handle;
+    }
+
+    template <typename T>
+    template <typename ... Args>
+    T* ResourceAllocator<T>::_InitializeResource(const ResourceHandle& handle, Args&&... args)
+    {
+        const uint32_t chunk_idx = handle.index / m_elements_in_chunk;
+        const uint32_t element_idx = handle.index % m_elements_in_chunk;
+
+        T* resource = m_chunks[chunk_idx] + element_idx;
+        std::construct_at(resource, std::forward<Args>(args)...);
+
+        return resource;
+    }
+
+    template <typename T>
+    bool ResourceAllocator<T>::OwnsHandle(const ResourceHandle& handle) const
     {
         if (handle.index >= m_allocated_elements)
         {
@@ -238,5 +322,13 @@ namespace brr
         return true;
     }
 }
+
+template <>
+struct std::hash<brr::ResourceHandle>
+{
+    [[nodiscard]] size_t operator()(const brr::ResourceHandle& resource) const noexcept {
+        return std::hash<uint64_t>()(resource);
+    }
+};
 
 #endif
