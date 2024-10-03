@@ -4,6 +4,7 @@
 #include "CmdList.h"
 
 #include <Renderer/SceneObjectsIDs.h>
+#include <Renderer/SceneResourcesHandles.h>
 
 #include <Core/thirdpartiesInc.h>
 
@@ -16,10 +17,7 @@ namespace brr::render::internal
         CreateEntity,
         DestroyEntity,
         UpdateEntityTransform,
-        CreateSurface,
-        DestroySurface,
-        UpdateSurfaceVertexBuffer,
-        UpdateSurfaceIndexBuffer,
+        AppendSurface,
         CreateCamera,
         DestroyCamera,
         UpdateCameraProjection,
@@ -78,57 +76,13 @@ namespace brr::render::internal
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildCreateSurfaceCommand(EntityID entity_id,
-                                                              SurfaceID surface_id,
-                                                              void* vertex_buffer,
-                                                              size_t vertex_buffer_size,
-                                                              void* index_buffer,
-                                                              size_t index_buffer_size)
+        static SceneRendererCommand BuildAppendSurfaceCommand(EntityID entity_id,
+                                                              SurfaceID surface_id)
         {
             SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type                       = SceneRendererCmdType::CreateSurface;
+            scene_rend_command.command_type                       = SceneRendererCmdType::AppendSurface;
             scene_rend_command.surface_command.owner_entity_id    = entity_id;
             scene_rend_command.surface_command.surface_id         = surface_id;
-            scene_rend_command.surface_command.vertex_buffer_data = malloc(vertex_buffer_size);
-            scene_rend_command.surface_command.vertex_buffer_size = vertex_buffer_size;
-            memcpy(scene_rend_command.surface_command.vertex_buffer_data, vertex_buffer, vertex_buffer_size);
-            scene_rend_command.surface_command.index_buffer_data  = malloc(index_buffer_size);
-            scene_rend_command.surface_command.index_buffer_size  = index_buffer_size;
-            memcpy(scene_rend_command.surface_command.index_buffer_data, index_buffer, index_buffer_size);
-            return scene_rend_command;
-        }
-
-        static SceneRendererCommand BuildDestroySurfaceCommand(SurfaceID surface_id)
-        {
-            SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type               = SceneRendererCmdType::DestroySurface;
-            scene_rend_command.surface_command.surface_id = surface_id;
-            return scene_rend_command;
-        }
-
-        static SceneRendererCommand BuildUpdateSurfaceVertexBufferCommand(SurfaceID surface_id,
-                                                                          void* vertex_buffer,
-                                                                          size_t vertex_buffer_size)
-        {
-            SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type                  = SceneRendererCmdType::UpdateSurfaceVertexBuffer;
-            scene_rend_command.surface_command.surface_id    = surface_id;
-            scene_rend_command.surface_command.vertex_buffer_data = malloc(vertex_buffer_size);
-            scene_rend_command.surface_command.vertex_buffer_size = vertex_buffer_size;
-            memcpy(scene_rend_command.surface_command.vertex_buffer_data, vertex_buffer, vertex_buffer_size);
-            return scene_rend_command;
-        }
-
-        static SceneRendererCommand BuildUpdateSurfaceIndexBufferCommand(SurfaceID surface_id,
-                                                                         void* index_buffer,
-                                                                         size_t index_buffer_size)
-        {
-            SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type                 = SceneRendererCmdType::UpdateSurfaceIndexBuffer;
-            scene_rend_command.surface_command.surface_id   = surface_id;
-            scene_rend_command.surface_command.index_buffer_data  = malloc(index_buffer_size);
-            scene_rend_command.surface_command.index_buffer_size  = index_buffer_size;
-            memcpy(scene_rend_command.surface_command.index_buffer_data, index_buffer, index_buffer_size);
             return scene_rend_command;
         }
 
@@ -309,11 +263,7 @@ namespace brr::render::internal
             struct
             {
                 EntityID owner_entity_id{EntityID::NULL_ID};
-                SurfaceID surface_id{SurfaceID::NULL_ID};
-                void* vertex_buffer_data{nullptr};
-                size_t vertex_buffer_size{0};
-                void* index_buffer_data{nullptr};
-                size_t index_buffer_size{0};
+                SurfaceID surface_id{};
             } surface_command;
 
             struct
@@ -354,25 +304,8 @@ namespace brr::render::internal
             case SceneRendererCmdType::UpdateEntityTransform:
                 this->entity_command = other.entity_command;
                 break;
-            case SceneRendererCmdType::CreateSurface:
-            case SceneRendererCmdType::DestroySurface:
-            case SceneRendererCmdType::UpdateSurfaceVertexBuffer:
-            case SceneRendererCmdType::UpdateSurfaceIndexBuffer:
+            case SceneRendererCmdType::AppendSurface:
                 this->surface_command = other.surface_command;
-                this->surface_command.vertex_buffer_data = nullptr;
-                if (other.surface_command.vertex_buffer_size > 0)
-                {
-                    this->surface_command.vertex_buffer_data = malloc(other.surface_command.vertex_buffer_size);
-                    memcpy(this->surface_command.vertex_buffer_data, other.surface_command.vertex_buffer_data, other.surface_command.vertex_buffer_size);
-                }
-                this->surface_command.index_buffer_data = nullptr;
-                if (other.surface_command.index_buffer_size > 0)
-                {
-                    this->surface_command.index_buffer_data = malloc(other.surface_command.index_buffer_size);
-                    memcpy(this->surface_command.index_buffer_data, other.surface_command.index_buffer_data, other.surface_command.index_buffer_size);
-                }
-                this->surface_command.vertex_buffer_size = other.surface_command.vertex_buffer_size;
-                this->surface_command.index_buffer_size = other.surface_command.index_buffer_size;
                 break;
             case SceneRendererCmdType::CreateCamera:
             case SceneRendererCmdType::DestroyCamera:

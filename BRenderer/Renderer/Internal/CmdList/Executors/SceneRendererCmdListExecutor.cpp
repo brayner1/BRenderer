@@ -47,6 +47,15 @@ namespace brr::render::internal
                                          scene_id);
                             break;
                         }
+
+                        for (auto& window_renderer : SystemsStorage::GetWindowRendererStorage())
+                        {
+                            if (window_renderer.second->GetSceneRenderer() == scene_renderer)
+                            {
+                                window_renderer.second->SetSceneRenderer(nullptr, CameraID::NULL_ID);
+                            }
+                        }
+
                         scene_renderer_storage.Erase(scene_id);
                         scene_renderer = nullptr;
                         BRR_LogDebug("RenderThread: SceneRenderer (ID: {}) destroyed.", scene_id);
@@ -84,26 +93,9 @@ namespace brr::render::internal
             scene_renderer->UpdateEntityTransform(scene_command.entity_command.entity_id,
                                                   scene_command.entity_command.entity_transform);
             break;
-        case SceneRendererCmdType::CreateSurface:
-            scene_renderer->CreateSurface(scene_command.surface_command.surface_id,
-                                             scene_command.entity_command.entity_id,
-                                             scene_command.surface_command.vertex_buffer_data,
-                                             scene_command.surface_command.vertex_buffer_size,
-                                             scene_command.surface_command.index_buffer_data,
-                                             scene_command.surface_command.index_buffer_size);
-            free(scene_command.surface_command.vertex_buffer_data);
-            free(scene_command.surface_command.index_buffer_data);
-            break;
-        case SceneRendererCmdType::DestroySurface:
-            scene_renderer->DestroySurface(scene_command.surface_command.surface_id);
-            break;
-        case SceneRendererCmdType::UpdateSurfaceVertexBuffer:
-            // TODO: Implement update vertex buffer function
-            free(scene_command.surface_command.vertex_buffer_data);
-            break;
-        case SceneRendererCmdType::UpdateSurfaceIndexBuffer:
-            // TODO: Implement update index buffer function
-            free(scene_command.surface_command.index_buffer_data);
+        case SceneRendererCmdType::AppendSurface:
+            scene_renderer->AppendSurfaceToEntity(scene_command.surface_command.surface_id,
+                                                  scene_command.entity_command.entity_id);
             break;
         case SceneRendererCmdType::CreateCamera:
             scene_renderer->CreateCamera(scene_command.camera_command.camera_id,

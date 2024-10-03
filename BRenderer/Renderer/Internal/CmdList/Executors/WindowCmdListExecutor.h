@@ -12,7 +12,7 @@ namespace brr::render::internal
     public:
 
         WindowCmdListExecutor(const CmdList<WindowCommand>& cmd_list)
-        : m_cmd_list(cmd_list)
+        : m_window_cmd_list(cmd_list)
         {}
 
         void ExecuteCmdList();
@@ -21,7 +21,7 @@ namespace brr::render::internal
 
         void ExecuteWindowCommand(const WindowCommand& window_command) const;
 
-        const CmdList<WindowCommand>& m_cmd_list;
+        const CmdList<WindowCommand>& m_window_cmd_list;
 
     };
 }

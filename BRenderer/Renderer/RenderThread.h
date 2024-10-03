@@ -4,8 +4,7 @@
 #include <Core/thirdpartiesInc.h>
 
 #include <Renderer/SceneObjectsIDs.h>
-
-#include "imgui.h"
+#include <Renderer/SceneResourcesHandles.h>
 
 namespace brr::render
 {
@@ -70,29 +69,26 @@ namespace brr::render
         static void SceneRenderCmd_DestroyEntity(uint64_t scene_id, EntityID entity_id);
         static void SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id, EntityID entity_id, const glm::mat4& entity_transform);
 
+        static void SceneRenderCmd_AppendSurfaceToEntity(uint64_t scene_id, EntityID entity_id, SurfaceID surface_id);
+
         /********************
          * Surface Commands *
          ********************/
 
-        static SurfaceID SceneRenderCmd_CreateSurface(uint64_t scene_id,
-                                                     EntityID entity_id,
-                                                     void* vertex_buffer_data,
-                                                     size_t vertex_buffer_size,
-                                                     void* index_buffer_data,
-                                                     size_t index_buffer_size);
+        static SurfaceID ResourceCmd_CreateSurface(void* vertex_buffer_data,
+                                                   size_t vertex_buffer_size,
+                                                   void* index_buffer_data,
+                                                   size_t index_buffer_size);
 
-        static void SceneRenderCmd_DestroySurface(uint64_t scene_id,
-                                                  SurfaceID surface_id);
+        static void ResourceCmd_DestroySurface(SurfaceID surface_id);
 
-        static void SceneRenderCmd_UpdateSurfaceVertexBuffer(uint64_t scene_id,
-                                                             SurfaceID surface_id,
-                                                             void* vertex_buffer_data,
-                                                             size_t vertex_buffer_size);
+        static void ResourceCmd_UpdateSurfaceVertexBuffer(SurfaceID surface_id,
+                                                          void* vertex_buffer_data,
+                                                          size_t vertex_buffer_size);
 
-        static void SceneRenderCmd_UpdateSurfaceIndexBuffer(uint64_t scene_id,
-                                                            SurfaceID surface_id,
-                                                            void* index_buffer_data,
-                                                            size_t index_buffer_size);
+        static void ResourceCmd_UpdateSurfaceIndexBuffer(SurfaceID surface_id,
+                                                         void* index_buffer_data,
+                                                         size_t index_buffer_size);
 
         /*******************
          * Lights Commands *

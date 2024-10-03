@@ -2,7 +2,7 @@
 
 #include <Renderer/Internal//WindowRenderer.h>
 #include <Renderer/RenderDefs.h>
-#include <Renderer/Descriptors.h>
+#include <Renderer/GpuResources/Descriptors.h>
 #include <Renderer/Vulkan/VKDescriptors.h>
 
 #include <Core/LogSystem.h>

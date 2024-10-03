@@ -45,6 +45,7 @@ namespace brr::vis
 
 		m_main_window.reset();
 
+		render::RenderThread::MainThread_SyncUpdate(); // Submit last updates.
         render::RenderThread::StopRenderingThread();
 
 		SDL_Quit();

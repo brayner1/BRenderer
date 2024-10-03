@@ -328,9 +328,11 @@ namespace brr::editor
 
     void DrawMesh3DComponent(Mesh3DComponent& mesh_component)
     {
-        auto& surfaces = mesh_component.GetMeshSurfaces();
+        Ref<vis::Mesh3D> mesh = mesh_component.GetMesh();
+        auto surfaces = mesh->GetSurfacesIDs();
         ImGui::SeparatorText("Mesh Data");
-        ImGui::Text("Surfaces Number: %d", mesh_component.GetSurfaceCount());
+        ImGui::Text("Mesh UUID: %u", mesh->GetUUID());
+        ImGui::Text("Surfaces Number: %d", surfaces.size());
         ImGui::SeparatorText("Mesh Surfaces");
         if (ImGui::BeginTable("SurfaceTable", 1, ImGuiTableFlags_BordersH | ImGuiTableFlags_BordersInnerV))
         {
@@ -343,8 +345,8 @@ namespace brr::editor
                 ImGui::TableNextColumn();
                 ImGui::PushID(&surface);
                 ImGui::Text("Surface %d", surface_idx);
-                ImGui::Text("Vertices Count: %d", surface.GetVertices().size());
-                ImGui::Text("Indices Count: %d", surface.GetIndices().size());
+                ImGui::Text("Vertices Count: %d", mesh->GetSurfaceVertexCount(surface));
+                ImGui::Text("Indices Count: %d", mesh->GetSurfaceIndexCount(surface));
                 ImGui::PopID();
                 surface_idx++;
             }

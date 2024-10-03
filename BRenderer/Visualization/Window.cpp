@@ -38,6 +38,7 @@ namespace brr::vis
 	{
 		if (m_window)
 		{
+			m_scene_view.UnsetCamera();
             render::RenderThread::WindowRenderCmd_DestroyWindowRenderer(m_window);
 			SDL_DestroyWindow(m_window);
 			m_window = nullptr;

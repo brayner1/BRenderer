@@ -3,7 +3,7 @@
 
 #include <Renderer/Vulkan/VulkanInc.h>
 #include <Renderer/RenderEnums.h>
-#include <Renderer/RenderResourcesHandles.h>
+#include <Renderer/GpuResources/GpuResourcesHandles.h>
 
 #include <vector>
 

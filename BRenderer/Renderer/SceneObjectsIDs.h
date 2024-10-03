@@ -13,11 +13,6 @@ namespace brr::render
         NULL_ID = static_cast<uint32_t>(-1)
     };
 
-    enum class SurfaceID : uint32_t
-    {
-        NULL_ID = static_cast<uint32_t>(-1)
-    };
-
     enum class LightID : uint32_t
     {
         NULL_ID = static_cast<uint32_t>(-1)

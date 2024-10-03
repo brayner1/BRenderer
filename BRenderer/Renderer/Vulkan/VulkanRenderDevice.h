@@ -7,7 +7,7 @@
 #include <Renderer/Vulkan/VulkanInc.h>
 #include <Renderer/RenderDefs.h>
 #include <Renderer/RenderEnums.h>
-#include <Renderer/RenderResourcesHandles.h>
+#include <Renderer/GpuResources/GpuResourcesHandles.h>
 #include <Renderer/Shader.h>
 
 struct ImDrawData;

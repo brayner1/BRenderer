@@ -1,11 +1,13 @@
 #ifndef BRR_SCENERENDERPROXY_H
 #define BRR_SCENERENDERPROXY_H
 
-#include <Core/thirdpartiesInc.h>
 #include <cstdint>
+
 #include <Core/Storage/ContiguousPool.h>
+#include <Core/thirdpartiesInc.h>
 
 #include <Renderer/SceneObjectsIDs.h>
+#include <Renderer/SceneResourcesHandles.h>
 
 namespace brr
 {
@@ -48,13 +50,9 @@ namespace brr::vis
 
         // Surface
 
-        render::SurfaceID CreateSurface(const Transform3DComponent& owner_entity,
-                                        void* vertex_buffer_data,
-                                        size_t vertex_buffer_size,
-                                        void* index_buffer_data,
-                                        size_t index_buffer_size) const;
+        void AppendSurfaceToEntity(const Transform3DComponent& owner_entity, render::SurfaceID surface_id) const;
 
-        void DestroySurface(render::SurfaceID surface_id) const;
+        void EraseSurfaceFromEntity(render::SurfaceID surface_id) const;
 
         // Lights
 

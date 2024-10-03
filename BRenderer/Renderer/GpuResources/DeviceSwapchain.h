@@ -2,7 +2,7 @@
 #define BRR_SWAPCHAIN_H
 
 #include <Renderer/Vulkan/VulkanInc.h>
-#include <Renderer/RenderResourcesHandles.h>
+#include <Renderer/GpuResources/GpuResourcesHandles.h>
 
 #include <Core/thirdpartiesInc.h>
 

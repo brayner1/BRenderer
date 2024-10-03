@@ -89,7 +89,10 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 						indices[index_idx+2] = face.mIndices[2];
 					}
 
-					mesh_component.AddSurface(vertices, indices);
+                    brr::Ref<brr::vis::Mesh3D> mesh_3d = brr::Ref(new brr::vis::Mesh3D());
+					mesh_3d->AddSurface(vertices, indices);
+
+					mesh_component.SetMesh(mesh_3d);
 				}
 			}
 		}

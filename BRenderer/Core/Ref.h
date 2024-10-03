@@ -60,15 +60,20 @@ namespace brr
             return *this;
         }
 
-        Ref<Ty>& operator=(Ref<Ty>&& other)
+        Ref<Ty>& operator=(Ref<Ty>&& other) noexcept
         {
             m_ref = other.m_ref;
             other.m_ref = nullptr;
+            return *this;
         }
 
         Ty& operator*() const { return *m_ref; }
 
         Ty* operator->() const { return m_ref; }
+
+        operator bool() { return m_ref != nullptr; }
+
+        bool operator==(const Ref& other) const { return m_ref == other.m_ref; }
 
         Ty* Ptr() const { return m_ref; }
 
@@ -100,7 +105,7 @@ namespace brr
             m_ref = nullptr;
         }
 
-        Ty* m_ref;
+        Ty* m_ref = nullptr;
     };
 }
 
