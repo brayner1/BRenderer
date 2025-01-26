@@ -104,7 +104,7 @@ namespace brr
          * @param handle Resource handle.
          * @return Resource pointer. `nullptr` if handle is not valid.
          */
-        T* GetResource(const ResourceHandle& handle);
+        T* GetResource(const ResourceHandle& handle) const;
 
         /**
          * Check if allocator owns resource.
@@ -229,7 +229,7 @@ namespace brr
     }
 
     template <typename T>
-    T* ResourceAllocator<T>::GetResource(const ResourceHandle& handle)
+    T* ResourceAllocator<T>::GetResource(const ResourceHandle& handle) const
     {
         std::lock_guard lock_guard (m_mutex);
         if (!OwnsHandle(handle))

@@ -4,7 +4,7 @@
 #include <Core/Storage/ResourceAllocator.h>
 #include <Geometry/Geometry.h>
 #include <Renderer/GpuResources/GpuResourcesHandles.h>
-#include <Renderer/SceneResourcesHandles.h>
+#include <Renderer/RenderingResourceIDs.h>
 
 namespace brr::render
 {

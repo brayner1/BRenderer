@@ -1,5 +1,5 @@
-#ifndef BRR_SCENERESOURCESHANDLES_H
-#define BRR_SCENERESOURCESHANDLES_H
+#ifndef BRR_RENDERINGRESOURCEIDS_H
+#define BRR_RENDERINGRESOURCEIDS_H
 
 #include <Core/Storage/ResourceAllocator.h>
 
@@ -10,6 +10,15 @@ namespace brr::render
         SurfaceID() = default;
 
         SurfaceID(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
+
+    struct TextureID : public ResourceHandle
+    {
+        TextureID() = default;
+
+        TextureID(const ResourceHandle& resource_handle)
         : ResourceHandle(resource_handle)
         {}
     };

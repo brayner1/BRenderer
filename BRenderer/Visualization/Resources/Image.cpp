@@ -3,6 +3,7 @@
 #include <Core/LogSystem.h>
 
 #define STB_IMAGE_IMPLEMENTATION
+#include <Renderer/RenderThread.h>
 #include <stb/stb_image.h>
 
 namespace brr::vis
@@ -34,6 +35,8 @@ namespace brr::vis
         m_totalSize = w * h * 4;
 
         SetPath(image_path.string());
+
+        m_texture_id = render::RenderThread::ResourceCmd_CreateTexture2D(m_buffer, w, h, render::DataFormat::R8G8B8A8_SRGB);
     }
 
     Image::Image(uint32_t width, uint32_t height, uint8_t* data)
@@ -53,5 +56,6 @@ namespace brr::vis
     Image::~Image()
     {
         stbi_image_free(m_buffer);
+        render::RenderThread::ResourceCmd_DestroyTexture2D(m_texture_id);
     }
 }

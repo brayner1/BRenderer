@@ -65,17 +65,12 @@ namespace brr::render
 
         SetupSceneUniforms();
 
-        m_image = Ref<vis::Image>(AssetManager::GetAsset("Resources/UV_Grid.png"));//std::make_unique<vis::Image>("Resources/UV_Grid.png");
+        m_image = Ref<vis::Image>(AssetManager::GetAsset("Resources/UV_Grid.png"));
 
-        m_texture_2d_handle = m_render_device->Create_Texture2D(m_image->Width(), m_image->Height(),
-                                                                ImageUsage::TransferDstImage |
-                                                                ImageUsage::SampledImage,
-                                                                DataFormat::R8G8B8A8_SRGB);
-        if (m_texture_2d_handle != null_handle)
-        {
-            m_render_device->UpdateTexture2DData(m_texture_2d_handle, m_image->Data(), m_image->DataSize(), {0, 0},
-                                                 {m_image->Width(), m_image->Height()});
-        }
+        TextureID texture_id = m_image->GetTextureID();
+        TextureStorage::Texture* texture = RenderStorageGlobals::texture_storage.GetTexture(texture_id);
+        m_texture_2d_handle = texture->texture_2d_handle;
+
         SetupMaterialUniforms();
     }
 

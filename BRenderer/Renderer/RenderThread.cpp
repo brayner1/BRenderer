@@ -314,8 +314,27 @@ void RenderThread::SceneRenderCmd_AppendSurfaceToEntity(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
-// TODO: Notify SceneRenderers when surface is changed/deleted
-// TODO: Verify destruction of surfaces (some exception thrown when closing)
+TextureID RenderThread::ResourceCmd_CreateTexture2D(const void* image_data,
+                                                    uint32_t width,
+                                                    uint32_t height,
+                                                    DataFormat image_format)
+{
+    TextureID texture_id = RenderStorageGlobals::texture_storage.AllocateTexture();
+    BRR_LogDebug("Pushing RenderCmd to create Texture2D. Texture2D ID: {}", static_cast<size_t>(texture_id));
+    ResourceCommand resource_cmd = ResourceCommand::BuildCreateTexture2DCommand(
+        texture_id, image_data, width, height, image_format);
+    ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    resource_cmd_list.push_back(resource_cmd);
+    return texture_id;
+}
+
+void RenderThread::ResourceCmd_DestroyTexture2D(TextureID texture_id)
+{
+    BRR_LogDebug("Pushing RenderCmd to destroy Texture2D. Texture2D ID: {}", static_cast<size_t>(texture_id));
+    ResourceCommand resource_cmd = ResourceCommand::BuildDestroyTexture2DCommand(texture_id);
+    ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    resource_cmd_list.push_back(resource_cmd);
+}
 
 SurfaceID RenderThread::ResourceCmd_CreateSurface(void* vertex_buffer_data,
                                                   size_t vertex_buffer_size,

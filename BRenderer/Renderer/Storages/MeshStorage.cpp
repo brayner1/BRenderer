@@ -36,6 +36,13 @@ void MeshStorage::InitSurface(SurfaceID surface_id,
                               size_t index_buffer_size)
 {
     RenderSurface* surface = m_surfaces_allocator.InitializeResource(surface_id, RenderSurface());
+
+    if (!surface)
+    {
+        BRR_LogError("Trying to initialize Surface (ID: {}) that does not exist.", static_cast<uint64_t>(surface_id));
+        return;
+    }
+
     if (!vertex_buffer_data || vertex_buffer_size == 0)
     {
         BRR_LogError("Vertex Buffer data can't be null or empty.");

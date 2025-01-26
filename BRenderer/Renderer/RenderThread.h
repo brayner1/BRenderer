@@ -3,8 +3,9 @@
 
 #include <Core/thirdpartiesInc.h>
 
+#include <Renderer/RenderEnums.h>
+#include <Renderer/RenderingResourceIDs.h>
 #include <Renderer/SceneObjectsIDs.h>
-#include <Renderer/SceneResourcesHandles.h>
 
 namespace brr::render
 {
@@ -70,6 +71,13 @@ namespace brr::render
         static void SceneRenderCmd_UpdateEntityTransform(uint64_t scene_id, EntityID entity_id, const glm::mat4& entity_transform);
 
         static void SceneRenderCmd_AppendSurfaceToEntity(uint64_t scene_id, EntityID entity_id, SurfaceID surface_id);
+
+        /**********************
+         * Texture2D Commands *
+         **********************/
+
+        static TextureID ResourceCmd_CreateTexture2D(const void* image_data, uint32_t width, uint32_t height, DataFormat image_format);
+        static void ResourceCmd_DestroyTexture2D(TextureID texture_id);
 
         /********************
          * Surface Commands *
