@@ -50,6 +50,7 @@ set(BRenderer_SOURCE_FILES
     "Scene/Components/Transform3DComponent.cpp"
  
     "Visualization/Resources/Image.cpp"
+    "Visualization/Resources/Mesh3D.cpp"
     "Visualization/SceneRendererProxy.cpp"
     "Visualization/SceneView.cpp"
     "Visualization/Window.cpp"
@@ -66,6 +67,8 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Internal/CmdList/Executors/WindowCmdListExecutor.cpp"
     "Renderer/Internal/WindowRenderer.cpp"
     "Renderer/Storages/MeshStorage.cpp"
+    "Renderer/Storages/RenderStorageGlobals.cpp"
+    "Renderer/Storages/TextureStorage.cpp"
     "Renderer/Vulkan/VkDescriptors.cpp"
     "Renderer/Vulkan/VkInitializerHelper.cpp" 
     "Renderer/Vulkan/VmaImpl.cpp"
@@ -80,7 +83,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Shader.cpp" 
     
     "Files/FilesUtils.cpp" 
- "Renderer/Storages/RenderStorageGlobals.cpp" "Visualization/Resources/Mesh3D.cpp")
+)
 
 set(BRenderer_HEADER_FILES
     "Core/Assets/Asset.h"
@@ -117,6 +120,7 @@ set(BRenderer_HEADER_FILES
     "Scene/SceneComponentsView.h"
 
     "Visualization/Resources/Image.h"
+    "Visualization/Resources/Mesh3D.h"
     "Visualization/SceneRendererProxy.h"
     "Visualization/SceneView.h"
     "Visualization/Window.h"
@@ -133,12 +137,14 @@ set(BRenderer_HEADER_FILES
     "Renderer/Internal/CmdList/Executors/WindowCmdListExecutor.h"
     "Renderer/Internal/CmdList/CmdList.h"
     "Renderer/Internal/CmdList/RenderUpdateCmdGroup.h"
+    "Renderer/Internal/CmdList/ResourceCmdList.h"
     "Renderer/Internal/CmdList/SceneRendererCmdList.h"
     "Renderer/Internal/CmdList/WindowCmdList.h"
     "Renderer/Internal/IdOwner.h"
     "Renderer/Internal/WindowRenderer.h"
     "Renderer/Storages/MeshStorage.h"
     "Renderer/Storages/RenderStorageGlobals.h"
+    "Renderer/Storages/TextureStorage.h"
     "Renderer/Vulkan/VKDescriptors.h"
     "Renderer/Vulkan/VkInitializerHelper.h"
     "Renderer/Vulkan/VulkanInc.h"
@@ -153,12 +159,12 @@ set(BRenderer_HEADER_FILES
     "Renderer/RenderThread.h"
     "Renderer/SceneObjectsIDs.h"
     "Renderer/SceneRenderer.h"
-    "Renderer/SceneResourcesHandles.h"
+    "Renderer/RenderingResourceIDs.h"
     "Renderer/GpuResources/GpuResourcesHandles.h"
     "Renderer/Shader.h"
    
     "Files/FilesUtils.h"
- "Renderer/Internal/CmdList/ResourceCmdList.h" "Visualization/Resources/Mesh3D.h") 
+) 
 
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")

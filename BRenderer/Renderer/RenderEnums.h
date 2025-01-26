@@ -209,6 +209,129 @@ namespace brr::render
     {
         return static_cast<ShaderStageFlag>(static_cast<int>(a) | static_cast<int>(b));
     }
+
+    inline size_t GetDataFormatByteSize(DataFormat data_format)
+    {
+        switch (data_format) {
+        case DataFormat::Undefined:
+            return 0;
+        case DataFormat::R8_UNorm:
+        case DataFormat::R8_SNorm:
+        case DataFormat::R8_UScaled:
+        case DataFormat::R8_SScaled:
+        case DataFormat::R8_UInt:
+        case DataFormat::R8_SInt:
+            return 1;
+        case DataFormat::R16_UNorm:
+        case DataFormat::R16_SNorm:
+        case DataFormat::R16_UScaled:
+        case DataFormat::R16_SScaled:
+        case DataFormat::R16_UInt:
+        case DataFormat::R16_SInt:
+        case DataFormat::R16_Float:
+        case DataFormat::R8G8_UNorm:
+        case DataFormat::R8G8_SNorm:
+        case DataFormat::R8G8_UScaled:
+        case DataFormat::R8G8_SScaled:
+        case DataFormat::R8G8_UInt:
+        case DataFormat::R8G8_SInt:
+        case DataFormat::R8G8_SRGB:
+            return 2;
+        case DataFormat::R8G8B8_UNorm:
+        case DataFormat::R8G8B8_SNorm:
+        case DataFormat::R8G8B8_UScaled:
+        case DataFormat::R8G8B8_SScaled:
+        case DataFormat::R8G8B8_UInt:
+        case DataFormat::R8G8B8_SInt:
+        case DataFormat::R8G8B8_SRGB:
+        case DataFormat::B8G8R8_UNorm:
+        case DataFormat::B8G8R8_SNorm:
+        case DataFormat::B8G8R8_UScaled:
+        case DataFormat::B8G8R8_SScaled:
+        case DataFormat::B8G8R8_UInt:
+        case DataFormat::B8G8R8_SInt:
+        case DataFormat::B8G8R8_SRGB:
+            return 3;
+        case DataFormat::R32_UInt:
+        case DataFormat::R32_SInt:
+        case DataFormat::R32_Float:
+        case DataFormat::R16G16_UNorm:
+        case DataFormat::R16G16_SNorm:
+        case DataFormat::R16G16_UScaled:
+        case DataFormat::R16G16_SScaled:
+        case DataFormat::R16G16_UInt:
+        case DataFormat::R16G16_SInt:
+        case DataFormat::R16G16_Float:
+        case DataFormat::R8G8B8A8_UNorm:
+        case DataFormat::R8G8B8A8_SNorm:
+        case DataFormat::R8G8B8A8_UScaled:
+        case DataFormat::R8G8B8A8_SScaled:
+        case DataFormat::R8G8B8A8_UInt:
+        case DataFormat::R8G8B8A8_SInt:
+        case DataFormat::R8G8B8A8_SRGB:
+        case DataFormat::B8G8R8A8_UNorm:
+        case DataFormat::B8G8R8A8_SNorm:
+        case DataFormat::B8G8R8A8_UScaled:
+        case DataFormat::B8G8R8A8_SScaled:
+        case DataFormat::B8G8R8A8_UInt:
+        case DataFormat::B8G8R8A8_SInt:
+        case DataFormat::B8G8R8A8_SRGB:
+            return 4;
+        case DataFormat::R16G16B16_UNorm:
+        case DataFormat::R16G16B16_SNorm:
+        case DataFormat::R16G16B16_UScaled:
+        case DataFormat::R16G16B16_SScaled:
+        case DataFormat::R16G16B16_UInt:
+        case DataFormat::R16G16B16_SInt:
+        case DataFormat::R16G16B16_Float:
+            return 6;
+        case DataFormat::R64_UInt:
+        case DataFormat::R64_SInt:
+        case DataFormat::R64_Float:
+        case DataFormat::R32G32_UInt:
+        case DataFormat::R32G32_SInt:
+        case DataFormat::R32G32_Float:
+        case DataFormat::R16G16B16A16_UNorm:
+        case DataFormat::R16G16B16A16_SNorm:
+        case DataFormat::R16G16B16A16_UScaled:
+        case DataFormat::R16G16B16A16_SScaled:
+        case DataFormat::R16G16B16A16_UInt:
+        case DataFormat::R16G16B16A16_SInt:
+        case DataFormat::R16G16B16A16_Float:
+            return 8;
+        case DataFormat::R32G32B32_UInt:
+        case DataFormat::R32G32B32_SInt:
+        case DataFormat::R32G32B32_Float:
+            return 12;
+        case DataFormat::R64G64_UInt:
+        case DataFormat::R64G64_SInt:
+        case DataFormat::R64G64_Float:
+        case DataFormat::R32G32B32A32_UInt:
+        case DataFormat::R32G32B32A32_SInt:
+        case DataFormat::R32G32B32A32_Float:
+            return 16;
+        case DataFormat::R64G64B64_UInt:
+        case DataFormat::R64G64B64_SInt:
+        case DataFormat::R64G64B64_Float:
+            return 24;
+        case DataFormat::R64G64B64A64_UInt:
+        case DataFormat::R64G64B64A64_SInt:
+        case DataFormat::R64G64B64A64_Float:
+            return 32;
+        case DataFormat::D16_UNorm:
+            return 2;
+        case DataFormat::D32_Float:
+            return 4;
+        case DataFormat::S8_UInt:
+            return 1;
+        case DataFormat::D16_UNorm_S8_UInt:
+            return 3;
+        case DataFormat::D24_UNorm_S8_UInt:
+            return 4;
+        case DataFormat::D32_Float_S8_UInt:
+            return 5;
+        }
+    }
 }
 
 #endif

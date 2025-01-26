@@ -4,6 +4,7 @@
 #include <Core/Assets/Asset.h>
 
 #include <filesystem>
+#include <Renderer/RenderingResourceIDs.h>
 
 namespace brr::vis
 {
@@ -26,10 +27,13 @@ namespace brr::vis
         const uint8_t* Data() const { return m_buffer; }
         uint32_t DataSize() const { return m_totalSize; }
 
+        render::TextureID GetTextureID() const { return m_texture_id; }
+
     private:
-        uint8_t* m_buffer = nullptr;
+        render::TextureID m_texture_id;
         uint32_t m_totalSize = 0;
         uint32_t m_width = 0, m_height = 0;
+        uint8_t* m_buffer = nullptr;
     };
 
 }

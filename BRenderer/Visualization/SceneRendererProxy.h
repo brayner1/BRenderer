@@ -7,7 +7,7 @@
 #include <Core/thirdpartiesInc.h>
 
 #include <Renderer/SceneObjectsIDs.h>
-#include <Renderer/SceneResourcesHandles.h>
+#include <Renderer/RenderingResourceIDs.h>
 
 namespace brr
 {
