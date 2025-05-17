@@ -136,6 +136,7 @@ namespace brr::render
         void SetupEntityUniforms(EntityInfo& entity_info);
         void SetupMaterialUniforms();
 
+        void MarkEntityDirty(EntityID entity_id, EntityInfo& entity_info, bool mark_surface, bool mark_uniform);
 
         bool CreateNewLight(LightID light_id, Light&& new_light);
 
@@ -230,7 +231,8 @@ namespace brr::render
 
         ContiguousPool<size_t, SurfaceRenderData> m_cached_surfaces;
 
-        std::map<EntityID, EntityInfo> m_entities_map;
+        std::set<EntityID> m_dirty_entities {};
+        std::map<EntityID, EntityInfo> m_entities_map {};
 
         DescriptorLayout m_material_descriptor_layout;
         std::array<DescriptorSetHandle, FRAME_LAG> m_material_descriptor_sets{};

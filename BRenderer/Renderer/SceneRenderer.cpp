@@ -184,7 +184,7 @@ namespace brr::render
 
         // Change current transform and signal uniforms as dirty.
         entity_it->second.current_matrix = entity_transform;
-        entity_it->second.uniform_dirty.fill(true);
+        MarkEntityDirty(entity_id, entity_it->second, false, true);
     }
 
     void SceneRenderer::AppendSurfaceToEntity(SurfaceID surface_id,
@@ -215,7 +215,7 @@ namespace brr::render
         }
 
         entity_info.surfaces.push_back(surface_id);
-        entity_info.surfaces_dirty = true;
+        MarkEntityDirty(owner_entity, entity_info, true, false);
         BRR_LogInfo("Appended Surface (ID: {}) to Entity (ID: {}).", static_cast<uint64_t>(surface_id), static_cast<uint32_t>(owner_entity));
 
         if (m_cached_surfaces.Contains(surface_id))
@@ -253,7 +253,7 @@ namespace brr::render
                 if (entity_it != m_entities_map.end())
                 {
                     EntityInfo& entity_info = entity_it->second;
-                    entity_info.surfaces_dirty = true;
+                    MarkEntityDirty(owner_node, entity_info, true, false);
                     if (is_removed)
                     {
                         std::erase(entity_info.surfaces, surface_id);
@@ -509,10 +509,12 @@ namespace brr::render
         m_current_frame  = m_render_device->GetCurrentFrameNumber();
         m_current_buffer = m_render_device->GetCurrentFrameBufferIndex();
 
+        // Update dirty
         std::set<EntityID> updated_entities;
-        for (auto& entity_iter : m_entities_map)
+        std::vector<EntityID> entities_to_remove;
+        for (auto& entity_id : m_dirty_entities)
         {
-            EntityInfo& entity = entity_iter.second;
+            EntityInfo& entity = m_entities_map.at(entity_id);
             if (entity.uniform_dirty[m_current_buffer])
             {
                 entity.uniform_buffers[m_current_buffer].Map();
@@ -521,7 +523,7 @@ namespace brr::render
                 entity.uniform_buffers[m_current_buffer].Unmap();
 
                 entity.uniform_dirty[m_current_buffer] = false;
-                updated_entities.emplace(entity_iter.first);
+                updated_entities.emplace(entity_id);
             }
 
             if (entity.surfaces_dirty)
@@ -529,6 +531,16 @@ namespace brr::render
                 // TODO: maintain AABB updated.
                 entity.surfaces_dirty = false;
             }
+
+            if (!std::any_of(entity.uniform_dirty.begin(), entity.uniform_dirty.end(), [](bool value) {return value==true;}))
+            {
+                entities_to_remove.push_back(entity_id);
+            }
+        }
+
+        for (auto& entity : entities_to_remove)
+        {
+            m_dirty_entities.erase(entity);
         }
 
         for (Viewport& viewport : m_viewports)
@@ -775,6 +787,13 @@ namespace brr::render
                 setBuilder.UpdateDescriptorSet(m_material_descriptor_sets[frame_idx]);
             }
         }
+    }
+
+    void SceneRenderer::MarkEntityDirty(EntityID entity_id, EntityInfo& entity_info, bool mark_surface, bool mark_uniform)
+    {
+        if (mark_surface) entity_info.surfaces_dirty = true;
+        if (mark_uniform) entity_info.uniform_dirty.fill(true);
+        m_dirty_entities.insert(entity_id);
     }
 
     bool SceneRenderer::CreateNewLight(LightID light_id, Light&& new_light)
