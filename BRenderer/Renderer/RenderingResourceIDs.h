@@ -22,6 +22,23 @@ namespace brr::render
         : ResourceHandle(resource_handle)
         {}
     };
+
+    struct ShaderID : public ResourceHandle
+    {
+        ShaderID() = default;
+        ShaderID(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
+
+    struct MaterialID : public ResourceHandle
+    {
+        MaterialID() = default;
+        MaterialID(const ResourceHandle& resource_handle)
+        : ResourceHandle(resource_handle)
+        {}
+    };
+
 }
 
 #endif

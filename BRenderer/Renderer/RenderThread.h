@@ -6,10 +6,10 @@
 #include <Renderer/RenderEnums.h>
 #include <Renderer/RenderingResourceIDs.h>
 #include <Renderer/SceneObjectsIDs.h>
+#include <Visualization/Resources/Material.h>
 
 namespace brr::render
 {
-
     enum class RenderAPI
     {
         Vulkan
@@ -79,6 +79,14 @@ namespace brr::render
         static TextureID ResourceCmd_CreateTexture2D(const void* image_data, uint32_t width, uint32_t height, DataFormat image_format);
         static void ResourceCmd_DestroyTexture2D(TextureID texture_id);
 
+        /*********************
+         * Material Commands *
+         *********************/
+
+        static MaterialID ResourceCmd_CreateMaterial(vis::MaterialData material_data);
+        static void ResourceCmd_UpdateMaterialProperties(MaterialID material_id, vis::MaterialData material_data);
+        static void ResourceCmd_DestroyMaterial(MaterialID material_id);
+
         /********************
          * Surface Commands *
          ********************/
@@ -86,7 +94,8 @@ namespace brr::render
         static SurfaceID ResourceCmd_CreateSurface(void* vertex_buffer_data,
                                                    size_t vertex_buffer_size,
                                                    void* index_buffer_data,
-                                                   size_t index_buffer_size);
+                                                   size_t index_buffer_size,
+                                                   MaterialID surface_material);
 
         static void ResourceCmd_DestroySurface(SurfaceID surface_id);
 

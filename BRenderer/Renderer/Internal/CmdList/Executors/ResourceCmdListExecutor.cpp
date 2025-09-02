@@ -37,6 +37,27 @@ void ResourceCmdListExecutor::ExecuteResourceCommand(const ResourceCommand& reso
             RenderStorageGlobals::texture_storage.DestroyTexture(resource_command.texture_command.texture_id);
             break;
         }
+    case ResourceCommandType::CreateMaterial:
+        {
+
+            BRR_LogDebug("RenderThread: Creating Material (ID: {})", static_cast<size_t>(resource_command.material_command.material_id));
+            RenderStorageGlobals::material_storage.InitMaterial(resource_command.material_command.material_id,
+                                                               resource_command.material_command.material_properties);
+            break;
+        }
+    case ResourceCommandType::UpdateMaterial:
+        {
+            BRR_LogDebug("RenderThread: Updating Material properties (ID: {})", static_cast<size_t>(resource_command.material_command.material_id));
+            RenderStorageGlobals::material_storage.UpdateMaterialProperties(resource_command.material_command.material_id,
+                                                                  resource_command.material_command.material_properties);
+            break;
+        }
+    case ResourceCommandType::DestroyMaterial:
+        {
+            BRR_LogDebug("RenderThread: Destroying Material (ID: {})", static_cast<size_t>(resource_command.material_command.material_id));
+            RenderStorageGlobals::material_storage.DestroyMaterial(resource_command.material_command.material_id);
+            break;
+        }
     case ResourceCommandType::CreateSurface:
         {
             BRR_LogDebug("RenderThread: Creating Surface (ID: {})", static_cast<size_t>(resource_command.surface_command.surface_id));
@@ -44,7 +65,8 @@ void ResourceCmdListExecutor::ExecuteResourceCommand(const ResourceCommand& reso
                                                            resource_command.surface_command.vertex_buffer,
                                                            resource_command.surface_command.vertex_buffer_size,
                                                            resource_command.surface_command.index_buffer,
-                                                           resource_command.surface_command.index_buffer_size);
+                                                           resource_command.surface_command.index_buffer_size, 
+                                                           resource_command.surface_command.material_id);
             if (resource_command.surface_command.vertex_buffer)
             {
                 free(resource_command.surface_command.vertex_buffer);

@@ -50,6 +50,7 @@ set(BRenderer_SOURCE_FILES
     "Scene/Components/Transform3DComponent.cpp"
  
     "Visualization/Resources/Image.cpp"
+    "Visualization/Resources/Material.cpp"
     "Visualization/Resources/Mesh3D.cpp"
     "Visualization/SceneRendererProxy.cpp"
     "Visualization/SceneView.cpp"
@@ -66,6 +67,7 @@ set(BRenderer_SOURCE_FILES
     "Renderer/Internal/CmdList/Executors/SceneRendererCmdListExecutor.cpp"
     "Renderer/Internal/CmdList/Executors/WindowCmdListExecutor.cpp"
     "Renderer/Internal/WindowRenderer.cpp"
+    "Renderer/Storages/MaterialStorage.cpp"
     "Renderer/Storages/MeshStorage.cpp"
     "Renderer/Storages/RenderStorageGlobals.cpp"
     "Renderer/Storages/TextureStorage.cpp"
@@ -120,6 +122,7 @@ set(BRenderer_HEADER_FILES
     "Scene/SceneComponentsView.h"
 
     "Visualization/Resources/Image.h"
+    "Visualization/Resources/Material.h"
     "Visualization/Resources/Mesh3D.h"
     "Visualization/SceneRendererProxy.h"
     "Visualization/SceneView.h"
@@ -142,6 +145,8 @@ set(BRenderer_HEADER_FILES
     "Renderer/Internal/CmdList/WindowCmdList.h"
     "Renderer/Internal/IdOwner.h"
     "Renderer/Internal/WindowRenderer.h"
+    "Renderer/Storages/BaseStorage.h"
+    "Renderer/Storages/MaterialStorage.h"
     "Renderer/Storages/MeshStorage.h"
     "Renderer/Storages/RenderStorageGlobals.h"
     "Renderer/Storages/TextureStorage.h"

@@ -3,10 +3,12 @@
 #include <Renderer/SceneObjectsIDs.h>
 #include <Renderer/Vulkan/VulkanRenderDevice.h>
 
+#include "RenderStorageGlobals.h"
+
 using namespace brr;
 using namespace brr::render;
 
-void DestroySurfaceBuffers(MeshStorage::RenderSurface& surface)
+void DestroySurfaceBuffers(RenderSurface& surface)
 {
     VKRD* render_device = VKRD::GetSingleton();
     if (surface.m_vertex_buffer)
@@ -24,18 +26,14 @@ MeshStorage::~MeshStorage()
     //}
 }
 
-SurfaceID MeshStorage::AllocateSurface()
-{
-    return m_surfaces_allocator.AllocateResource();
-}
-
 void MeshStorage::InitSurface(SurfaceID surface_id,
                               void* vertex_buffer_data,
                               size_t vertex_buffer_size,
                               void* index_buffer_data,
-                              size_t index_buffer_size)
+                              size_t index_buffer_size,
+                              MaterialID surface_material)
 {
-    RenderSurface* surface = m_surfaces_allocator.InitializeResource(surface_id, RenderSurface());
+    RenderSurface* surface = InitResource(surface_id, RenderSurface());
 
     if (!surface)
     {
@@ -74,14 +72,23 @@ void MeshStorage::InitSurface(SurfaceID surface_id,
         index_buffer_size, index_type, index_buffer_data);
 
     surface->num_indices = index_buffer_size / sizeof(uint32_t);
+
+    if (surface_material.IsValid() && RenderStorageGlobals::material_storage.GetMaterial(surface_material) != nullptr)
+    {
+        surface->m_material_id = surface_material;
+    }
+    else
+    {
+        BRR_LogError("Invalid Material ID for Surface (ID: {}).", static_cast<uint64_t>(surface_id));
+    }
 }
 
 void MeshStorage::DestroySurface(SurfaceID surface_id)
 {
-    if (RenderSurface* surface = m_surfaces_allocator.GetResource(surface_id))
+    if (RenderSurface* surface = GetResource(surface_id))
     {
         DestroySurfaceBuffers(*surface);
-        m_surfaces_allocator.DestroyResource(surface_id);
+        DestroyResource(surface_id);
     }
 }
 
@@ -99,7 +106,7 @@ void MeshStorage::UpdateSurfaceIndexBuffer(SurfaceID surface_id,
     //TODO: Implement index buffer update (need to avoid buffer being updated at the same time it's used by previous frame)
 }
 
-MeshStorage::RenderSurface* MeshStorage::GetSurface(SurfaceID surface_id)
+RenderSurface* MeshStorage::GetSurface(SurfaceID surface_id)
 {
-    return m_surfaces_allocator.GetResource(surface_id);
+    return GetResource(surface_id);
 }

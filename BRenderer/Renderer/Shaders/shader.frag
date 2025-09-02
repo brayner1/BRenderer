@@ -5,15 +5,44 @@
 #define LIGHT_TYPE_SPOT        2
 #define LIGHT_TYPE_AMBIENT     3
 
+//////////////
+/// Inputs ///
+//////////////
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec3 inTangent;
 layout(location = 3) in vec3 inBitangent;
 layout(location = 4) in vec2 inUvCoord;
 
+///////////////
+/// Outputs ///
+///////////////
+
 layout(location = 0) out vec4 outColor;
 
-layout(set = 2, binding = 0) uniform sampler2D texSampler;
+////////////////
+/// Uniforms ///
+//////////////// 
+
+layout(set = 2, binding = 0) uniform MaterialUBO
+{
+    vec3 color; // Base color of the material
+    vec3 emissive_color; // Emissive color of the material
+    float metallic; // Metallic factor of the material
+    float roughness; // Roughness factor of the material
+
+    bool use_albedo;
+    bool use_normal_map;
+    bool use_metallic;
+    bool use_emissive;
+} material_uniform;
+
+
+layout(set = 2, binding = 1) uniform sampler2D albedo_texture; // Albedo texture
+// layout(set = 2, binding = 2) uniform sampler2D normal_texture; // Normal texture
+// layout(set = 2, binding = 3) uniform sampler2D metallic_roughness_texture; // Metallic-Roughness texture
+// layout(set = 2, binding = 4) uniform sampler2D emissive_texture; // Emissive texture
 
 struct Light
 {
@@ -29,6 +58,10 @@ layout(set = 0, binding = 0) buffer Lights
 {
     Light lights_buffer[];
 };
+
+///////////////////////
+/// Light Functions ///
+///////////////////////
 
 vec4 ComputeDirectionalLightIntensity(vec3 normal, Light light)
 {
@@ -86,6 +119,10 @@ vec4 ComputeLighting(vec3 position, vec3 normal, Light light)
     }
 }
 
+////////////
+/// Main ///
+////////////
+
 void main() {
     vec4 final_illumination = vec4(0.0, 0.0, 0.0, 1.0);
     for (uint light_index = 0; light_index < lights_buffer.length(); light_index++)
@@ -93,5 +130,5 @@ void main() {
         final_illumination += ComputeLighting(inPosition, inNormal, lights_buffer[light_index]);
     }
     final_illumination = min(vec4(1.0), final_illumination);
-    outColor = texture(texSampler, inUvCoord) * final_illumination;
+    outColor = texture(albedo_texture, inUvCoord) * final_illumination;
 }

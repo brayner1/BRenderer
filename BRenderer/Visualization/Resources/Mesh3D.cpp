@@ -40,18 +40,21 @@ Mesh3D::~Mesh3D()
 }
 
 render::SurfaceID Mesh3D::AddSurface(const std::vector<Vertex3>& vertices,
-                                     const std::vector<uint32_t>& indices)
+                                     const std::vector<uint32_t>& indices,
+                                     Ref<Material> material)
 {
     BRR_LogInfo("Adding new Surface");
     SurfaceData& new_surface = m_surfaces.emplace_back(vertices, indices);
     if (!new_surface.GetVertices().empty())
     {
+        render::MaterialID material_id = material ? material->GetMaterialID() : render::MaterialID();
+        new_surface.m_material = material;
         new_surface.m_surface_id = render::RenderThread::ResourceCmd_CreateSurface((void*)new_surface.GetVertices().data(),
-                                                                                  new_surface.GetVertices().size() * sizeof(
-                                                                                      Vertex3),
-                                                                                  (void*)new_surface.GetIndices().data(),
-                                                                                  new_surface.GetIndices().size() * sizeof(
-                                                                                      uint32_t));
+            new_surface.GetVertices().size() * sizeof(
+                Vertex3),
+            (void*)new_surface.GetIndices().data(),
+            new_surface.GetIndices().size() * sizeof(
+                uint32_t), material_id);
     }
     return new_surface.m_surface_id;
 }

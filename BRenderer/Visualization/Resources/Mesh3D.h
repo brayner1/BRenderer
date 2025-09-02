@@ -6,6 +6,7 @@
 #include <Core/Assets/Asset.h>
 #include <Geometry/Geometry.h>
 #include <Renderer/RenderingResourceIDs.h>
+#include <Visualization/Resources/Material.h>
 
 namespace brr::vis
 {
@@ -25,7 +26,7 @@ namespace brr::vis
 
 		~Mesh3D() override;
 
-		render::SurfaceID AddSurface(const std::vector<Vertex3>& vertices, const std::vector<uint32_t>& indices);
+		render::SurfaceID AddSurface(const std::vector<Vertex3>& vertices, const std::vector<uint32_t>& indices, Ref<Material> material);
 
 		void RemoveSurface(render::SurfaceID surface_id);
 
@@ -71,6 +72,7 @@ namespace brr::vis
 			std::vector<uint32_t> m_indices{};
 
 			render::SurfaceID m_surface_id = render::SurfaceID();
+            Ref<Material> m_material;
 		};
 
 		std::vector<SurfaceData> m_surfaces;
