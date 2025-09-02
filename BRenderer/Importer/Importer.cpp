@@ -89,8 +89,21 @@ void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Ent
 						indices[index_idx+2] = face.mIndices[2];
 					}
 
+					unsigned int material_index = mesh->mMaterialIndex;
+                    aiMaterial* material = assimp_scene->mMaterials[material_index];
+
+					aiColor4D base_color;
+                    if (material->Get(AI_MATKEY_BASE_COLOR, base_color) != aiReturn_SUCCESS)
+                    {
+                        base_color = aiColor4D(0.7, 0.7, 0.7, 1.0);
+                    }
+
+					brr::vis::MaterialData material_data;
+					material_data.color = {base_color.r, base_color.g, base_color.b};
+                    brr::Ref<brr::vis::Material> engine_material = brr::Ref(new brr::vis::Material(material_data));
+
                     brr::Ref<brr::vis::Mesh3D> mesh_3d = brr::Ref(new brr::vis::Mesh3D());
-					mesh_3d->AddSurface(vertices, indices);
+					mesh_3d->AddSurface(vertices, indices, engine_material);
 
 					mesh_component.SetMesh(mesh_3d);
 				}

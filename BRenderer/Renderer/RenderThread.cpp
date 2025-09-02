@@ -101,6 +101,11 @@ namespace
 
     void RenderThreadFunction()
     {
+        // Initialization "Frame", used for initializing engine default resources.
+        s_render_device->BeginFrame();
+        RenderStorageGlobals::material_storage.InitializeDefaults();
+        s_render_device->EndFrame();
+
         // Add 'FRAME_LAG - 2' available update cmd sets.
         // One is already owned by Render Thread and the other by the Main Thread.
         for (uint32_t idx = 0; idx < (FRAME_LAG - 2); idx++)
@@ -113,6 +118,7 @@ namespace
         VKRD::GetSingleton()->WaitIdle();
         ExecuteUpdateCommands(s_current_render_update_cmds);
 
+        RenderStorageGlobals::material_storage.DestroyDefaults();
         SystemsStorage::GetWindowRendererStorage().Clear();
         SystemsStorage::GetSceneRendererStorage().Clear();
 
@@ -171,6 +177,10 @@ glm::uvec2 GetSDLWindowDrawableSize(SDL_Window* window_handle)
     return {width, height};
 }
 
+// =================================
+// ======== Window Renderer ========
+// =================================
+
 void RenderThread::WindowRenderCmd_InitializeWindowRenderer(SDL_Window* window_handle)
 {
     SwapchainWindowHandle swapchain_window_handle = VKRD::GetSingleton()->CreateSwapchainWindowHandle(window_handle);
@@ -219,6 +229,10 @@ void RenderThread::WindowRenderCmd_SetSceneView(SDL_Window* window_handle,
     s_current_game_update_cmds.window_cmd_list.push_back(window_cmd);
 }
 
+// ===============================
+// ======== SceneRenderer ========
+// ===============================
+
 uint64_t RenderThread::RenderCmd_InitializeSceneRenderer()
 {
     const uint64_t scene_id              = s_scene_id_generator.GetNewId();
@@ -236,6 +250,10 @@ void RenderThread::RenderCmd_DestroySceneRenderer(uint64_t scene_id)
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
 }
+
+// ========================
+// ======== Camera ========
+// ========================
 
 CameraID RenderThread::SceneRenderCmd_CreateCamera(uint64_t scene_id,
                                                    EntityID owner_entity,
@@ -273,6 +291,10 @@ void RenderThread::SceneRenderCmd_UpdateCameraProjection(uint64_t scene_id,
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
 }
+
+// ========================
+// ======== Entity ========
+// ========================
 
 EntityID RenderThread::SceneRenderCmd_CreateEntity(uint64_t scene_id,
                                                    const glm::mat4& entity_transform)
@@ -314,6 +336,10 @@ void RenderThread::SceneRenderCmd_AppendSurfaceToEntity(uint64_t scene_id,
     scene_cmd_list.push_back(scene_cmd);
 }
 
+// ===========================
+// ======== Texture2D ========
+// ===========================
+
 TextureID RenderThread::ResourceCmd_CreateTexture2D(const void* image_data,
                                                     uint32_t width,
                                                     uint32_t height,
@@ -336,16 +362,54 @@ void RenderThread::ResourceCmd_DestroyTexture2D(TextureID texture_id)
     resource_cmd_list.push_back(resource_cmd);
 }
 
+// ==========================
+// ======== Material ========
+// ==========================
+
+MaterialID RenderThread::ResourceCmd_CreateMaterial(vis::MaterialData material_data)
+{
+    MaterialID material_id = RenderStorageGlobals::material_storage.AllocateResource();
+    MaterialProperties material_properties = BuildMaterialProperties(material_data);
+    BRR_LogDebug("Pushing RenderCmd to create Material. Material ID: {}", static_cast<size_t>(material_id));
+    ResourceCommand resource_cmd = ResourceCommand::BuildCreateMaterialCommand(material_id, material_properties);
+    ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    resource_cmd_list.push_back(resource_cmd);
+    return material_id;
+}
+
+void RenderThread::ResourceCmd_UpdateMaterialProperties(MaterialID material_id,
+                                                        vis::MaterialData material_data)
+{
+    BRR_LogDebug("Pushing RenderCmd to update Material Properties. Material ID: {}", static_cast<size_t>(material_id));
+    MaterialProperties material_properties = BuildMaterialProperties(material_data);
+    ResourceCommand resource_cmd = ResourceCommand::BuildUpdateMaterialCommand(material_id, material_properties);
+    ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    resource_cmd_list.push_back(resource_cmd);
+}
+
+void RenderThread::ResourceCmd_DestroyMaterial(MaterialID material_id)
+{
+    BRR_LogDebug("Pushing RenderCmd to destroy Material. Material ID: {}", static_cast<size_t>(material_id));
+    ResourceCommand resource_cmd = ResourceCommand::BuildDestroyMaterialCommand(material_id);
+    ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
+    resource_cmd_list.push_back(resource_cmd);
+}
+
+// =========================
+// ======== Surface ========
+// =========================
+
 SurfaceID RenderThread::ResourceCmd_CreateSurface(void* vertex_buffer_data,
                                                   size_t vertex_buffer_size,
                                                   void* index_buffer_data,
-                                                  size_t index_buffer_size)
+                                                  size_t index_buffer_size,
+                                                  MaterialID surface_material)
 {
-    SurfaceID surface_id         = RenderStorageGlobals::mesh_storage.AllocateSurface();
+    SurfaceID surface_id = RenderStorageGlobals::mesh_storage.AllocateResource();
     BRR_LogDebug("Pushing RenderCmd to create Render Surface. Surface ID: {}", static_cast<size_t>(surface_id));
     ResourceCommand resource_cmd = ResourceCommand::BuildCreateSurfaceCommand(surface_id, vertex_buffer_data,
                                                                               vertex_buffer_size, index_buffer_data,
-                                                                              index_buffer_size);
+                                                                              index_buffer_size, surface_material);
 
     ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
     resource_cmd_list.push_back(resource_cmd);
@@ -379,6 +443,10 @@ void RenderThread::ResourceCmd_UpdateSurfaceIndexBuffer(SurfaceID surface_id,
     //ResourceCmdList& resource_cmd_list = s_current_game_update_cmds.resource_cmd_list;
     //resource_cmd_list.push_back(resource_cmd);
 }
+
+// ========================
+// ======== Lights ========
+// ========================
 
 LightID RenderThread::SceneRenderCmd_CreatePointLight(uint64_t scene_id,
                                                  const glm::vec3& position,

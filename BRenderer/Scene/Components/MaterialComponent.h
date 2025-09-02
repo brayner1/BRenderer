@@ -1,5 +1,5 @@
-#ifndef BRR_MATERIAL_H
-#define  BRR_MATERIAL_H
+#ifndef BRR_MATERIALCOMPONENT_H
+#define  BRR_MATERIALCOMPONENT_H
 
 #include <Scene/Components/EntityComponent.h>
 

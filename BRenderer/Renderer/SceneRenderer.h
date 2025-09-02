@@ -134,11 +134,13 @@ namespace brr::render
         void SetupSceneUniforms();
         void SetupViewportUniforms(Viewport& viewport);
         void SetupEntityUniforms(EntityInfo& entity_info);
-        void SetupMaterialUniforms();
 
         void MarkEntityDirty(EntityID entity_id, EntityInfo& entity_info, bool mark_surface, bool mark_uniform);
 
         bool CreateNewLight(LightID light_id, Light&& new_light);
+
+        void ReferenceNewMaterial(MaterialID material_id);
+        void DereferenceMaterial(MaterialID material_id);
 
         VulkanRenderDevice* m_render_device = nullptr;
 
@@ -162,10 +164,6 @@ namespace brr::render
             float camera_far;
 
             EntityID owner_entity = EntityID::NULL_ID;
-
-            //std::array<DeviceBuffer, FRAME_LAG> uniform_buffers;
-            //std::array<DescriptorSetHandle, FRAME_LAG> descriptor_sets;
-            //std::array<bool, FRAME_LAG> uniform_dirty{true};
         };
 
         struct Light
@@ -205,14 +203,22 @@ namespace brr::render
             }
 
             std::vector<EntityID> m_owner_nodes;
-            SurfaceID m_my_surface_id;
-
+            SurfaceID m_surface_id;
             VertexBufferHandle m_vertex_buffer_handle{};
             IndexBufferHandle m_index_buffer_handle{};
 
             uint32_t m_num_vertices = 0, m_num_indices = 0;
 
             bool m_surface_dirty = false;
+
+            MaterialID m_material_id;
+        };
+
+        struct MaterialRenderData
+        {
+            std::array<DescriptorSetHandle, FRAME_LAG> m_material_descriptor_sets{};
+
+            size_t reference_count = 0;
         };
 
         struct SceneUniformInfo
@@ -229,19 +235,18 @@ namespace brr::render
 
         ContiguousPool<LightID, Light> m_scene_lights;
 
-        ContiguousPool<size_t, SurfaceRenderData> m_cached_surfaces;
+        ContiguousPool<SurfaceID, SurfaceRenderData, std::hash<ResourceHandle>> m_cached_surfaces;
+        ContiguousPool<MaterialID, MaterialRenderData, std::hash<ResourceHandle>> m_cached_materials;
 
-        std::set<EntityID> m_dirty_entities {};
-        std::map<EntityID, EntityInfo> m_entities_map {};
-
-        DescriptorLayout m_material_descriptor_layout;
-        std::array<DescriptorSetHandle, FRAME_LAG> m_material_descriptor_sets{};
+        std::set<EntityID> m_dirty_entities{};
+        std::map<EntityID, EntityInfo> m_entities_map{};
 
         Ref<vis::Image> m_image;
+        MaterialID m_default_material;
         Texture2DHandle m_texture_2d_handle;
         ResourceHandle m_graphics_pipeline;
 
-        Shader m_shader;
+        ShaderID m_shader_id;
 
         uint32_t m_current_buffer = 0;
         size_t m_current_frame    = -1; // Start with invalid value.

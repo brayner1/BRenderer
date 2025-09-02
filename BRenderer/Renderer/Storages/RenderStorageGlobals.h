@@ -1,6 +1,7 @@
 #ifndef BRR_RENDERSTORAGEGLOBALS_H
 #define BRR_RENDERSTORAGEGLOBALS_H
 
+#include "MaterialStorage.h"
 #include "MeshStorage.h"
 #include "TextureStorage.h"
 
@@ -12,6 +13,7 @@ namespace brr::render
 
         static MeshStorage mesh_storage;
         static TextureStorage texture_storage;
+        static MaterialStorage material_storage;
     };
 }
 

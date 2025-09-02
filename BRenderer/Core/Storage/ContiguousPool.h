@@ -17,7 +17,7 @@ namespace brr
      *        using the ObjectId identifier to obtain the object index.
      *        That means accessing elements this way is not the fastest way.
      */
-    template<typename KeyType, typename T>
+    template<typename KeyType, typename T, class Hasher = std::hash<KeyType>>
     class ContiguousPool
     {
     public:
@@ -54,32 +54,31 @@ namespace brr
 
     private:
 
-        std::unordered_map<KeyType, uint32_t> m_object_index_map;
+        std::unordered_map<KeyType, uint32_t, Hasher> m_object_index_map;
         std::vector<T> m_pool;
         uint32_t m_active_count;
     };
 
-    template<typename KeyType, typename T>
-    ContiguousPool<KeyType, T>::ContiguousPool(uint32_t initial_size)
+    template<typename KeyType, typename T, class Hasher>
+    ContiguousPool<KeyType, T, Hasher>::ContiguousPool(uint32_t initial_size)
     : m_pool(initial_size),
       m_active_count(0)
     {
     }
 
-    template<typename KeyType, typename T>
-    ContiguousPool<KeyType, T>::ContiguousPool(const T& initial_value, uint32_t initial_size)
+    template<typename KeyType, typename T, class Hasher>
+    ContiguousPool<KeyType, T, Hasher>::ContiguousPool(const T& initial_value, uint32_t initial_size)
     : m_pool(initial_size, initial_value),
       m_active_count(0)
     {
     }
 
-    template<typename KeyType, typename T>
-    bool ContiguousPool<KeyType, T>::AddObject(KeyType object_key,
-                                                    const T& value)
+    template<typename KeyType, typename T, class Hasher>
+    bool ContiguousPool<KeyType, T, Hasher>::AddObject(KeyType object_key, const T& value)
     {
         if (m_object_index_map.contains(object_key))
         {
-            BRR_LogError("Can't add object (ID: {}) to pool. Object with this ID already exists.");
+            BRR_LogError("Can't add object (ID: {}) to pool. Object with this ID already exists.", uint64_t(object_key));
             return false;
         }
         
@@ -96,13 +95,12 @@ namespace brr
         return true;
     }
 
-    template<typename KeyType, typename T>
-    bool ContiguousPool<KeyType, T>::AddObject(KeyType object_key,
-                                              T&& value)
+    template<typename KeyType, typename T, class Hasher>
+    bool ContiguousPool<KeyType, T, Hasher>::AddObject(KeyType object_key, T&& value)
     {
         if (m_object_index_map.contains(object_key))
         {
-            BRR_LogError("Can't add object (ID: {}) to pool. Object with this ID already exists.");
+            BRR_LogError("Can't add object (ID: {}) to pool. Object with this ID already exists.", uint64_t(object_key));
             return false;
         }
 
@@ -119,8 +117,8 @@ namespace brr
         return true;
     }
 
-    template<typename KeyType, typename T>
-    T& ContiguousPool<KeyType, T>::Get(KeyType object_key)
+    template<typename KeyType, typename T, class Hasher>
+    T& ContiguousPool<KeyType, T, Hasher>::Get(KeyType object_key)
     {
         assert(m_object_index_map.contains(object_key) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
 
@@ -128,8 +126,8 @@ namespace brr
         return m_pool.at(index);
     }
 
-    template<typename KeyType, typename T>
-    const T& ContiguousPool<KeyType, T>::Get(KeyType object_key) const
+    template<typename KeyType, typename T, class Hasher>
+    const T& ContiguousPool<KeyType, T, Hasher>::Get(KeyType object_key) const
     {
         assert(m_object_index_map.contains(object_key) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
 
@@ -137,8 +135,8 @@ namespace brr
         return m_pool.at(index);
     }
 
-    template <typename KeyType, typename T>
-    typename ContiguousPool<KeyType, T>::iterator ContiguousPool<KeyType, T>::Find(KeyType object_key)
+    template <typename KeyType, typename T, class Hasher>
+    typename ContiguousPool<KeyType, T, Hasher>::iterator ContiguousPool<KeyType, T, Hasher>::Find(KeyType object_key)
     {
         auto iter = m_object_index_map.find(object_key);
         if (iter == m_object_index_map.end())
@@ -149,13 +147,12 @@ namespace brr
         return m_pool.begin() + iter->second;
     }
 
-    template<typename KeyType, typename T>
-    void ContiguousPool<KeyType, T>::RemoveObject(KeyType object_key)
+    template<typename KeyType, typename T, class Hasher>
+    void ContiguousPool<KeyType, T, Hasher>::RemoveObject(KeyType object_key)
     {
-        //assert(m_object_index_map.contains(object_key) && "Need to pass valid ObjectId. Passed ObjectId does not exist is this ContiguousPool.");
         if (!m_object_index_map.contains(object_key))
         {
-            BRR_LogError("Need to pass valid ObjectId. Passed ObjectId '{}' does not exist is this ContiguousPool.", uint32_t(object_key));
+            BRR_LogError("Need to pass valid ObjectId. Passed ObjectId '{}' does not exist is this ContiguousPool.", uint64_t(object_key));
             return;
         }
 
@@ -165,7 +162,6 @@ namespace brr
 
         assert(index < m_active_count && "Invalid index. something is wrong.");
         
-        // Decrement active count (remove last)
         m_active_count--;
         if (index == last_index)
         {
@@ -173,7 +169,6 @@ namespace brr
             return;
         }
 
-        // If removed object is not last element, switch position with element at the end.
         m_pool[index] = std::move(m_pool[last_index]);
         for (auto& iter : m_object_index_map)
         {
@@ -185,34 +180,34 @@ namespace brr
         }
     }
 
-    template <typename KeyType, typename T>
-    void ContiguousPool<KeyType, T>::Clear()
+    template <typename KeyType, typename T, class Hasher>
+    void ContiguousPool<KeyType, T, Hasher>::Clear()
     {
         m_pool.clear();
         m_object_index_map.clear();
         m_active_count = 0;
     }
 
-    template<typename KeyType, typename T>
-    typename ContiguousPool<KeyType, T>::iterator ContiguousPool<KeyType, T>::begin()
+    template<typename KeyType, typename T, class Hasher>
+    typename ContiguousPool<KeyType, T, Hasher>::iterator ContiguousPool<KeyType, T, Hasher>::begin()
     {
         return m_pool.begin();
     }
 
-    template<typename KeyType, typename T>
-    typename ContiguousPool<KeyType, T>::iterator ContiguousPool<KeyType, T>::end()
+    template<typename KeyType, typename T, class Hasher>
+    typename ContiguousPool<KeyType, T, Hasher>::iterator ContiguousPool<KeyType, T, Hasher>::end()
     {
         return m_pool.begin() + m_active_count;
     }
 
-    template<typename KeyType, typename T>
-    typename ContiguousPool<KeyType, T>::const_iterator ContiguousPool<KeyType, T>::cbegin()
+    template<typename KeyType, typename T, class Hasher>
+    typename ContiguousPool<KeyType, T, Hasher>::const_iterator ContiguousPool<KeyType, T, Hasher>::cbegin()
     {
         return m_pool.cbegin();
     }
 
-    template<typename KeyType, typename T>
-    typename ContiguousPool<KeyType, T>::const_iterator ContiguousPool<KeyType, T>::cend()
+    template<typename KeyType, typename T, class Hasher>
+    typename ContiguousPool<KeyType, T, Hasher>::const_iterator ContiguousPool<KeyType, T, Hasher>::cend()
     {
         return m_pool.cbegin() + m_active_count;
     }

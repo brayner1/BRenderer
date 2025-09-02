@@ -37,30 +37,12 @@ namespace brr::render
         BRR_LogInfo("Creating SceneRenderer");
 
         {
-            // Sets should be organized from less frequently updated to more frequently updated.
-            ShaderBuilder shader_builder;
-            shader_builder
-                .SetVertexShaderFile("Engine/Shaders/vert.spv")
-                .SetFragmentShaderFile("Engine/Shaders/frag.spv")
-                .AddVertexInputBindingDescription(0, sizeof(Vertex3))
-                .AddVertexAttributeDescription(0, 0, DataFormat::R32G32B32_Float, offsetof(Vertex3, pos))
-                .AddVertexAttributeDescription(0, 1, DataFormat::R32_Float, offsetof(Vertex3, u))
-                .AddVertexAttributeDescription(0, 2, DataFormat::R32G32B32_Float, offsetof(Vertex3, normal))
-                .AddVertexAttributeDescription(0, 3, DataFormat::R32_Float, offsetof(Vertex3, v))
-                .AddVertexAttributeDescription(0, 4, DataFormat::R32G32B32_Float, offsetof(Vertex3, tangent))
-                .AddSet() // Set 0 -> Binding 0: Lights array
-                .AddSetBinding(DescriptorType::StorageBuffer, FragmentShader)
-                .AddSet() // Set 1 -> Binding 0: Camera view and projection
-                .AddSetBinding(DescriptorType::UniformBuffer, VertexShader)
-                .AddSet() // Set 2 -> Binding 0: Material transform.
-                .AddSetBinding(DescriptorType::CombinedImageSampler, FragmentShader)
-                .AddSet() // Set 3 -> Binding 0: Model Uniform
-                .AddSetBinding(DescriptorType::UniformBuffer, VertexShader);
+            m_shader_id = RenderStorageGlobals::material_storage.GetDefaultShaderID();
+            Shader* default_shader = RenderStorageGlobals::material_storage.GetShader(m_shader_id);
+            assert(default_shader != nullptr && "Default shader must be initialized when constructing SceneRenderer.");
 
-            m_shader            = shader_builder.BuildShader();
-            m_graphics_pipeline = m_render_device->Create_GraphicsPipeline(m_shader, {DataFormat::R8G8B8A8_SRGB},
+            m_graphics_pipeline = m_render_device->Create_GraphicsPipeline(*default_shader, {DataFormat::R8G8B8A8_SRGB},
                                                                            DataFormat::D32_Float);
-            m_shader.DestroyShaderModules();
         }
 
         SetupSceneUniforms();
@@ -71,14 +53,19 @@ namespace brr::render
         TextureStorage::Texture* texture = RenderStorageGlobals::texture_storage.GetTexture(texture_id);
         m_texture_2d_handle = texture->texture_2d_handle;
 
-        SetupMaterialUniforms();
+        MaterialProperties  default_material_properties;
+        default_material_properties.diffuse_texture = texture_id;
+
+        m_default_material = RenderStorageGlobals::material_storage.AllocateResource();
+        RenderStorageGlobals::material_storage.InitMaterial(m_default_material, default_material_properties, m_shader_id);
     }
 
     SceneRenderer::~SceneRenderer()
     {
         m_render_device->WaitIdle();
-        m_render_device->DestroyTexture2D(m_texture_2d_handle);
         m_render_device->DestroyGraphicsPipeline(m_graphics_pipeline);
+        RenderStorageGlobals::material_storage.DestroyMaterial(m_default_material);
+        m_render_device->DestroyTexture2D(m_texture_2d_handle);
     }
 
     void SceneRenderer::CreateCamera(CameraID camera_id,
@@ -108,7 +95,7 @@ namespace brr::render
         }
 
         m_cameras.RemoveObject(camera_id);
-        // TODO: Should this be optmized?
+        // TODO: Should this be optmized? Probably not a common operation.
         for (Viewport& viewport : m_viewports)
         {
             if (viewport.camera_id == camera_id)
@@ -128,7 +115,7 @@ namespace brr::render
         camera_info.camera_near  = camera_near;
         camera_info.camera_far   = camera_far;
 
-        // TODO: Should this be optmized?
+        // TODO: Should this be optmized? Probably not a common operation.
         for (Viewport& viewport : m_viewports)
         {
             if (viewport.camera_id == camera_id)
@@ -169,6 +156,24 @@ namespace brr::render
         {
             m_render_device->DescriptorSet_Destroy(descriptor_set_handle);
         }
+
+        // Update cached surfaces and materials.
+        for (SurfaceID surface_id : entity_node.mapped().surfaces)
+        {
+            if (m_cached_surfaces.Contains(surface_id))
+            {
+                // Erase entity from surface owner nodes.
+                SurfaceRenderData& surface_cached_data = m_cached_surfaces.Get(surface_id);
+                std::erase(surface_cached_data.m_owner_nodes, entity_id);
+
+                // If surface has no more owner nodes, remove it from cached surfaces.
+                if (surface_cached_data.m_owner_nodes.empty())
+                {
+                    DereferenceMaterial(surface_cached_data.m_material_id);
+                    m_cached_surfaces.RemoveObject(surface_id);
+                }
+            }
+        }
     }
 
     void SceneRenderer::UpdateEntityTransform(EntityID entity_id,
@@ -198,7 +203,7 @@ namespace brr::render
             return;
         }
 
-        MeshStorage::RenderSurface* render_surface = RenderStorageGlobals::mesh_storage.GetSurface(surface_id);
+        RenderSurface* render_surface = RenderStorageGlobals::mesh_storage.GetSurface(surface_id);
         if (!render_surface)
         {
             BRR_LogError("Can't append Surface (ID: {}) to SceneRenderer Entity (ID: {}) because this Surface doesn't exist in renderer surface storage.",
@@ -218,6 +223,8 @@ namespace brr::render
         MarkEntityDirty(owner_entity, entity_info, true, false);
         BRR_LogInfo("Appended Surface (ID: {}) to Entity (ID: {}).", static_cast<uint64_t>(surface_id), static_cast<uint32_t>(owner_entity));
 
+        MaterialID surface_material_id = render_surface->m_material_id.IsValid() ?
+                render_surface->m_material_id : m_default_material;
         if (m_cached_surfaces.Contains(surface_id))
         {
             SurfaceRenderData& render_data = m_cached_surfaces.Get(surface_id);
@@ -226,13 +233,18 @@ namespace brr::render
         else
         {
             SurfaceRenderData render_data (owner_entity);
-            render_data.m_my_surface_id = surface_id;
+            // Surface Data
+            render_data.m_surface_id = surface_id;
             render_data.m_vertex_buffer_handle = render_surface->m_vertex_buffer;
             render_data.m_index_buffer_handle = render_surface->m_index_buffer;
             render_data.m_num_vertices = render_surface->num_vertices;
             render_data.m_num_indices = render_surface->num_indices;
 
+            // Material Data
+            render_data.m_material_id = surface_material_id;
+
             m_cached_surfaces.AddObject(surface_id, render_data);
+            ReferenceNewMaterial(surface_material_id);
         }
     }
 
@@ -243,7 +255,7 @@ namespace brr::render
             SurfaceRenderData& surface_cached_data = m_cached_surfaces.Get(surface_id);
             surface_cached_data.m_surface_dirty = true;
 
-            MeshStorage::RenderSurface* render_surface = RenderStorageGlobals::mesh_storage.GetSurface(surface_id);
+            RenderSurface* render_surface = RenderStorageGlobals::mesh_storage.GetSurface(surface_id);
             bool is_removed = render_surface == nullptr;
 
             // Mark entities surfaces as dirty. Delete SurfaceID from entity surfaces if surface was removed.
@@ -268,9 +280,21 @@ namespace brr::render
                 surface_cached_data.m_index_buffer_handle = render_surface->m_index_buffer;
                 surface_cached_data.m_num_vertices = render_surface->num_vertices;
                 surface_cached_data.m_num_indices = render_surface->num_indices;
+                // TODO: Handle material change.
+                if (surface_cached_data.m_material_id != render_surface->m_material_id)
+                {
+                    MaterialID new_material_id = render_surface->m_material_id.IsValid() ?
+                            render_surface->m_material_id : m_default_material;
+                    // Decrease old material reference count, and erase it from cached materials if no more references.
+                    DereferenceMaterial(surface_cached_data.m_material_id);
+                    // Increase new material reference count, and add it to cached materials if it doesn't exist.
+                    ReferenceNewMaterial(new_material_id);
+                    surface_cached_data.m_material_id = new_material_id;
+                }
             }
             else
             {
+                DereferenceMaterial(surface_cached_data.m_material_id);
                 m_cached_surfaces.RemoveObject(surface_id);
             }
         }
@@ -584,8 +608,11 @@ namespace brr::render
             {
                 m_scene_uniform_info.m_light_storage_size_changed[m_current_buffer] = false;
 
-                DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
-                auto setBuilder                 = DescriptorSetUpdater(layout);
+                Shader* shader = RenderStorageGlobals::material_storage.GetShader(m_shader_id);
+                assert(shader != nullptr && "Default shader must be initialized when updating SceneRenderer.");
+
+                DescriptorLayout layout = shader->GetDescriptorSetLayouts()[0];
+                auto setBuilder         = DescriptorSetUpdater(layout);
                 setBuilder.BindBuffer(0, m_scene_uniform_info.m_lights_buffers[m_current_buffer].GetHandle(),
                                       m_scene_lights.Size() * sizeof(Light));
 
@@ -611,20 +638,25 @@ namespace brr::render
         // Viewport uniform (camera matrix)
         m_render_device->Bind_DescriptorSet(m_graphics_pipeline, viewport.camera_descriptor_sets[m_current_buffer], 1);
 
-        // Material uniform
-        m_render_device->Bind_DescriptorSet(m_graphics_pipeline, m_material_descriptor_sets[m_current_buffer], 2);
-        // TODO: create a proper material system
-
+        MaterialID last_material_id = MaterialID();
         for (SurfaceRenderData& render_data : m_cached_surfaces)
         {
+            // Bind Material uniform, if necessary
+            if (last_material_id != render_data.m_material_id)
+            {
+                MaterialRenderData& material_render_data = m_cached_materials.Get(render_data.m_material_id);
+                m_render_device->Bind_DescriptorSet(m_graphics_pipeline, material_render_data.m_material_descriptor_sets[m_current_buffer], 2);
+                last_material_id = render_data.m_material_id;
+            }
+
             for (EntityID owner_node : render_data.m_owner_nodes)
             {
                 auto entity_iter = m_entities_map.find(owner_node);
                 if (entity_iter == m_entities_map.end())
                 {
                     BRR_LogError(
-                        "Surface (ID: {}) is owned by non-existing Entity (ID: {}).\nSkipping rendering of this Surface.",
-                        uint64_t(render_data.m_my_surface_id), uint32_t(owner_node));
+                        "Surface (ID: {}) is owned by non-existing Entity (ID: {}).\nSkipping rendering of this Entity.",
+                        uint64_t(render_data.m_surface_id), uint32_t(owner_node));
                     continue;
                 }
                 EntityInfo& entity_info = entity_iter->second;
@@ -662,7 +694,10 @@ namespace brr::render
                                      MemoryUsage::AUTO);
         }
 
-        DescriptorLayout layout = m_shader.GetDescriptorSetLayouts()[0];
+        Shader* shader = RenderStorageGlobals::material_storage.GetShader(m_shader_id);
+        assert(shader != nullptr && "Default shader must be initialized when updating SceneRenderer.");
+
+        DescriptorLayout layout = shader->GetDescriptorSetLayouts()[0];
 
         std::vector<DescriptorSetHandle> descriptors_handles = m_render_device->DescriptorSet_Allocate(
             layout.m_layout_handle, FRAME_LAG);
@@ -688,8 +723,11 @@ namespace brr::render
                                                                       MemoryUsage::AUTO);
         }
 
+        Shader* shader = RenderStorageGlobals::material_storage.GetShader(m_shader_id);
+        assert(shader != nullptr && "Default shader must be initialized when updating SceneRenderer.");
+
         // Init viewport camera descriptor sets
-        DescriptorLayout descriptor_layout = m_shader.GetDescriptorSetLayouts()[1];
+        DescriptorLayout descriptor_layout = shader->GetDescriptorSetLayouts()[1];
 
         std::vector<DescriptorSetHandle> descriptors_handles = m_render_device->
             DescriptorSet_Allocate(descriptor_layout.m_layout_handle,
@@ -750,8 +788,11 @@ namespace brr::render
 
         }
 
+        Shader* shader = RenderStorageGlobals::material_storage.GetShader(m_shader_id);
+        assert(shader != nullptr && "Default shader must be initialized when updating SceneRenderer.");
+
         // Init model descriptor sets
-        entity_info.descriptor_layout = m_shader.GetDescriptorSetLayouts()[1];
+        entity_info.descriptor_layout = shader->GetDescriptorSetLayouts()[1];
 
         std::vector<DescriptorSetHandle> descriptors_handles = m_render_device->
             DescriptorSet_Allocate(entity_info.descriptor_layout.m_layout_handle,
@@ -766,27 +807,6 @@ namespace brr::render
             setBuilder.UpdateDescriptorSet(entity_info.descriptor_sets[frame_idx]);
         }
         BRR_LogInfo("Initialized Entity Uniform Buffers.");
-    }
-
-    void SceneRenderer::SetupMaterialUniforms()
-    {
-        // Init material descriptor set
-        {
-            m_material_descriptor_layout = m_shader.GetDescriptorSetLayouts()[2];
-
-            std::vector<DescriptorSetHandle> descriptors_handles = m_render_device->DescriptorSet_Allocate(
-                m_material_descriptor_layout.m_layout_handle, FRAME_LAG);
-            std::ranges::copy(descriptors_handles, m_material_descriptor_sets.begin());
-
-            for (uint32_t frame_idx = 0; frame_idx < FRAME_LAG; frame_idx++)
-            {
-                auto setBuilder = DescriptorSetUpdater(m_material_descriptor_layout);
-
-                setBuilder.BindImage(0, m_texture_2d_handle);
-
-                setBuilder.UpdateDescriptorSet(m_material_descriptor_sets[frame_idx]);
-            }
-        }
     }
 
     void SceneRenderer::MarkEntityDirty(EntityID entity_id, EntityInfo& entity_info, bool mark_surface, bool mark_uniform)
@@ -809,5 +829,37 @@ namespace brr::render
         m_scene_uniform_info.m_light_storage_dirty.fill(true);
         m_scene_uniform_info.m_light_storage_size_changed.fill(true);
         return true;
+    }
+
+    void SceneRenderer::ReferenceNewMaterial(MaterialID material_id)
+    {
+        if (!m_cached_materials.Contains(material_id))
+        {
+            Material* new_material = RenderStorageGlobals::material_storage.GetMaterial(material_id);
+            assert(new_material != nullptr && "Referenced Material must be a valid material.");
+            m_cached_materials.AddObject(material_id, {new_material->descriptor_sets, 1});
+        }
+        else
+        {
+            MaterialRenderData& new_material_render_data = m_cached_materials.Get(material_id);
+            new_material_render_data.reference_count++;
+        }
+    }
+
+    void SceneRenderer::DereferenceMaterial(MaterialID material_id)
+    {
+        // Decrease material reference count, and erase it from cached materials if no more references.
+        if (m_cached_materials.Contains(material_id))
+        {
+            MaterialRenderData& old_material_render_data = m_cached_materials.Get(material_id);
+            if (old_material_render_data.reference_count > 0)
+            {
+                old_material_render_data.reference_count--;
+            }
+            if (old_material_render_data.reference_count == 0)
+            {
+                m_cached_materials.RemoveObject(material_id);
+            }
+        }
     }
 }
