@@ -9,6 +9,7 @@
 namespace brr::vis
 {
     Image::Image(std::filesystem::path image_path)
+        : Asset(image_path.string())
     {
         if (!image_path.has_filename())
         {
@@ -33,8 +34,6 @@ namespace brr::vis
         m_width = w;
         m_height = h;
         m_totalSize = w * h * 4;
-
-        SetPath(image_path.string());
 
         m_texture_id = render::RenderThread::ResourceCmd_CreateTexture2D(m_buffer, w, h, render::DataFormat::R8G8B8A8_SRGB);
     }

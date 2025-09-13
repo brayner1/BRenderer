@@ -53,6 +53,7 @@ void ImDrawDataSnapshot::SnapUsingSwap(ImDrawData* src, double current_time)
         {
             entry->SrcCopy = src_list;
             entry->OurCopy = IM_NEW(ImDrawList)(src_list->_Data);
+            entry->OurCopy->_OwnerName = "SnapshotOwner"; // Make sure our copy is marked as owned by us, for debugging
         }
         IM_ASSERT(entry->SrcCopy == src_list);
         entry->SrcCopy->CmdBuffer.swap(entry->OurCopy->CmdBuffer); // Cheap swap

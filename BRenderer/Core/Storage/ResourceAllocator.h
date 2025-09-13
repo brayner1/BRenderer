@@ -17,6 +17,12 @@ namespace brr
         constexpr ResourceHandle() : index(std::numeric_limits<uint32_t>::max()), validation(std::numeric_limits<uint32_t>::max())
         {}
 
+        explicit ResourceHandle(uint64_t handle_value)
+        {
+            index = static_cast<uint32_t>(handle_value & 0xFFFFFFFF);
+            validation = static_cast<uint32_t>((handle_value >> 32) & 0xFFFFFFFF);
+        }
+
         constexpr bool operator ==(const ResourceHandle& other) const
         {
             return index == other.index && validation == other.validation;
@@ -32,9 +38,9 @@ namespace brr
             return IsValid();
         }
 
-        constexpr operator size_t() const
+        constexpr operator uint64_t() const
         {
-            return (validation << sizeof(uint32_t)) | index;
+            return (static_cast<uint64_t>(validation) << 32) | index;
         }
 
     protected:

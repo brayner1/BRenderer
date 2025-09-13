@@ -47,7 +47,7 @@ namespace brr::render
 
         SetupSceneUniforms();
 
-        m_image = Ref<vis::Image>(AssetManager::GetAsset("Resources/UV_Grid.png"));
+        m_image = AssetManager::GetOrCreateAsset<vis::Image>("Resources/UV_Grid.png");
 
         TextureID texture_id = m_image->GetTextureID();
         TextureStorage::Texture* texture = RenderStorageGlobals::texture_storage.GetTexture(texture_id);

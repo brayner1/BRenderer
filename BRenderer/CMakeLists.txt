@@ -171,6 +171,19 @@ set(BRenderer_HEADER_FILES
     "Files/FilesUtils.h"
 ) 
 
+set(ImGui_SRC_FILES
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/imgui.h"
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/imgui.cpp"
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/imgui_tables.cpp"
+
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/imgui_demo.cpp"
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/imgui_draw.cpp"
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/imgui_widgets.cpp"
+
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/backends/imgui_impl_vulkan.cpp"
+"${CMAKE_CURRENT_SOURCE_DIR}/../3rdparties/imgui/backends/imgui_impl_sdl2.cpp"
+)
+
 source_group(Renderer REGULAR_EXPRESSION "Renderer/.*")
 source_group(Visualization REGULAR_EXPRESSION "Visualization/.*")
 source_group(Core REGULAR_EXPRESSION "Core/.*")
@@ -181,23 +194,24 @@ source_group(Importer REGULAR_EXPRESSION "Importer/.*")
 source_group("Files" REGULAR_EXPRESSION "Files/.*")
 
 # Add source to this project's executable.
-add_library(BRenderer STATIC ${BRenderer_SOURCE_FILES} ${BRenderer_HEADER_FILES})
+add_library(BRenderer STATIC ${BRenderer_SOURCE_FILES} ${BRenderer_HEADER_FILES} ${ImGui_SRC_FILES})
 
 message("Setting CXX Standard to C++20")
 set_property(TARGET BRenderer PROPERTY CXX_STANDARD 20)
 set_property(TARGET BRenderer PROPERTY CXX_STANDARD_REQUIRED ON)
 
+add_definitions(-DIMGUI_IMPL_VULKAN_NO_PROTOTYPES)
 if (WIN32)
     # Add any required preprocessor definitions here
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
     add_definitions(-DNOMINMAX)
 endif()
 
-target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_SOURCE_DIR}/3rdparties" )
+target_include_directories(BRenderer PUBLIC "${Vulkan_INCLUDE_DIRS}" "${Vulkan_INCLUDE_DIRS}/SDL2" ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_SOURCE_DIR}/3rdparties" "${CMAKE_SOURCE_DIR}/3rdparties/imgui")
 
 target_link_directories(BRenderer PUBLIC $<TARGET_LINKER_FILE_DIR:Vulkan::Vulkan>)
 
-target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" spdlog::spdlog imgui PRIVATE Vulkan::Headers assimp::assimp VulkanMemoryAllocator SPSCQueue)
+target_link_libraries(BRenderer PUBLIC "SDL2" "SDL2main" spdlog::spdlog PRIVATE Vulkan::Headers assimp::assimp VulkanMemoryAllocator SPSCQueue)
 
 if (TARGET spdlog)
     message("SpdLog Found!")

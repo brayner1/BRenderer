@@ -10,6 +10,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <Renderer/Storages/RenderStorageGlobals.h>
 
 #include "imgui.h"
 #include "backends/imgui_impl_sdl2.h"
@@ -2124,6 +2125,29 @@ namespace brr::render
         cmd_begin_info
             .setFlags(vk::CommandBufferUsageFlagBits::eRenderPassContinue)
             .setPInheritanceInfo(&cmd_buffer_inheritance_info);
+        
+        for (ImDrawList* draw_list : imgui_draw_data->CmdLists)
+        {
+            for (ImDrawCmd& cmd : draw_list->CmdBuffer)
+            {
+                bool internal_texture = cmd.TexRef._TexData != nullptr;
+                if (!internal_texture) // user defined texture
+                {
+                    TextureID texture_id = ResourceHandle(cmd.GetTexID());
+                    TextureStorage::Texture* texture = RenderStorageGlobals::texture_storage.GetTexture(texture_id);
+                    vk::DescriptorSet texture_descriptor_set = GetOrCacheImGuiTexture(texture->texture_2d_handle);
+                    if (!texture_descriptor_set)
+                    {
+                        BRR_LogError("Could not get or cache ImGui texture. TextureID: {}", (size_t)texture_id);
+                        continue;
+                    }
+
+                    cmd.TexRef._TexID = (ImTextureID)static_cast<VkDescriptorSet>(texture_descriptor_set);
+                }
+            }
+        }
+
+        UpdateImGuiTextureCache();
             
         current_frame.imgui_cmd_buffer.begin(cmd_begin_info);
 
@@ -2309,6 +2333,47 @@ namespace brr::render
             .setSignalSemaphoreCount(signal_semaphore_count);
 
         return m_transfer_queue.submit(submit_info, submit_fence);
+    }
+
+    vk::DescriptorSet VulkanRenderDevice::GetOrCacheImGuiTexture(Texture2DHandle texture_handle)
+    {
+        Texture2D* texture = m_texture2d_alloc.GetResource(texture_handle);
+        if (!texture)
+        {
+            return {};
+        }
+
+        if (!m_imgui_texture_pool.Contains(texture_handle))
+        {
+            vk::DescriptorSet imgui_texture_descriptor = ImGui_ImplVulkan_AddTexture(m_texture2DSampler, texture->image_view, static_cast<VkImageLayout>(texture->target_image_layout));
+            ImGuiTextureData texture_data {imgui_texture_descriptor, texture_handle, double(m_current_frame)};
+            m_imgui_texture_pool.AddObject(texture_handle, texture_data);
+        }
+
+        ImGuiTextureData& texture_data = m_imgui_texture_pool.Get(texture_handle);
+        texture_data.last_used_time = m_current_frame;
+        return texture_data.descriptor_set;
+    }
+
+    void VulkanRenderDevice::UpdateImGuiTextureCache()
+    {
+        static constexpr uint32_t MAX_UNUSED_FRAMES = 600; // about 10 seconds at 60 fps
+        std::vector<Texture2DHandle> textures_to_remove;
+        for (ImGuiTextureData& texture_data : m_imgui_texture_pool)
+        {
+            if (m_current_frame - texture_data.last_used_time > MAX_UNUSED_FRAMES)
+            {
+
+                ImGui_ImplVulkan_RemoveTexture(texture_data.descriptor_set);
+                textures_to_remove.push_back(texture_data.texture_handle);
+            }
+        }
+
+        for (Texture2DHandle texture_handle : textures_to_remove)
+        {
+            BRR_LogInfo("Erasing texture {} from ImGui Texture cache.", (size_t)texture_handle);
+            m_imgui_texture_pool.RemoveObject(texture_handle);
+        }
     }
 
     static vk::Result allocateCommandBuffer(vk::Device device, vk::CommandPool cmd_pool, vk::CommandBufferLevel level,
@@ -2817,9 +2882,12 @@ namespace brr::render
 
 	    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
 
+        ImGui_ImplVulkan_LoadFunctions(VK_API_VERSION_1_3, [](const char* function_name, void* vulkan_instance) { return VULKAN_HPP_DEFAULT_DISPATCHER.vkGetInstanceProcAddr(static_cast<VkInstance>(vulkan_instance), function_name); }, m_vulkan_instance);
 	    ImGui_ImplVulkan_Init(&init_info);
+        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-	    ImGui_ImplVulkan_CreateFontsTexture();
+        //ImGui_ImplVulkan_CreateFontsTexture
+	    //ImGui_ImplVulkan_CreateFontsTexture();
     }
 
     void VulkanRenderDevice::Free_FramePendingResources(Frame& frame)

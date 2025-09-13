@@ -46,10 +46,10 @@ namespace brr
 
 	    Engine::InitEngine();
 		m_window_manager = Engine::GetWindowManager();
+		m_image_ref = AssetManager::GetOrCreateAsset<vis::Image>("Resources/UV_Grid.png");
 
 		OnInit();
 
-		m_image_ref = new vis::Image("Resources/UV_Grid.png");
 		BRR_LogDebug("Loaded image with size: ({} x {})", m_image_ref->Width(), m_image_ref->Height());
 	}
 

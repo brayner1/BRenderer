@@ -13,7 +13,6 @@ add_subdirectory ("3rdparties/assimp")
 add_subdirectory ("3rdparties/VulkanMemoryAllocator")
 add_subdirectory ("3rdparties/rigtorp/SPSCQueue")
 add_subdirectory ("3rdparties/rigtorp/MPMCQueue")
-add_subdirectory ("3rdparties/imgui")
 
 # Include sub-projects.
 add_subdirectory ("BRenderer")

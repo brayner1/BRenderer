@@ -17,6 +17,8 @@ namespace brr
         static bool HasAsset(const std::string& asset_path);
         static bool HasAsset(UUID asset_uuid);
 
+		template <typename T, std::enable_if_t<std::is_base_of_v<Asset, T>, int> = 0>
+		static Ref<T> GetOrCreateAsset(const std::string& asset_path);
         static Ref<Asset> GetAsset(const std::string& asset_path);
 		static Ref<Asset> GetAsset(UUID asset_uuid);
 
@@ -34,6 +36,19 @@ namespace brr
 		static std::unordered_map<std::string, Asset*> s_asset_path_map;
 	};
 
+    template <typename T, std::enable_if_t<std::is_base_of_v<Asset, T>, int>>
+    Ref<T> AssetManager::GetOrCreateAsset(const std::string& asset_path)
+    {
+        Ref<T> existing_asset = GetAsset(asset_path);
+        if (existing_asset)
+        {
+            return existing_asset;
+        }
+
+        // Create a new asset
+        Ref<T> new_asset = Ref<T>(new T(asset_path));
+        return new_asset;
+    }
 }
 
 #endif
