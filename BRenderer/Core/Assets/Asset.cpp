@@ -14,6 +14,18 @@ namespace brr
         AssetManager::RegisterAsset(m_asset_uuid, this);
     }
 
+    Asset::Asset(std::string asset_path,
+                 UUID asset_uuid)
+        : m_asset_path(std::move(asset_path)),
+          m_asset_uuid(asset_uuid)
+    {
+        AssetManager::RegisterAsset(m_asset_uuid, this);
+        if (!m_asset_path.empty())
+        {
+            AssetManager::RegisterAsset(m_asset_path, this);
+        }
+    }
+
     Asset::~Asset()
     {
         AssetManager::UnregisterAsset(m_asset_uuid);
@@ -21,21 +33,5 @@ namespace brr
         {
             AssetManager::UnregisterAsset(m_asset_path);
         }
-    }
-
-    void Asset::SetPath(std::string resource_path, bool replace_previous_path)
-    {
-        if (!replace_previous_path && !m_asset_path.empty())
-        {
-            return;
-        }
-
-        if (!m_asset_path.empty())
-        {
-            AssetManager::UnregisterAsset(m_asset_path);
-        }
-
-        m_asset_path = std::move(resource_path);
-        AssetManager::RegisterAsset(m_asset_path, this);
     }
 }

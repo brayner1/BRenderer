@@ -114,9 +114,24 @@ namespace
         }
         RenderThreadLoop();
 
-        // Execute the last submitted commands from game thread.
+        // Wait for the device to be idle before executing remaining commands.
         VKRD::GetSingleton()->WaitIdle();
-        ExecuteUpdateCommands(s_current_render_update_cmds);
+
+        // Execute any remaining commands in the render update queue.
+        // Some may be left if the main thread was faster than the render thread.
+        // Including commands to destroy still active resources.
+        uint32_t executed_finish_cmdlists = 0;
+        while (RenderUpdateCmdGroup* front = s_render_update_queue.front())
+        {
+            s_current_render_update_cmds = std::move(*front);
+            s_render_update_queue.pop();
+            ExecuteUpdateCommands(s_current_render_update_cmds);
+            executed_finish_cmdlists++;
+        }
+        // clear current render thread imgui snapshot, destroying its command list and buffers.
+        s_current_render_update_cmds.imgui_draw_data_snapshot.Clear();
+
+        BRR_LogDebug("RenderThread: Executed {} command lists on thread finalization.", executed_finish_cmdlists);
 
         RenderStorageGlobals::material_storage.DestroyDefaults();
         SystemsStorage::GetWindowRendererStorage().Clear();
@@ -140,6 +155,18 @@ void RenderThread::StopRenderingThread()
     BRR_LogDebug("Stopping rendering thread.");
     s_stop_rendering = true;
     s_rendering_thread.join();
+
+    // Clear available updates queue (rendering thread is closed)
+    while (s_available_update_queue.front())
+    {
+        s_available_update_queue.pop();
+    }
+    // clear current game thread imgui snapshot, destroying its command list and buffers.
+    s_current_game_update_cmds.imgui_draw_data_snapshot.Clear();
+
+    assert(s_render_update_queue.empty() && "Render update queue should be empty");
+    assert(s_available_update_queue.empty() && "Available update queue should be empty");
+
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
     BRR_LogDebug("Rendering thread joined.");

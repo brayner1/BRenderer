@@ -1,6 +1,7 @@
 #ifndef BRR_RENDERDEVICE_H
 #define BRR_RENDERDEVICE_H
 
+#include <Core/Storage/ContiguousPool.h>
 #include <Core/Storage/ResourceAllocator.h>
 #include <Renderer/Allocators/StagingAllocator.h>
 #include <Renderer/Vulkan/VkInitializerHelper.h>
@@ -263,13 +264,15 @@ namespace brr::render
 
         void Cleanup_Swapchain(Swapchain& swapchain);
 
-        /***********************
+        /*******************
          * Frame Functions *
-         ***********************/
+         *******************/
 
         struct Frame;
 
         constexpr Frame& GetCurrentFrame() { return m_frames[m_current_buffer]; }
+
+        void Free_FramePendingResources(Frame& frame);
 
         /***************************
          * CommandBuffer Functions *
@@ -296,6 +299,14 @@ namespace brr::render
                                                               vk::PipelineStageFlags* wait_dst_stages,
                                                               uint32_t signal_semaphore_count, vk::Semaphore* signal_semaphores,
                                                               vk::Fence submit_fence);
+
+        /*******************
+         * ImGui Functions *
+         *******************/
+
+        vk::DescriptorSet GetOrCacheImGuiTexture(Texture2DHandle texture_handle);
+
+        void UpdateImGuiTextureCache();
 
     private: // Resources
 
@@ -462,8 +473,6 @@ namespace brr::render
             bool imgui_cmd_buffer_begin = false;
         };
 
-        void Free_FramePendingResources(Frame& frame);
-
         std::array<Frame, FRAME_LAG> m_frames {};
 
         uint32_t m_current_buffer = 0;
@@ -490,9 +499,16 @@ namespace brr::render
         vk::SurfaceFormatKHR m_swapchain_surface_format {};
         vk::PresentModeKHR m_swapchain_present_mode {};
 
-        // ImGui Descriptor Pool
+        // ImGui Data
+        struct ImGuiTextureData
+        {
+            vk::DescriptorSet descriptor_set {};
+            Texture2DHandle texture_handle{};
+            double last_used_time = 0;
+        };
 
         vk::DescriptorPool m_imgui_desc_pool {};
+        ContiguousPool<Texture2DHandle, ImGuiTextureData, std::hash<ResourceHandle>> m_imgui_texture_pool{};
     };
 
     inline VulkanRenderDevice::VertexFormatFlags operator|(VulkanRenderDevice::VertexFormatFlags a, VulkanRenderDevice::VertexFormatFlags b)
