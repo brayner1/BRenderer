@@ -8,7 +8,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Entity parent = {})
+static void ConvertAssimpScene(const aiScene* assimp_scene, brr::Scene& scene, brr::Entity parent = {})
 {
 	struct NodeInfo
 	{

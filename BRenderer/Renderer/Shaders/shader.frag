@@ -28,8 +28,8 @@ layout(location = 0) out vec4 outColor;
 layout(set = 2, binding = 0) uniform MaterialUBO
 {
     vec3 color; // Base color of the material
-    vec3 emissive_color; // Emissive color of the material
     float metallic; // Metallic factor of the material
+    vec3 emissive_color; // Emissive color of the material
     float roughness; // Roughness factor of the material
 
     bool use_albedo;
@@ -130,5 +130,15 @@ void main() {
         final_illumination += ComputeLighting(inPosition, inNormal, lights_buffer[light_index]);
     }
     final_illumination = min(vec4(1.0), final_illumination);
-    outColor = texture(albedo_texture, inUvCoord) * final_illumination;
+
+    vec4 diffuse_color = vec4(1.0);
+    if (material_uniform.use_albedo)
+    {
+        diffuse_color = texture(albedo_texture, inUvCoord);
+    }
+    else
+    {
+        diffuse_color = vec4(material_uniform.color, 1.0);
+    }
+    outColor = diffuse_color * final_illumination + vec4(material_uniform.emissive_color, 0.0);
 }

@@ -80,6 +80,16 @@ std::vector<render::SurfaceID> Mesh3D::GetSurfacesIDs() const
     return surface_ids;
 }
 
+Ref<Material> Mesh3D::GetSurfaceMaterial(render::SurfaceID surface_id) const
+{
+    auto iter = std::find_if(m_surfaces.begin(), m_surfaces.end(), [surface_id](const SurfaceData& surface) { return surface.m_surface_id == surface_id; });
+    if (iter != m_surfaces.end())
+    {
+        return iter->m_material;
+    }
+    return Ref<Material>();
+}
+
 size_t Mesh3D::GetSurfaceVertexCount(render::SurfaceID surface_id) const
 {
     auto iter = std::find_if(m_surfaces.begin(), m_surfaces.end(), [surface_id](const SurfaceData& surface) { return surface.m_surface_id == surface_id; });
