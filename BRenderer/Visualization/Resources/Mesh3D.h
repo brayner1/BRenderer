@@ -34,6 +34,8 @@ namespace brr::vis
 
 		std::vector<render::SurfaceID> GetSurfacesIDs() const;
 
+		Ref<Material> GetSurfaceMaterial(render::SurfaceID surface_id) const;
+
 		size_t GetSurfaceVertexCount(render::SurfaceID surface_id) const;
 
 		size_t GetSurfaceIndexCount(render::SurfaceID surface_id) const;

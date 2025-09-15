@@ -7,6 +7,8 @@
 #include <Scene/Entity.h>
 #include <Visualization/WindowImGuiLayer.h>
 
+#include "GUIWindows/MaterialEditor.h"
+
 namespace brr::editor
 {
     class EditorGuiLayer : public vis::WindowImGuiLayer
@@ -43,6 +45,8 @@ namespace brr::editor
 
         Event<bool> m_light_toggled_event;
         Event<glm::vec3> m_light_color_changed_event;
+
+        std::unique_ptr<MaterialEditor> m_material_editor;
     };
 }
 

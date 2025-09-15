@@ -274,6 +274,8 @@ namespace brr::render
 
         void Free_FramePendingResources(Frame& frame);
 
+        void Update_FramePendingResources(Frame& frame);
+
         /***************************
          * CommandBuffer Functions *
          ***************************/

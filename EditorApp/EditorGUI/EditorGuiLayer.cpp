@@ -17,6 +17,7 @@ namespace brr::editor
     EditorGuiLayer::EditorGuiLayer()
     {
         ImGui::GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
+        m_material_editor = std::make_unique<MaterialEditor>();
     }
 
     void EditorGuiLayer::OnImGuiRender()
@@ -24,6 +25,8 @@ namespace brr::editor
         WindowImGuiLayer::OnImGuiRender();
         if (!m_window_active)
             return;
+
+        m_material_editor->OnImGuiRender();
 
         if (m_navigator_window_size == glm::vec2(0.0))
         {

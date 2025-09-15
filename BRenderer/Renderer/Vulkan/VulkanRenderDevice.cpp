@@ -279,6 +279,7 @@ namespace brr::render
         m_device.resetFences(current_frame.in_flight_fences);
 
         Free_FramePendingResources(current_frame);
+        Update_FramePendingResources(current_frame);
 
         if (!current_frame.graphics_cmd_buffer_begin)
         {
@@ -2904,5 +2905,10 @@ namespace brr::render
             vmaDestroyImage(m_vma_allocator, texture_alloc_info.image, texture_alloc_info.allocation);
         }
         frame.texture_delete_list.clear();
+    }
+
+    void VulkanRenderDevice::Update_FramePendingResources(Frame& frame)
+    {
+        RenderStorageGlobals::material_storage.FrameUpdatePendingDescriptors();
     }
 }

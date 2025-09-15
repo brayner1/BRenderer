@@ -51,12 +51,14 @@ void MeshStorage::InitSurface(SurfaceID surface_id,
 
     BRR_LogInfo("Creating Vertex Buffer.");
 
+    VulkanRenderDevice* render_device = VKRD::GetSingleton();
+
     //TODO: vertex format should be either: 1. Enforced; 2. Passed as parameter;
     VulkanRenderDevice::VertexFormatFlags vertex_format = VKRD::VertexFormatFlags::UV0 | 
         VKRD::VertexFormatFlags::NORMAL |
         VKRD::VertexFormatFlags::TANGENT;
 
-    surface->m_vertex_buffer = VKRD::GetSingleton()->CreateVertexBuffer(
+    surface->m_vertex_buffer = render_device->CreateVertexBuffer(
         vertex_buffer_size, vertex_format, vertex_buffer_data);
 
     surface->num_vertices = vertex_buffer_size / sizeof(Vertex3);
@@ -68,7 +70,7 @@ void MeshStorage::InitSurface(SurfaceID surface_id,
 
     VulkanRenderDevice::IndexType index_type = VulkanRenderDevice::IndexType::UINT32;
 
-    surface->m_index_buffer = VKRD::GetSingleton()->CreateIndexBuffer(
+    surface->m_index_buffer = render_device->CreateIndexBuffer(
         index_buffer_size, index_type, index_buffer_data);
 
     surface->num_indices = index_buffer_size / sizeof(uint32_t);

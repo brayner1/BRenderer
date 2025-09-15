@@ -32,6 +32,8 @@ namespace brr::render
         std::array<DescriptorSetHandle, FRAME_LAG> descriptor_sets{};
 
         BufferHandle uniform_buffer_handle {};
+
+        ShaderID shader_id;
     };
 
     MaterialProperties BuildMaterialProperties(brr::vis::MaterialData material_data);
@@ -70,7 +72,13 @@ namespace brr::render
 
         void UpdateMaterialProperties(MaterialID material_id, const MaterialProperties& properties);
 
+        // Frame Update
+
+        void FrameUpdatePendingDescriptors();
+
     private:
+
+        std::array<std::vector<MaterialID>, FRAME_LAG> m_frames_updates;
 
         ResourceAllocator<Shader> m_shader_storage;
         ShaderID m_default_shader;

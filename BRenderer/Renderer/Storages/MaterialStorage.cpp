@@ -145,7 +145,7 @@ void MaterialStorage::InitMaterial(MaterialID material_id,
         return;
     }
 
-    DescriptorLayout descriptor_layout = shader->GetDescriptorSetLayouts()[2]; // Set 2 is the Material set
+    DescriptorLayout descriptor_layout = shader->GetDescriptorSetLayouts()[2]; // Set 2 is the Material set // TODO: Should be hardcoded? (1)
 
     VulkanRenderDevice* render_device = VKRD::GetSingleton();
     if (!render_device)
@@ -153,6 +153,7 @@ void MaterialStorage::InitMaterial(MaterialID material_id,
         BRR_LogError("VulkanRenderDevice is not initialized.");
         return;
     }
+    material->shader_id = shader_id;
 
     material->uniform_buffer_handle = render_device->CreateBuffer(sizeof(MaterialUniformData),
                                                                   BufferUsage::UniformBuffer | BufferUsage::TransferDst,
@@ -234,7 +235,134 @@ Material* MaterialStorage::GetMaterial(MaterialID material_id)
     return GetResource(material_id);
 }
 
-void MaterialStorage::UpdateMaterialProperties(MaterialID material_id,
-                                               const MaterialProperties& properties)
+static void UpdateMaterialDescriptorSet(const DescriptorLayout& descriptor_layout, DescriptorSetHandle descriptor_set, BufferHandle uniform_buffer, Texture2DHandle diffuse_texture)
 {
+    DescriptorSetUpdater set_updated(descriptor_layout); // TODO: Should be hardcoded? (1)
+    // Build the material descriptor set based on the properties from shader
+    set_updated.BindBuffer(0, uniform_buffer, sizeof(MaterialUniformData)); // Updating the buffer with material uniform data
+    set_updated.BindImage(1, diffuse_texture);
+    set_updated.UpdateDescriptorSet(descriptor_set);
+}
+
+void MaterialStorage::UpdateMaterialProperties(MaterialID material_id,
+                                               const MaterialProperties& material_properties)
+{
+    Material* material = GetMaterial(material_id);
+    if (!material)
+    {
+        BRR_LogError("Trying to update Material (ID: {}) that does not exist.", static_cast<uint64_t>(material_id));
+        return;
+    }
+
+    VulkanRenderDevice* render_device = VKRD::GetSingleton();
+    if (!render_device)
+    {
+        BRR_LogError("VulkanRenderDevice is not initialized.");
+        return;
+    }
+
+    Shader* shader = GetShader(material->shader_id);
+    if (!shader)
+    {
+        BRR_LogError("Trying to update Material (ID: {}) linked to a non-existing Shader (ID: {}).",
+                     static_cast<uint64_t>(material_id), static_cast<uint64_t>(material->shader_id));
+        return;
+    }
+
+    material->properties = material_properties;
+
+    // Destroy old uniform buffer
+    render_device->DestroyBuffer(material->uniform_buffer_handle);
+
+    // Create new uniform buffer
+    material->uniform_buffer_handle = render_device->CreateBuffer(sizeof(MaterialUniformData),
+                                                                  BufferUsage::UniformBuffer | BufferUsage::TransferDst,
+                                                                  MemoryUsage::AUTO_PREFER_DEVICE);
+
+    BRR_LogInfo("Initialized Material (ID: {}) new uniform buffer.", static_cast<uint64_t>(material_id));
+    MaterialUniformData material_uniform_data;
+    material_uniform_data.color = material_properties.color;
+    material_uniform_data.metallic = material_properties.metallic;
+    material_uniform_data.emissive_color = material_properties.emissive_color;
+    material_uniform_data.roughness = material_properties.roughness;
+    material_uniform_data.use_albedo = material_properties.diffuse_texture.IsValid();
+    material_uniform_data.use_normal_map = material_properties.normal_texture.IsValid();
+    material_uniform_data.use_metallic_roughness = material_properties.metallic_roughness_texture.IsValid();
+    material_uniform_data.use_emissive = material_properties.emissive_texture.IsValid();
+
+    render_device->UploadBufferData(material->uniform_buffer_handle, &material_uniform_data, sizeof(MaterialUniformData), 0);
+
+    BRR_LogInfo("Uploaded Material (ID: {}) updated uniform buffer data.", static_cast<uint64_t>(material_id));
+    BRR_LogInfo("New material color: (r: {}, g: {}, b: {})", material_uniform_data.color.r, material_uniform_data.color.g, material_uniform_data.color.b);
+
+    Texture2DHandle diffuse_texture_handle;
+    TextureID texture_id = material_properties.diffuse_texture.IsValid() ? material_properties.diffuse_texture : m_null_texture;
+    TextureStorage::Texture* diffuse_texture = RenderStorageGlobals::texture_storage.GetTexture(texture_id);
+    if (diffuse_texture != nullptr)
+    {
+        diffuse_texture_handle = diffuse_texture->texture_2d_handle;
+    }
+    else
+    {
+        diffuse_texture = RenderStorageGlobals::texture_storage.GetTexture(m_null_texture);
+        assert(diffuse_texture != nullptr && "MaterialStorage::m_null_texture must represent a valid 1x1 texture.");
+        diffuse_texture_handle = diffuse_texture->texture_2d_handle;
+    }
+
+    uint32_t current_buffer_index = render_device->GetCurrentFrameBufferIndex();
+    DescriptorLayout descriptor_layout = shader->GetDescriptorSetLayouts()[2];
+    UpdateMaterialDescriptorSet(descriptor_layout, material->descriptor_sets[current_buffer_index], material->uniform_buffer_handle, diffuse_texture_handle);
+
+    for (uint32_t idx = 0; idx < FRAME_LAG; idx++)
+    {
+        if (idx != current_buffer_index)
+        {
+            m_frames_updates[idx].push_back(material_id);
+        }
+    }
+}
+
+void MaterialStorage::FrameUpdatePendingDescriptors()
+{
+    VulkanRenderDevice* render_device = VKRD::GetSingleton();
+    if (!render_device)
+    {
+        BRR_LogError("VulkanRenderDevice is not initialized.");
+        return;
+    }
+    uint32_t current_buffer_index = render_device->GetCurrentFrameBufferIndex();
+    for (MaterialID material_id : m_frames_updates[current_buffer_index])
+    {
+        Material* material = GetMaterial(material_id);
+        if (!material)
+        {
+            BRR_LogError("Trying to update Material (ID: {}) that does not exist.", static_cast<uint64_t>(material_id));
+            continue;
+        }
+        Shader* shader = GetShader(material->shader_id);
+        if (!shader)
+        {
+            BRR_LogError("Trying to update Material (ID: {}) linked to a non-existing Shader (ID: {}).",
+                         static_cast<uint64_t>(material_id), static_cast<uint64_t>(material->shader_id));
+            continue;
+        }
+
+        Texture2DHandle diffuse_texture_handle;
+        TextureID texture_id = material->properties.diffuse_texture.IsValid() ? material->properties.diffuse_texture : m_null_texture;
+        TextureStorage::Texture* diffuse_texture = RenderStorageGlobals::texture_storage.GetTexture(texture_id);
+        if (diffuse_texture != nullptr)
+        {
+            diffuse_texture_handle = diffuse_texture->texture_2d_handle;
+        }
+        else
+        {
+            diffuse_texture = RenderStorageGlobals::texture_storage.GetTexture(m_null_texture);
+            assert(diffuse_texture != nullptr && "MaterialStorage::m_null_texture must represent a valid 1x1 texture.");
+            diffuse_texture_handle = diffuse_texture->texture_2d_handle;
+        }
+
+        DescriptorLayout descriptor_layout = shader->GetDescriptorSetLayouts()[2];
+        UpdateMaterialDescriptorSet(descriptor_layout, material->descriptor_sets[current_buffer_index], material->uniform_buffer_handle, diffuse_texture_handle);
+    }
+    m_frames_updates[current_buffer_index].clear();
 }
