@@ -74,14 +74,14 @@ namespace brr::editor
             {
             case 0:
                 BRR_LogInfo("EditorUI: Creating Point Light.");
-                light_entity.AddComponent<PointLightComponent>(glm::vec3(), glm::vec3(1.0, 1.0, 1.0), 1.0);
+                light_entity.AddComponent<PointLightComponent>(glm::vec3(1.0, 1.0, 1.0), 1.0);
                 break;
             case 1:
-                light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(0.0, -1.0, 0.0), glm::vec3(1.0, 1.0, 1.0), 1.0);
+                light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(1.0, 1.0, 1.0), 1.0);
                 BRR_LogInfo("EditorUI: Creating Directional Light.");
                 break;
             case 2:
-                light_entity.AddComponent<SpotLightComponent>(glm::vec3(), glm::vec3(0.0, -1.0, 0.0), glm::radians(45.0f), glm::vec3(1.0, 1.0, 1.0), 1.0);
+                light_entity.AddComponent<SpotLightComponent>(glm::vec3(1.0, 1.0, 1.0), 1.0, glm::radians(45.0f));
                 BRR_LogInfo("EditorUI: Creating Spot Light.");
                 break;
             case 3:
@@ -224,12 +224,6 @@ namespace brr::editor
 
     void DrawPointLightComponent(PointLightComponent& point_light_component)
     {
-        glm::vec3 position = point_light_component.GetPosition();
-        if (ImGui::InputFloat3("Position", &position.x, "%.3f", ImGuiInputTextFlags_CharsDecimal))
-        {
-            point_light_component.SetPosition(position);
-        }
-
         glm::vec3 color = point_light_component.GetColor();
         if (ImGui::ColorEdit3("Color", &color.x))
         {
@@ -246,18 +240,6 @@ namespace brr::editor
 
     void DrawSpotLightComponent(SpotLightComponent& spot_light_component)
     {
-        glm::vec3 position = spot_light_component.GetPosition();
-        if (ImGui::InputFloat3("Position", &position.x))
-        {
-            spot_light_component.SetPosition(position);
-        }
-
-        glm::vec3 direction = spot_light_component.GetDirection();
-        if (ImGui::InputFloat3("Direction", &direction.x) && glm::length(direction) > glm::epsilon<float>())
-        {
-            spot_light_component.SetDirection(glm::normalize(direction));
-        }
-
         glm::vec3 color = spot_light_component.GetColor();
         if (ImGui::ColorEdit3("Color", &color.x))
         {
@@ -269,17 +251,17 @@ namespace brr::editor
         {
             spot_light_component.SetIntensity(glm::abs(intensity));
         }
+
+        glm::float32 cutoff_angle = glm::degrees(spot_light_component.GetCutoffAngle());
+        if (ImGui::InputFloat("Cutoff Angle", &cutoff_angle))
+        {
+            spot_light_component.SetCutoffAngle(glm::radians(cutoff_angle));
+        }
         ImGui::Spacing();
     }
 
     void DrawDirectionalLightComponent(DirectionalLightComponent& dir_light_component)
     {
-        glm::vec3 direction = dir_light_component.GetDirection();
-        if (ImGui::InputFloat3("Direction", &direction.x) && glm::length(direction) > glm::epsilon<float>())
-        {
-            dir_light_component.SetDirection(glm::normalize(direction));
-        }
-
         glm::vec3 color = dir_light_component.GetColor();
         if (ImGui::ColorEdit3("Color", &color.x))
         {

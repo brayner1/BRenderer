@@ -476,107 +476,71 @@ void RenderThread::ResourceCmd_UpdateSurfaceIndexBuffer(SurfaceID surface_id,
 // ========================
 
 LightID RenderThread::SceneRenderCmd_CreatePointLight(uint64_t scene_id,
-                                                 const glm::vec3& position,
-                                                 const glm::vec3& color,
-                                                 float intensity)
+                                                      EntityID owner_entity_id,
+                                                      const glm::vec3& color,
+                                                      float intensity)
 {
     LightID light_id               = LightID(s_light_id_generator.GetNewId());
     SceneRendererCommand scene_cmd =
-        SceneRendererCommand::BuildCreatePointLightCommand(light_id, position, color, intensity);
+        SceneRendererCommand::BuildCreatePointLightCommand(light_id, owner_entity_id, color, intensity);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
     return light_id;
-}
-
-void RenderThread::SceneRenderCmd_UpdatePointLight(uint64_t scene_id,
-                                              LightID light_id,
-                                              const glm::vec3& position,
-                                              const glm::vec3& color,
-                                              float intensity)
-{
-    SceneRendererCommand scene_cmd =
-        SceneRendererCommand::BuildUpdatePointLightCommand(light_id, position, color, intensity);
-    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
-    scene_cmd_list.push_back(scene_cmd);
 }
 
 LightID RenderThread::SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id,
-                                                       const glm::vec3& direction,
-                                                       const glm::vec3& color,
-                                                       float intensity)
+                                                            EntityID owner_entity_id,
+                                                            const glm::vec3& color,
+                                                            float intensity)
 {
     LightID light_id               = LightID(s_light_id_generator.GetNewId());
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateDirectionalLightCommand(
-        light_id, direction, color, intensity);
+        light_id, owner_entity_id, color, intensity);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
     return light_id;
-}
-
-void RenderThread::SceneRenderCmd_UpdateDirectionalLight(uint64_t scene_id,
-                                                    LightID light_id,
-                                                    const glm::vec3& direction,
-                                                    const glm::vec3& color,
-                                                    float intensity)
-{
-    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateDirectionalLightCommand(
-        light_id, direction, color, intensity);
-    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
-    scene_cmd_list.push_back(scene_cmd);
 }
 
 LightID RenderThread::SceneRenderCmd_CreateSpotLight(uint64_t scene_id,
-                                                const glm::vec3& position,
-                                                float cutoff_angle,
-                                                const glm::vec3& direction,
-                                                float intensity,
-                                                const glm::vec3& color)
+                                                     EntityID owner_entity_id,
+                                                     const glm::vec3& color,
+                                                     float intensity,
+                                                     float cutoff_angle)
 {
     LightID light_id               = LightID(s_light_id_generator.GetNewId());
     SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateSpotLightCommand(
-        light_id, position, cutoff_angle, direction, intensity, color);
+        light_id, owner_entity_id, color, intensity, cutoff_angle);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
     return light_id;
-}
-
-void RenderThread::SceneRenderCmd_UpdateSpotLight(uint64_t scene_id,
-                                             LightID light_id,
-                                             const glm::vec3& position,
-                                             float cutoff_angle,
-                                             const glm::vec3& direction,
-                                             float intensity,
-                                             const glm::vec3& color)
-{
-    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateSpotLightCommand(
-        light_id, position, cutoff_angle, direction, intensity, color);
-    SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
-    scene_cmd_list.push_back(scene_cmd);
 }
 
 LightID RenderThread::SceneRenderCmd_CreateAmbientLight(uint64_t scene_id,
-                                                   const glm::vec3& color,
-                                                   float intensity)
+                                                        EntityID owner_entity_id,
+                                                        const glm::vec3& color,
+                                                        float intensity)
 {
-    LightID light_id                     = LightID(s_light_id_generator.GetNewId());
-    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildCreateAmbientLightCommand(light_id, color, intensity);
+    LightID light_id               = LightID(s_light_id_generator.GetNewId());
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildCreateAmbientLightCommand(
+        light_id, owner_entity_id, color, intensity);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
     return light_id;
 }
 
-void RenderThread::SceneRenderCmd_UpdateAmbientLight(uint64_t scene_id,
-                                                LightID light_id,
-                                                const glm::vec3& color,
-                                                float intensity)
+void RenderThread::SceneRenderCmd_UpdateLight(uint64_t scene_id,
+                                              LightID light_id,
+                                              const glm::vec3& color,
+                                              float intensity,
+                                              float cutoff_angle)
 {
-    SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildUpdateAmbientLightCommand(light_id, color, intensity);
+    SceneRendererCommand scene_cmd = SceneRendererCommand::BuildUpdateLightCommand(light_id, color, intensity, cutoff_angle);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];
     scene_cmd_list.push_back(scene_cmd);
 }
 
 void RenderThread::SceneRenderCmd_DestroyLight(uint64_t scene_id,
-                                         LightID light_id)
+                                               LightID light_id)
 {
     SceneRendererCommand scene_cmd       = SceneRendererCommand::BuildDestroyLightCommand(light_id);
     SceneRendererCmdList& scene_cmd_list = s_current_game_update_cmds.scene_cmd_list_map[scene_id];

@@ -3,12 +3,12 @@
 #include <Core/App.h>
 #include <Core/Inputs/InputSystem.h>
 #include <Core/Engine.h>
+#include <Scene/Components/LightComponents.h>
 
 #include "EditorGUI/EditorGuiLayer.h"
 #include "Importer/Importer.h"
-#include "Scene/Components/LightComponents.h"
 #include "Scene/Components/PerspectiveCameraComponent.h"
-#include "Scene/Components/LightComponents.h"
+#include "Scene/Components/Transform3DComponent.h"
 
 using namespace brr;
 
@@ -36,7 +36,8 @@ public:
 		main_scene->InitSceneRenderer();
 
 		Entity light_entity = main_scene->Add3DEntity("Point Light");
-		light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(1.0, 0.8, 0.8), 2.0);
+		light_entity.GetComponent<Transform3DComponent>().SetPosition(glm::vec3(0.0, 6.0, 0.0));
+		light_entity.AddComponent<PointLightComponent>(glm::vec3(1.0, 0.8, 0.8), 2.0);
 
 		SceneImporter::LoadFileIntoScene("Resources/Monkey/Monkey.obj", main_scene);
 
@@ -79,8 +80,8 @@ private:
 		{
 			light_entity = main_scene->Add3DEntity("Spot Light");
 			//light_entity.AddComponent<PointLightComponent>(glm::vec3(0.0, 6.0, -3.0), glm::vec3(0.7, 0.7, 1.0), 3.0);
-			light_entity.AddComponent<SpotLightComponent>(glm::vec3(0.0, 6.0, 0.0), glm::vec3(0.0, -1.0, 0.0),
-					                                      glm::radians(45.0/2.0), m_light_color, 3.0);
+			light_entity.AddComponent<SpotLightComponent>(m_light_color, 3.0,
+					                                      glm::radians(45.0/2.0));
 			//light_entity.AddComponent<DirectionalLightComponent>(glm::vec3(0.0, -0.42, 0.91), glm::vec3(1.0), 1.0);
 			//light_entity.AddComponent<AmbientLightComponent>(glm::vec3(0.2, 0.2, 0.2), 1);
 		}

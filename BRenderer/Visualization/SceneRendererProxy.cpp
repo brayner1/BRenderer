@@ -97,7 +97,7 @@ namespace brr::vis
 
     // Surfaces
 
-    void SceneRenderProxy::AppendSurfaceToEntity(const Transform3DComponent& owner_entity, render::SurfaceID surface_id) const
+    void SceneRenderProxy::AppendSurfaceToEntity(const Transform3DComponent& owner_entity, SurfaceID surface_id) const
     {
         RenderThread::SceneRenderCmd_AppendSurfaceToEntity(m_scene_renderer_id, owner_entity.GetRenderEntityID(), surface_id);
     }
@@ -109,67 +109,42 @@ namespace brr::vis
 
     // Lights
 
-    LightID SceneRenderProxy::CreatePointLight(const glm::vec3& position,
+    LightID SceneRenderProxy::CreatePointLight(const Transform3DComponent& owner_entity,
                                                const glm::vec3& color,
                                                float intensity) const
     {
-        return RenderThread::SceneRenderCmd_CreatePointLight(m_scene_renderer_id, position, color, intensity);
+        return RenderThread::SceneRenderCmd_CreatePointLight(m_scene_renderer_id, owner_entity.GetRenderEntityID(), color, intensity);
     }
 
-    void SceneRenderProxy::UpdatePointLight(LightID light_id,
-                                            const glm::vec3& position,
-                                            const glm::vec3& color,
-                                            float intensity) const
-    {
-        RenderThread::SceneRenderCmd_UpdatePointLight(m_scene_renderer_id, light_id, position, color, intensity);
-    }
-
-    LightID SceneRenderProxy::CreateDirectionalLight(const glm::vec3& direction,
+    LightID SceneRenderProxy::CreateDirectionalLight(const Transform3DComponent& owner_entity,
                                                      const glm::vec3& color,
                                                      float intensity) const
     {
-        return RenderThread::SceneRenderCmd_CreateDirectionalLight(m_scene_renderer_id, direction, color, intensity);
+        return RenderThread::SceneRenderCmd_CreateDirectionalLight(m_scene_renderer_id, owner_entity.GetRenderEntityID(), color, intensity);
     }
 
-    void SceneRenderProxy::UpdateDirectionalLight(LightID light_id,
-                                                  const glm::vec3& direction,
-                                                  const glm::vec3& color,
-                                                  float intensity) const
-    {
-        RenderThread::SceneRenderCmd_UpdateDirectionalLight(m_scene_renderer_id, light_id, direction, color, intensity);
-    }
-
-    LightID SceneRenderProxy::CreateSpotLight(const glm::vec3& position,
-                                              float cutoff_angle,
-                                              const glm::vec3& direction,
+    LightID SceneRenderProxy::CreateSpotLight(const Transform3DComponent& owner_entity,
+                                              const glm::vec3& color,
                                               float intensity,
-                                              const glm::vec3& color) const
+                                              float cutoff_angle) const
     {
-        return RenderThread::SceneRenderCmd_CreateSpotLight(m_scene_renderer_id, position, cutoff_angle, direction, intensity,
-                                                       color);
+        return RenderThread::SceneRenderCmd_CreateSpotLight(m_scene_renderer_id, owner_entity.GetRenderEntityID(),
+                                                            color, intensity, cutoff_angle);
     }
 
-    void SceneRenderProxy::UpdateSpotLight(LightID light_id,
-                                           const glm::vec3& position,
-                                           float cutoff_angle,
-                                           const glm::vec3& direction,
-                                           float intensity,
-                                           const glm::vec3& color) const
-    {
-        RenderThread::SceneRenderCmd_UpdateSpotLight(m_scene_renderer_id, light_id, position, cutoff_angle, direction, intensity, color);
-    }
-
-    LightID SceneRenderProxy::CreateAmbientLight(const glm::vec3& color,
+    LightID SceneRenderProxy::CreateAmbientLight(const Transform3DComponent& owner_entity,
+                                                 const glm::vec3& color,
                                                  float intensity) const
     {
-        return RenderThread::SceneRenderCmd_CreateAmbientLight(m_scene_renderer_id, color, intensity);
+        return RenderThread::SceneRenderCmd_CreateAmbientLight(m_scene_renderer_id, owner_entity.GetRenderEntityID(), color, intensity);
     }
 
-    void SceneRenderProxy::UpdateAmbientLight(LightID light_id,
-                                              const glm::vec3& color,
-                                              float intensity) const
+    void SceneRenderProxy::UpdateLight(LightID light_id,
+                                       const glm::vec3& color,
+                                       float intensity,
+                                       float cutoff_angle) const
     {
-        RenderThread::SceneRenderCmd_UpdateAmbientLight(m_scene_renderer_id, light_id, color, intensity);
+        RenderThread::SceneRenderCmd_UpdateLight(m_scene_renderer_id, light_id, color, intensity, cutoff_angle);
     }
 
     void SceneRenderProxy::DestroyLight(LightID light_id) const

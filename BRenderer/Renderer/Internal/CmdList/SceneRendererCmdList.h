@@ -12,23 +12,24 @@ namespace brr::render::internal
 {
     enum class SceneRendererCmdType
     {
+        // Scene Renderer
         CreateSceneRenderer,
         DestroySceneRenderer,
+        // Entity
         CreateEntity,
         DestroyEntity,
         UpdateEntityTransform,
         AppendSurface,
+        // Camera
         CreateCamera,
         DestroyCamera,
         UpdateCameraProjection,
+        // Lights
         CreatePointLight,
-        UpdatePointLight,
         CreateDirectionalLight,
-        UpdateDirectionalLight,
         CreateSpotLight,
-        UpdateSpotLight,
         CreateAmbientLight,
-        UpdateAmbientLight,
+        UpdateLight,
         DestroyLight
     };
 
@@ -126,118 +127,74 @@ namespace brr::render::internal
         }
 
         static SceneRendererCommand BuildCreatePointLightCommand(LightID light_id,
-                                                                 const glm::vec3& position,
+                                                                 EntityID owner_entity_id,
                                                                  const glm::vec3& color,
                                                                  float intensity)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type                  = SceneRendererCmdType::CreatePointLight;
-            scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_position  = position;
             scene_rend_command.light_command.light_color     = color;
             scene_rend_command.light_command.light_intensity = intensity;
-            return scene_rend_command;
-        }
-
-        static SceneRendererCommand BuildUpdatePointLightCommand(LightID light_id,
-                                                                 const glm::vec3& position,
-                                                                 const glm::vec3& color,
-                                                                 float intensity)
-        {
-            SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type                  = SceneRendererCmdType::UpdatePointLight;
             scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_position  = position;
-            scene_rend_command.light_command.light_color     = color;
-            scene_rend_command.light_command.light_intensity = intensity;
+            scene_rend_command.light_command.owner_entity_id = owner_entity_id;
             return scene_rend_command;
         }
 
         static SceneRendererCommand BuildCreateDirectionalLightCommand(LightID light_id,
-                                                                       const glm::vec3& direction,
+                                                                       EntityID owner_entity_id,
                                                                        const glm::vec3& color,
                                                                        float intensity)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type                  = SceneRendererCmdType::CreateDirectionalLight;
-            scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_direction = direction;
             scene_rend_command.light_command.light_color     = color;
             scene_rend_command.light_command.light_intensity = intensity;
-            return scene_rend_command;
-        }
-
-        static SceneRendererCommand BuildUpdateDirectionalLightCommand(LightID light_id,
-                                                                       const glm::vec3& direction,
-                                                                       const glm::vec3& color,
-                                                                       float intensity)
-        {
-            SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type                  = SceneRendererCmdType::UpdateDirectionalLight;
             scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_direction = direction;
-            scene_rend_command.light_command.light_color     = color;
-            scene_rend_command.light_command.light_intensity = intensity;
+            scene_rend_command.light_command.owner_entity_id = owner_entity_id;
             return scene_rend_command;
         }
 
         static SceneRendererCommand BuildCreateSpotLightCommand(LightID light_id,
-                                                                const glm::vec3& position,
-                                                                float cutoff_angle,
-                                                                const glm::vec3& direction,
+                                                                EntityID owner_entity_id,
+                                                                const glm::vec3& color,
                                                                 float intensity,
-                                                                const glm::vec3& color)
+                                                                float cutoff_angle)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type                  = SceneRendererCmdType::CreateSpotLight;
-            scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_position  = position;
-            scene_rend_command.light_command.light_intensity = intensity;
-            scene_rend_command.light_command.light_direction = direction;
             scene_rend_command.light_command.light_color     = color;
-            scene_rend_command.light_command.light_cutoff    = cutoff_angle;
-            return scene_rend_command;
-        }
-
-        static SceneRendererCommand BuildUpdateSpotLightCommand(LightID light_id,
-                                                                const glm::vec3& position,
-                                                                float cutoff_angle,
-                                                                const glm::vec3& direction,
-                                                                float intensity,
-                                                                const glm::vec3& color)
-        {
-            SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type                  = SceneRendererCmdType::UpdateSpotLight;
-            scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_position  = position;
             scene_rend_command.light_command.light_intensity = intensity;
-            scene_rend_command.light_command.light_direction = direction;
-            scene_rend_command.light_command.light_color     = color;
             scene_rend_command.light_command.light_cutoff    = cutoff_angle;
+            scene_rend_command.light_command.light_id        = light_id;
+            scene_rend_command.light_command.owner_entity_id = owner_entity_id;
             return scene_rend_command;
         }
 
         static SceneRendererCommand BuildCreateAmbientLightCommand(LightID light_id,
+                                                                   EntityID owner_entity_id,
                                                                    const glm::vec3& color,
                                                                    float intensity)
         {
             SceneRendererCommand scene_rend_command;
             scene_rend_command.command_type                  = SceneRendererCmdType::CreateAmbientLight;
-            scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_intensity = intensity;
             scene_rend_command.light_command.light_color     = color;
+            scene_rend_command.light_command.light_intensity = intensity;
+            scene_rend_command.light_command.light_id        = light_id;
+            scene_rend_command.light_command.owner_entity_id = owner_entity_id;
             return scene_rend_command;
         }
 
-        static SceneRendererCommand BuildUpdateAmbientLightCommand(LightID light_id,
-                                                                   const glm::vec3& color,
-                                                                   float intensity)
+        static SceneRendererCommand BuildUpdateLightCommand(LightID light_id,
+                                                            const glm::vec3& color,
+                                                            float intensity,
+                                                            float cutoff_angle)
         {
             SceneRendererCommand scene_rend_command;
-            scene_rend_command.command_type                  = SceneRendererCmdType::UpdateAmbientLight;
-            scene_rend_command.light_command.light_id        = light_id;
-            scene_rend_command.light_command.light_intensity = intensity;
+            scene_rend_command.command_type                  = SceneRendererCmdType::UpdateLight;
             scene_rend_command.light_command.light_color     = color;
+            scene_rend_command.light_command.light_intensity = intensity;
+            scene_rend_command.light_command.light_cutoff    = cutoff_angle;
+            scene_rend_command.light_command.light_id        = light_id;
             return scene_rend_command;
         }
 
@@ -277,12 +234,11 @@ namespace brr::render::internal
 
             struct
             {
-                glm::vec3 light_position{0.0};
-                glm::f32 light_intensity{0.0};
-                glm::vec3 light_direction{0.0};
-                glm::f32 light_cutoff{0.0};
                 glm::vec3 light_color{0.0};
-                LightID light_id;
+                glm::f32 light_intensity{0.0};
+                glm::f32 light_cutoff{0.0};
+                LightID light_id{LightID::NULL_ID};
+                EntityID owner_entity_id{EntityID::NULL_ID};
             } light_command;
         };
 
@@ -313,13 +269,10 @@ namespace brr::render::internal
                 this->camera_command = other.camera_command;
                 break;
             case SceneRendererCmdType::CreatePointLight:
-            case SceneRendererCmdType::UpdatePointLight:
             case SceneRendererCmdType::CreateDirectionalLight:
-            case SceneRendererCmdType::UpdateDirectionalLight:
             case SceneRendererCmdType::CreateSpotLight:
-            case SceneRendererCmdType::UpdateSpotLight:
             case SceneRendererCmdType::CreateAmbientLight:
-            case SceneRendererCmdType::UpdateAmbientLight:
+            case SceneRendererCmdType::UpdateLight:
             case SceneRendererCmdType::DestroyLight:
                 this->light_command = other.light_command;
                 break;

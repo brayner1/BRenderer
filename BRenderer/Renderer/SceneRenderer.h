@@ -7,12 +7,9 @@
 #include <Renderer/GpuResources/DeviceBuffer.h>
 #include <Renderer/RenderDefs.h>
 #include <Renderer/SceneObjectsIDs.h>
-#include <Scene/Scene.h>
 #include <Visualization/Resources/Image.h>
 
 #include "Storages/MeshStorage.h"
-
-// TODO: How do Camera, Viewport and Window connect with each other?
 
 namespace brr::render
 {
@@ -61,43 +58,30 @@ namespace brr::render
         //------------------------//
 
         void CreatePointLight(LightID light_id,
-                              const glm::vec3& position,
+                              EntityID owner_entity,
                               const glm::vec3& color,
                               float intensity);
 
-        void UpdatePointLight(LightID light_id,
-                              const glm::vec3& position,
-                              const glm::vec3& color,
-                              float intensity);
-
-        void CreateDirectionalLight(LightID light_id, const glm::vec3& direction,
-                                       const glm::vec3& color,
-                                       float intensity);
-
-        void UpdateDirectionalLight(LightID light_id,
-                                    const glm::vec3& direction,
+        void CreateDirectionalLight(LightID light_id,
+                                    EntityID owner_entity,
                                     const glm::vec3& color,
                                     float intensity);
 
-        void CreateSpotLight(LightID light_id, const glm::vec3& position,
-                                float cutoff_angle,
-                                const glm::vec3& direction,
-                                float intensity,
-                                const glm::vec3& color);
-
-        void UpdateSpotLight(LightID light_id,
-                             const glm::vec3& position,
-                             float cutoff_angle,
-                             const glm::vec3& direction,
+        void CreateSpotLight(LightID light_id,
+                             EntityID owner_entity,
+                             const glm::vec3& color,
                              float intensity,
-                             const glm::vec3& color);
+                             float cutoff_angle);
 
-        void CreateAmbientLight(LightID light_id, const glm::vec3& color,
-                                   float intensity);
-
-        void UpdateAmbientLight(LightID light_id,
+        void CreateAmbientLight(LightID light_id,
+                                EntityID owner_entity,
                                 const glm::vec3& color,
                                 float intensity);
+
+        void UpdateLight(LightID light_id,
+                         const glm::vec3& color,
+                         float intensity,
+                         float cutoff_angle);
 
         void DestroyLight(LightID light_id);
 
@@ -137,7 +121,9 @@ namespace brr::render
 
         void MarkEntityDirty(EntityID entity_id, EntityInfo& entity_info, bool mark_surface, bool mark_uniform);
 
-        bool CreateNewLight(LightID light_id, Light&& new_light);
+        bool CreateNewLight(LightID light_id,
+                            EntityID owner_entity,
+                            Light&& new_light);
 
         void ReferenceNewMaterial(MaterialID material_id);
         void DereferenceMaterial(MaterialID material_id);
@@ -184,10 +170,12 @@ namespace brr::render
             DescriptorLayout descriptor_layout;
             std::array<DeviceBuffer, FRAME_LAG> uniform_buffers;
             std::array<DescriptorSetHandle, FRAME_LAG> descriptor_sets;
-            std::array<bool, FRAME_LAG> uniform_dirty{true};
+            std::array<bool, FRAME_LAG> transform_dirty{false};
 
             std::vector<SurfaceID> surfaces;
             bool surfaces_dirty = false;
+
+            LightID attached_light = LightID::NULL_ID;
         };
 
         struct SurfaceRenderData
@@ -209,9 +197,8 @@ namespace brr::render
 
             uint32_t m_num_vertices = 0, m_num_indices = 0;
 
-            bool m_surface_dirty = false;
-
             MaterialID m_material_id;
+            bool m_surface_dirty = false;
         };
 
         struct MaterialRenderData
@@ -229,18 +216,25 @@ namespace brr::render
             std::array<bool, FRAME_LAG> m_light_storage_size_changed{true};
         } m_scene_uniform_info;
 
+        // Viewports
         ContiguousPool<ViewportID, Viewport> m_viewports;
 
+        // Cameras
         ContiguousPool<CameraID, CameraInfo> m_cameras;
 
+        // Lights
         ContiguousPool<LightID, Light> m_scene_lights;
+        std::unordered_map<LightID, EntityID> m_light_owners;
 
+        // Surfaces and Materials
         ContiguousPool<SurfaceID, SurfaceRenderData, std::hash<ResourceHandle>> m_cached_surfaces;
         ContiguousPool<MaterialID, MaterialRenderData, std::hash<ResourceHandle>> m_cached_materials;
 
-        std::set<EntityID> m_dirty_entities{};
+        // Entities
+        std::vector<EntityID> m_dirty_entities{};
         std::map<EntityID, EntityInfo> m_entities_map{};
 
+        // Resources
         Ref<vis::Image> m_image;
         MaterialID m_default_material;
         Texture2DHandle m_texture_2d_handle;
@@ -248,10 +242,9 @@ namespace brr::render
 
         ShaderID m_shader_id;
 
+        // Frame information
         uint32_t m_current_buffer = 0;
         size_t m_current_frame    = -1; // Start with invalid value.
-
-        CameraID m_camera_id = CameraID::NULL_ID;
     };
 }
 

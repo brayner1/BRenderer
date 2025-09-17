@@ -922,8 +922,9 @@ namespace brr::render
                     BRR_LogError("Trying to bind buffer with size bigger than the buffer total size. Reverting to buffer size.");
                     buffer_size = buffer->buffer_size;
                 }
-                
-                vk::DescriptorBufferInfo& buffer_info = desc_buffer_infos.emplace_back(buffer->buffer, 0, buffer_size);
+                uint32_t buffer_offset = shader_bindings[binding].buffer_offset;
+
+                vk::DescriptorBufferInfo& buffer_info = desc_buffer_infos.emplace_back(buffer->buffer, buffer_offset, buffer_size);
 
                 write.setBufferInfo(buffer_info);
             }
