@@ -74,9 +74,10 @@ namespace brr::render
     //----------  DescriptorSetUpdater  ----------//
     //--------------------------------------------//
 
-    DescriptorSetUpdater& DescriptorSetUpdater::BindBuffer(uint32_t binding,
+    DescriptorSetUpdater& DescriptorSetUpdater::BindBuffer(uint32_t            binding,
                                                            const BufferHandle& bufferInfo,
-                                                           uint32_t buffer_size)
+                                                           uint32_t            buffer_size,
+                                                           uint32_t            buffer_offset)
     {
         if (!m_render_device)
         {
@@ -97,7 +98,7 @@ namespace brr::render
         descriptor_write.descriptor_binding = binding;
         descriptor_write.descriptor_type = m_descriptor_layout.m_bindings[binding].descriptor_type;
         descriptor_write.buffer_size = buffer_size;
-        descriptor_write.buffer_offset = 0;
+        descriptor_write.buffer_offset = buffer_offset;
         m_descriptor_writes.push_back(descriptor_write);
 
         return *this;

@@ -1,11 +1,12 @@
 #include "LightComponents.h"
 
 #include "Renderer/RenderThread.h"
+#include "Scene/Components/Transform3DComponent.h"
 
 namespace brr
 {
-    PointLightComponent::PointLightComponent(const glm::vec3& position, const glm::vec3& color, float intensity) noexcept
-    : m_position(position), m_intensity(intensity), m_color(color)
+    PointLightComponent::PointLightComponent(const glm::vec3& color, float intensity) noexcept
+    : m_intensity(intensity), m_color(color)
     {
     }
 
@@ -24,26 +25,13 @@ namespace brr
 
     PointLightComponent& PointLightComponent::operator=(PointLightComponent&& other) noexcept
     {
-        m_position = other.m_position;
-        m_intensity = other.m_intensity;
         m_color = other.m_color;
+        m_intensity = other.m_intensity;
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
         other.m_light_id = render::LightID::NULL_ID;
         return *this;
-    }
-
-    void PointLightComponent::SetPosition(const glm::vec3& position)
-    {
-        if (m_position != position)
-        {
-            m_position = position;
-            if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
-            {
-                scene_renderer->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
-            }
-        }
     }
 
     void PointLightComponent::SetIntensity(float intensity)
@@ -53,7 +41,7 @@ namespace brr
             m_intensity = intensity;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, 0.0);
             }
         }
     }
@@ -65,7 +53,7 @@ namespace brr
             m_color = color;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdatePointLight(m_light_id, m_position, m_color, m_intensity);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, 0.0);
             }
         }
     }
@@ -74,7 +62,8 @@ namespace brr
     {
         vis::SceneRenderProxy* scene_renderer_proxy = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer_proxy && "Can't call 'PointLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
-        m_light_id = scene_renderer_proxy->CreatePointLight(m_position, m_color, m_intensity);
+        Transform3DComponent& owner_transform = GetEntity().GetComponent<Transform3DComponent>();
+        m_light_id = scene_renderer_proxy->CreatePointLight(owner_transform, m_color, m_intensity);
     }
 
     void PointLightComponent::UnregisterGraphics()
@@ -85,9 +74,9 @@ namespace brr
         m_light_id = render::LightID::NULL_ID;
     }
 
-    DirectionalLightComponent::DirectionalLightComponent(const glm::vec3& direction, const glm::vec3& color,
+    DirectionalLightComponent::DirectionalLightComponent(const glm::vec3& color,
                                                          float intensity) noexcept
-    : m_direction(direction), m_intensity(intensity), m_color(color)
+    : m_intensity(intensity), m_color(color)
     {
     }
 
@@ -106,26 +95,13 @@ namespace brr
 
     DirectionalLightComponent& DirectionalLightComponent::operator=(DirectionalLightComponent&& other) noexcept
     {
-        m_direction = other.m_direction;
-        m_intensity = other.m_intensity;
         m_color = other.m_color;
+        m_intensity = other.m_intensity;
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
         other.m_light_id = render::LightID::NULL_ID;;
         return *this;
-    }
-
-    void DirectionalLightComponent::SetDirection(const glm::vec3& direction)
-    {
-        if (m_direction != direction)
-        {
-            m_direction = direction;
-            if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
-            {
-                scene_renderer->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
-            }
-        }
     }
 
     void DirectionalLightComponent::SetIntensity(float intensity)
@@ -135,7 +111,7 @@ namespace brr
             m_intensity = intensity;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, 0.0);
             }
         }
     }
@@ -147,7 +123,7 @@ namespace brr
             m_color = color;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdateDirectionalLight(m_light_id, m_direction, m_color, m_intensity);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, 0.0);
             }
         }
     }
@@ -156,7 +132,8 @@ namespace brr
     {
         vis::SceneRenderProxy* scene_renderer_proxy = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer_proxy && "Can't call 'DirectionalLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
-        m_light_id = GetScene()->GetSceneRendererProxy()->CreateDirectionalLight(m_direction, m_color, m_intensity);
+        Transform3DComponent& owner_transform = GetEntity().GetComponent<Transform3DComponent>();
+        m_light_id = GetScene()->GetSceneRendererProxy()->CreateDirectionalLight(owner_transform, m_color, m_intensity);
     }
 
     void DirectionalLightComponent::UnregisterGraphics()
@@ -167,10 +144,8 @@ namespace brr
         m_light_id = render::LightID::NULL_ID;
     }
 
-    SpotLightComponent::SpotLightComponent(const glm::vec3& position, const glm::vec3& direction, float cuttof_angle,
-                                           const glm::vec3 color, float intensity) noexcept
-    : m_position(position), m_cutoff_angle(cuttof_angle), m_direction(direction), m_intensity(intensity),
-      m_color(color)
+    SpotLightComponent::SpotLightComponent(const glm::vec3& color, float intensity, float cutoff_angle) noexcept
+    : m_color(color), m_intensity(intensity), m_cutoff_angle(cutoff_angle)
     {
     }
 
@@ -189,40 +164,14 @@ namespace brr
 
     SpotLightComponent& SpotLightComponent::operator=(SpotLightComponent&& other) noexcept
     {
-        m_position = other.m_position;
-        m_cutoff_angle = other.m_cutoff_angle;
-        m_direction = other.m_direction;
-        m_intensity = other.m_intensity;
         m_color = other.m_color;
+        m_intensity = other.m_intensity;
+        m_cutoff_angle = other.m_cutoff_angle;
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
         other.m_light_id = render::LightID::NULL_ID;
         return *this;
-    }
-
-    void SpotLightComponent::SetPosition(const glm::vec3& position)
-    {
-        if (m_position != position)
-        {
-            m_position = position;
-            if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
-            {
-                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
-            }
-        }
-    }
-
-    void SpotLightComponent::SetDirection(const glm::vec3& direction)
-    {
-        if (m_direction != direction)
-        {
-            m_direction = direction;
-            if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
-            {
-                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
-            }
-        }
     }
 
     void SpotLightComponent::SetCutoffAngle(float cutoff_angle)
@@ -232,7 +181,7 @@ namespace brr
             m_cutoff_angle = cutoff_angle;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, m_cutoff_angle);
             }
         }
     }
@@ -244,7 +193,7 @@ namespace brr
             m_intensity = intensity;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, m_cutoff_angle);
             }
         }
     }
@@ -256,7 +205,7 @@ namespace brr
             m_color = color;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdateSpotLight(m_light_id, m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, m_cutoff_angle);
             }
         }
     }
@@ -265,7 +214,8 @@ namespace brr
     {
         vis::SceneRenderProxy* scene_renderer_proxy = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer_proxy && "Can't call 'SpotLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
-        m_light_id = GetScene()->GetSceneRendererProxy()->CreateSpotLight(m_position, m_cutoff_angle, m_direction, m_intensity, m_color);
+        Transform3DComponent& owner_transform = GetEntity().GetComponent<Transform3DComponent>();
+        m_light_id = GetScene()->GetSceneRendererProxy()->CreateSpotLight(owner_transform, m_color, m_intensity, m_cutoff_angle);
     }
 
     void SpotLightComponent::UnregisterGraphics()
@@ -296,8 +246,8 @@ namespace brr
 
     AmbientLightComponent& AmbientLightComponent::operator=(AmbientLightComponent&& other) noexcept
     {
-        m_intensity = other.m_intensity;
         m_color = other.m_color;
+        m_intensity = other.m_intensity;
         m_light_id = other.m_light_id;
         EntityComponent::operator=(std::move(other));
 
@@ -312,7 +262,7 @@ namespace brr
             m_color = color;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdateAmbientLight(m_light_id, m_color, m_intensity);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, 0.0);
             }
         }
     }
@@ -324,7 +274,7 @@ namespace brr
             m_intensity = intensity;
             if (vis::SceneRenderProxy* scene_renderer = GetScene()->GetSceneRendererProxy())
             {
-                scene_renderer->UpdateAmbientLight(m_light_id, m_color, m_intensity);
+                scene_renderer->UpdateLight(m_light_id, m_color, m_intensity, 0.0);
             }
         }
     }
@@ -333,7 +283,8 @@ namespace brr
     {
         vis::SceneRenderProxy* scene_renderer_proxy = GetScene()->GetSceneRendererProxy();
         assert(scene_renderer_proxy && "Can't call 'AmbientLightComponent::RegisterGraphics' when SceneRenderer is NULL.");
-        m_light_id = GetScene()->GetSceneRendererProxy()->CreateAmbientLight(m_color, m_intensity);
+        Transform3DComponent& owner_transform = GetEntity().GetComponent<Transform3DComponent>();
+        m_light_id = GetScene()->GetSceneRendererProxy()->CreateAmbientLight(owner_transform, m_color, m_intensity);
     }
 
     void AmbientLightComponent::UnregisterGraphics()

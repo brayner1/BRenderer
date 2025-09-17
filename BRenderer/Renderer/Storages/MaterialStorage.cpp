@@ -84,6 +84,7 @@ ShaderID MaterialStorage::CreateShader(const std::string& shader_name,
         .AddSetBinding(DescriptorType::StorageBuffer, FragmentShader)
         .AddSet() // Set 1 -> Binding 0: Camera view and projection
         .AddSetBinding(DescriptorType::UniformBuffer, VertexShader)
+        .AddSetBinding(DescriptorType::UniformBuffer, FragmentShader)
         .AddSet() // Set 2 -> Binding 0: Material transform.
         .AddSetBinding(DescriptorType::UniformBuffer, FragmentShader)
         .AddSetBinding(DescriptorType::CombinedImageSampler, FragmentShader)

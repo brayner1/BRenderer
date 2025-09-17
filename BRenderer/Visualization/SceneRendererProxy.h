@@ -56,43 +56,27 @@ namespace brr::vis
 
         // Lights
 
-        render::LightID CreatePointLight(const glm::vec3& position,
+        render::LightID CreatePointLight(const ::brr::Transform3DComponent& owner_entity,
                                          const glm::vec3& color,
                                          float intensity) const;
 
-        void UpdatePointLight(render::LightID light_id,
-                              const glm::vec3& position,
-                              const glm::vec3& color,
-                              float intensity) const;
-
-        render::LightID CreateDirectionalLight(const glm::vec3& direction,
+        render::LightID CreateDirectionalLight(const Transform3DComponent& owner_entity,
                                                const glm::vec3& color,
                                                float intensity) const;
 
-        void UpdateDirectionalLight(render::LightID light_id,
-                                    const glm::vec3& direction,
-                                    const glm::vec3& color,
-                                    float intensity) const;
-
-        render::LightID CreateSpotLight(const glm::vec3& position,
-                                        float cutoff_angle,
-                                        const glm::vec3& direction,
+        render::LightID CreateSpotLight(const Transform3DComponent& owner_entity,
+                                        const glm::vec3& color,
                                         float intensity,
-                                        const glm::vec3& color) const;
+                                        float cutoff_angle) const;
 
-        void UpdateSpotLight(render::LightID light_id,
-                             const glm::vec3& position,
-                             float cutoff_angle,
-                             const glm::vec3& direction,
-                             float intensity,
-                             const glm::vec3& color) const;
-
-        render::LightID CreateAmbientLight(const glm::vec3& color,
+        render::LightID CreateAmbientLight(const Transform3DComponent& owner_entity,
+                                           const glm::vec3& color,
                                            float intensity) const;
 
-        void UpdateAmbientLight(render::LightID light_id,
-                                const glm::vec3& color,
-                                float intensity) const;
+        void UpdateLight(render::LightID light_id,
+                         const glm::vec3& color,
+                         float intensity,
+                         float cutoff_angle) const;
 
         void DestroyLight(render::LightID light_id) const;
 

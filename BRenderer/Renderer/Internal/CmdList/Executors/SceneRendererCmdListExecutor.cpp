@@ -114,28 +114,35 @@ namespace brr::render::internal
                                                    scene_command.camera_command.camera_far);
             break;
         case SceneRendererCmdType::CreatePointLight:
-            scene_renderer->CreatePointLight(scene_command.light_command.light_id, scene_command.light_command.light_position, scene_command.light_command.light_color, scene_command.light_command.light_intensity);
-            break;
-        case SceneRendererCmdType::UpdatePointLight:
-            scene_renderer->UpdatePointLight(scene_command.light_command.light_id, scene_command.light_command.light_position, scene_command.light_command.light_color, scene_command.light_command.light_intensity);
+            scene_renderer->CreatePointLight(scene_command.light_command.light_id,
+                                             scene_command.light_command.owner_entity_id,
+                                             scene_command.light_command.light_color,
+                                             scene_command.light_command.light_intensity);
             break;
         case SceneRendererCmdType::CreateDirectionalLight:
-            scene_renderer->CreateDirectionalLight(scene_command.light_command.light_id, scene_command.light_command.light_direction, scene_command.light_command.light_color, scene_command.light_command.light_intensity);
-            break;
-        case SceneRendererCmdType::UpdateDirectionalLight:
-            scene_renderer->UpdateDirectionalLight(scene_command.light_command.light_id, scene_command.light_command.light_direction, scene_command.light_command.light_color, scene_command.light_command.light_intensity);
+            scene_renderer->CreateDirectionalLight(scene_command.light_command.light_id,
+                                                   scene_command.light_command.owner_entity_id,
+                                                   scene_command.light_command.light_color,
+                                                   scene_command.light_command.light_intensity);
             break;
         case SceneRendererCmdType::CreateSpotLight:
-            scene_renderer->CreateSpotLight(scene_command.light_command.light_id, scene_command.light_command.light_position, scene_command.light_command.light_cutoff, scene_command.light_command.light_direction, scene_command.light_command.light_intensity, scene_command.light_command.light_color);
-            break;
-        case SceneRendererCmdType::UpdateSpotLight:
-            scene_renderer->UpdateSpotLight(scene_command.light_command.light_id, scene_command.light_command.light_position, scene_command.light_command.light_cutoff, scene_command.light_command.light_direction, scene_command.light_command.light_intensity, scene_command.light_command.light_color);
+            scene_renderer->CreateSpotLight(scene_command.light_command.light_id,
+                                            scene_command.light_command.owner_entity_id,
+                                            scene_command.light_command.light_color,
+                                            scene_command.light_command.light_intensity,
+                                            scene_command.light_command.light_cutoff);
             break;
         case SceneRendererCmdType::CreateAmbientLight:
-            scene_renderer->CreateAmbientLight(scene_command.light_command.light_id, scene_command.light_command.light_color, scene_command.light_command.light_intensity);
+            scene_renderer->CreateAmbientLight(scene_command.light_command.light_id,
+                                               scene_command.light_command.owner_entity_id,
+                                               scene_command.light_command.light_color,
+                                               scene_command.light_command.light_intensity);
             break;
-        case SceneRendererCmdType::UpdateAmbientLight:
-            scene_renderer->UpdateAmbientLight(scene_command.light_command.light_id, scene_command.light_command.light_color, scene_command.light_command.light_intensity);
+        case SceneRendererCmdType::UpdateLight:
+            scene_renderer->UpdateLight(scene_command.light_command.light_id,
+                                        scene_command.light_command.light_color,
+                                        scene_command.light_command.light_intensity,
+                                        scene_command.light_command.light_cutoff);
             break;
         case SceneRendererCmdType::DestroyLight:
             scene_renderer->DestroyLight(scene_command.light_command.light_id);

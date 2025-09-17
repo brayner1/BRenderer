@@ -86,7 +86,7 @@ namespace brr::render
           m_render_device(VKRD::GetSingleton())
         {}
 
-        DescriptorSetUpdater& BindBuffer(uint32_t binding, const BufferHandle& buffers_info, uint32_t buffer_size);
+        DescriptorSetUpdater& BindBuffer(uint32_t binding, const BufferHandle& buffers_info, uint32_t buffer_size, uint32_t buffer_offset = 0);
 
         DescriptorSetUpdater& BindImage (uint32_t binding, const Texture2DHandle& images_info);
 

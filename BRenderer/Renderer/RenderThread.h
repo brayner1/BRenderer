@@ -111,25 +111,28 @@ namespace brr::render
          * Lights Commands *
          *******************/
 
-        static LightID SceneRenderCmd_CreatePointLight(uint64_t scene_id, const glm::vec3& position, const glm::vec3& color, float intensity);
+        static LightID SceneRenderCmd_CreatePointLight(uint64_t scene_id,
+                                                       ::brr::render::EntityID owner_entity_id,
+                                                       const glm::vec3& color,
+                                                       float intensity);
 
-        static void SceneRenderCmd_UpdatePointLight(uint64_t scene_id, LightID light_id, const glm::vec3& position, const glm::vec3& color, float intensity);
+        static LightID SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id,
+                                                             EntityID owner_entity_id,
+                                                             const glm::vec3& color,
+                                                             float intensity);
 
-        static LightID SceneRenderCmd_CreateDirectionalLight(uint64_t scene_id, const glm::vec3& direction, const glm::vec3& color, float intensity);
+        static LightID SceneRenderCmd_CreateSpotLight(uint64_t scene_id,
+                                                      EntityID owner_entity_id,
+                                                      const glm::vec3& color,
+                                                      float intensity,
+                                                      float cutoff_angle);
 
-        static void SceneRenderCmd_UpdateDirectionalLight(uint64_t scene_id, LightID light_id, const glm::vec3& direction, const glm::vec3& color,
-                                    float intensity);
+        static LightID SceneRenderCmd_CreateAmbientLight(uint64_t scene_id,
+                                                         ::brr::render::EntityID owner_entity_id,
+                                                         const glm::vec3& color,
+                                                         float intensity);
 
-        static LightID SceneRenderCmd_CreateSpotLight(uint64_t scene_id, const glm::vec3& position, float cutoff_angle, const glm::vec3& direction,
-                                float intensity, const glm::vec3& color);
-
-        static void SceneRenderCmd_UpdateSpotLight(uint64_t scene_id, LightID light_id, const glm::vec3& position, float cutoff_angle,
-                             const glm::vec3& direction,
-                             float intensity, const glm::vec3& color);
-
-        static LightID SceneRenderCmd_CreateAmbientLight(uint64_t scene_id, const glm::vec3& color, float intensity);
-
-        static void SceneRenderCmd_UpdateAmbientLight(uint64_t scene_id, LightID light_id, const glm::vec3& color, float intensity);
+        static void SceneRenderCmd_UpdateLight(uint64_t scene_id, LightID light_id, const glm::vec3& color, float intensity, float cutoff_angle);
 
         static void SceneRenderCmd_DestroyLight(uint64_t scene_id, LightID light_id);
     };
